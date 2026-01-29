@@ -9,12 +9,16 @@ import {
   LogOut,
   Menu,
   X,
-  Shield,
+  Bell,
+  ChevronDown,
+  Package,
 } from "lucide-react";
 import logo from "../assets/logo.png";
+
 const MainLayout = ({ onLogout }) => {
   const location = useLocation();
   const [isOpen, setIsOpen] = useState(false);
+  const [showProfileMenu, setShowProfileMenu] = useState(false);
 
   const toggleSidebar = () => setIsOpen(!isOpen);
 
@@ -22,32 +26,43 @@ const MainLayout = ({ onLogout }) => {
     {
       path: "/dashboard",
       label: "Overview",
-      icon: <LayoutDashboard size={18} />,
-    },
-    {
-      path: "/dashboard/requests",
-      label: "Requests",
-      icon: <FileText size={18} />,
+      icon: <LayoutDashboard size={20} />,
     },
     {
       path: "/dashboard/residents",
       label: "Residents",
-      icon: <Users size={18} />,
+      icon: <Users size={20} />,
     },
-    { path: "/dashboard/logs", label: "Logs", icon: <History size={18} /> },
+    {
+      path: "/dashboard/requests",
+      label: "Requests",
+      icon: <FileText size={20} />,
+    },
+    {
+      path: "/dashboard/documents",
+      label: "Documents",
+      icon: <Package size={20} />,
+    },
+    {
+      path: "/dashboard/logs",
+      label: "Audit Logs",
+      icon: <History size={20} />,
+    },
     {
       path: "/dashboard/settings",
       label: "Settings",
-      icon: <Settings size={18} />,
+      icon: <Settings size={20} />,
     },
   ];
 
+  const currentPage = menuItems.find((m) => m.path === location.pathname);
+
   return (
-    <div className="flex h-screen bg-gray-50 overflow-hidden font-sans">
+    <div className="flex h-screen bg-gray-50">
       {/* MOBILE BACKDROP */}
       {isOpen && (
         <div
-          className="fixed inset-0 bg-black/60 z-40 md:hidden backdrop-blur-sm transition-opacity"
+          className="fixed inset-0 bg-black/50 z-40 md:hidden"
           onClick={toggleSidebar}
         />
       )}
@@ -55,37 +70,40 @@ const MainLayout = ({ onLogout }) => {
       {/* SIDEBAR */}
       <aside
         className={`
-        fixed inset-y-0 left-0 z-50 w-64 bg-black text-white flex flex-col transform transition-transform duration-300 ease-in-out
-        md:relative md:translate-x-0 
-        ${isOpen ? "translate-x-0" : "-translate-x-full"}
-      `}
+          fixed inset-y-0 left-0 z-50 w-64 bg-gray-900 text-white flex flex-col
+          md:relative md:translate-x-0 
+          ${isOpen ? "translate-x-0" : "-translate-x-full"}
+        `}
       >
         {/* BRANDING SECTION */}
-        <div className="p-6 flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <div className="w-9 h-9  rounded-xl flex items-center justify-center text-white shadow-lg shadow-emerald-500/20">
-              <img
-                src={logo}
-                alt="Brgy Logo"
-                className="w-full h-full object-contain filter drop-shadow-md"
-              />
+        <div className="p-6 border-b border-gray-700">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 bg-emerald-500 rounded-lg flex items-center justify-center">
+                <img
+                  src={logo}
+                  alt="Brgy Logo"
+                  className="w-full h-full object-contain"
+                />
+              </div>
+              <div>
+                <h1 className="text-white font-bold text-sm">BRGY BONBON</h1>
+                <p className="text-xs text-emerald-400 uppercase">
+                  Admin Portal
+                </p>
+              </div>
             </div>
-            <div>
-              <h1 className="text-white font-black text-xs leading-none tracking-tight">
-                BRGY BONBON
-              </h1>
-              <p className="text-[9px] text-emerald-500 font-bold uppercase tracking-widest mt-1">
-                Admin Portal
-              </p>
-            </div>
+            <button
+              onClick={toggleSidebar}
+              className="md:hidden text-gray-400 hover:text-white"
+            >
+              <X size={20} />
+            </button>
           </div>
-          <button onClick={toggleSidebar} className="md:hidden text-gray-400">
-            <X size={20} />
-          </button>
         </div>
 
         {/* NAVIGATION LINKS */}
-        <nav className="flex-1 px-4 py-4 space-y-1">
+        <nav className="flex-1 px-4 py-6 space-y-2">
           {menuItems.map((item) => {
             const isActive = location.pathname === item.path;
             return (
@@ -94,79 +112,103 @@ const MainLayout = ({ onLogout }) => {
                 to={item.path}
                 onClick={() => setIsOpen(false)}
                 className={`
-                  flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-200 group
+                  flex items-center gap-3 px-4 py-3 rounded-lg
                   ${
                     isActive
-                      ? "bg-emerald-500 text-white shadow-lg shadow-emerald-500/10 font-bold"
-                      : "text-gray-400 hover:text-white hover:bg-white/5"
+                      ? "bg-emerald-500 text-white"
+                      : "text-gray-400 hover:text-white hover:bg-gray-800"
                   }
                 `}
               >
-                <span
-                  className={
-                    isActive
-                      ? "text-white"
-                      : "text-emerald-500 group-hover:text-emerald-400"
-                  }
-                >
-                  {item.icon}
-                </span>
-                {/* SMALLER TEXT LABEL */}
-                <span className="text-[13px] tracking-wide">{item.label}</span>
+                {item.icon}
+                <span className="text-sm">{item.label}</span>
               </Link>
             );
           })}
         </nav>
 
-        {/* LOGOUT AT THE VERY BOTTOM */}
-        <div className="p-4 mt-auto border-t border-white/5 bg-black">
+        {/* ADMIN INFO & LOGOUT */}
+        <div className="p-4 border-t border-gray-700">
           <button
             onClick={onLogout}
-            className="w-full flex items-center gap-3 px-4 py-3.5 rounded-xl text-gray-400 hover:text-red-500 hover:bg-red-500/10 transition-all font-bold"
+            className="w-full flex items-center gap-3 px-4 py-2 rounded-lg text-gray-400 hover:text-red-400 hover:bg-red-500/10"
           >
             <LogOut size={18} />
-            <span className="text-xs tracking-widest uppercase">Logout</span>
+            <span>Logout</span>
           </button>
         </div>
       </aside>
 
       {/* MAIN CONTENT AREA */}
-      <div className="flex-1 flex flex-col min-w-0">
-        <header className="h-16 md:h-20 bg-white border-b border-gray-100 flex items-center justify-between px-6 md:px-10 shrink-0">
+      <div className="flex-1 flex flex-col">
+        {/* HEADER */}
+        <header className="h-16 bg-white border-b border-gray-200 flex items-center justify-between px-6">
           <div className="flex items-center gap-4">
             <button
               onClick={toggleSidebar}
-              className="p-2 text-gray-600 md:hidden hover:bg-gray-100 rounded-lg"
+              className="md:hidden text-gray-600 hover:bg-gray-100 rounded-lg p-2"
             >
               <Menu size={24} />
             </button>
-            <div className="hidden sm:block">
-              <h2 className="text-lg font-black text-gray-800 tracking-tight capitalize">
-                {menuItems.find((m) => m.path === location.pathname)?.label ||
-                  "Overview"}
-              </h2>
-            </div>
+            <h2 className="text-xl font-bold text-gray-900">
+              {currentPage?.label || "Dashboard"}
+            </h2>
           </div>
 
-          <div className="flex items-center gap-4">
-            <div className="hidden md:flex flex-col text-right">
-              <p className="text-xs font-black text-gray-900 leading-none">
-                Admin Bonbon
-              </p>
-              <p className="text-[9px] font-bold text-emerald-600 uppercase mt-1 italic">
-                Active Session
-              </p>
-            </div>
-            <div className="w-10 h-10 bg-black text-emerald-400 rounded-xl flex items-center justify-center font-black shadow-md">
-              B
+          <div className="flex items-center gap-3">
+            <button className="text-gray-600 hover:bg-gray-100 rounded-lg p-2">
+              <Bell size={20} />
+            </button>
+
+            {/* Profile Dropdown */}
+            <div className="relative">
+              <button
+                onClick={() => setShowProfileMenu(!showProfileMenu)}
+                className="flex items-center gap-2 p-2 hover:bg-gray-100 rounded-lg"
+              >
+                <div className="w-8 h-8 bg-emerald-500 rounded-lg flex items-center justify-center text-white font-bold">
+                  AB
+                </div>
+                <ChevronDown size={16} className="text-gray-500" />
+              </button>
+
+              {showProfileMenu && (
+                <>
+                  <div
+                    className="fixed inset-0 z-40"
+                    onClick={() => setShowProfileMenu(false)}
+                  />
+                  <div className="absolute right-0 top-full mt-2 w-48 bg-white rounded-lg shadow-lg border border-gray-200 z-50">
+                    <div className="p-3">
+                      <Link
+                        to="/dashboard/settings"
+                        onClick={() => setShowProfileMenu(false)}
+                        className="flex items-center gap-2 px-3 py-2 hover:bg-gray-50"
+                      >
+                        <Settings size={16} />
+                        Settings
+                      </Link>
+                      <button
+                        onClick={() => {
+                          setShowProfileMenu(false);
+                          onLogout();
+                        }}
+                        className="w-full flex items-center gap-2 px-3 py-2 hover:bg-red-50 text-red-600"
+                      >
+                        <LogOut size={16} />
+                        Logout
+                      </button>
+                    </div>
+                  </div>
+                </>
+              )}
             </div>
           </div>
         </header>
 
-        <main className="flex-1 overflow-y-auto p-5 md:p-8 bg-[#FBFBFB]">
-          <div className="max-w-7xl mx-auto">
-            <Outlet />
-          </div>
+        {/* MAIN CONTENT */}
+        <main className="flex-1 overflow-y-auto">
+          <Outlet />
         </main>
       </div>
     </div>

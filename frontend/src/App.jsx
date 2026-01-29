@@ -35,16 +35,7 @@ const App = () => {
 
         {/* Protected Dashboard Route */}
         {/* We use the MainLayout as the parent wrapper */}
-        <Route
-          path="/dashboard"
-          element={
-            isAuthenticated ? (
-              <MainLayout onLogout={handleLogout} />
-            ) : (
-              <Navigate to="/login" />
-            )
-          }
-        >
+        <Route path="/dashboard" element={<MainLayout />}>
           {/* These are the 'Outlets' inside MainLayout */}
           <Route index element={<Overview />} />
           <Route path="requests" element={<RequestTable />} />
