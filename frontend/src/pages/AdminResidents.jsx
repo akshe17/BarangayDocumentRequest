@@ -22,7 +22,7 @@ import {
   Check,
 } from "lucide-react";
 
-const Residents = () => {
+const AdminResidents = () => {
   const [searchTerm, setSearchTerm] = useState("");
   const [activeMenu, setActiveMenu] = useState(null);
   const [filterStatus, setFilterStatus] = useState("all");
@@ -84,8 +84,6 @@ const Residents = () => {
       verifiedDate: null,
     },
   ]);
-
-  // SEARCH & FILTER LOGIC
   const filteredResidents = useMemo(() => {
     return residents.filter((r) => {
       const matchesSearch =
@@ -97,7 +95,6 @@ const Residents = () => {
     });
   }, [searchTerm, residents, filterStatus]);
 
-  // OPEN MODAL HELPER
   const openModal = (type, resident = null) => {
     setModalType(type);
     setSelectedResident(resident);
@@ -108,8 +105,6 @@ const Residents = () => {
     setModalType(null);
     setSelectedResident(null);
   };
-
-  // VERIFICATION ACTIONS
   const handleVerify = (residentId) => {
     setResidents((prev) =>
       prev.map((r) =>
@@ -140,7 +135,6 @@ const Residents = () => {
     closeModal();
   };
 
-  // Stats
   const stats = {
     total: residents.length,
     verified: residents.filter((r) => r.status === "Verified").length,
@@ -307,7 +301,6 @@ const Residents = () => {
         </div>
       </div>
 
-      {/* TABLE */}
       <div className="bg-white rounded-xl border border-gray-200 shadow-sm z-1">
         <div className="sm:overflow-auto md:overflow-none">
           <table className="w-full">
@@ -781,4 +774,4 @@ const Residents = () => {
   );
 };
 
-export default Residents;
+export default AdminResidents;

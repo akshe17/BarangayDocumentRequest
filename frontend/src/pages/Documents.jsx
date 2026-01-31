@@ -219,7 +219,7 @@ const Documents = () => {
           <div className="flex items-center justify-between">
             <div>
               <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide">
-                Total Revenue
+                Total Fee Collected
               </p>
               <h3 className="text-2xl font-black text-amber-600 mt-1">
                 ₱{stats.totalRevenue.toLocaleString()}

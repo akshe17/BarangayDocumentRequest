@@ -48,11 +48,6 @@ const MainLayout = ({ onLogout }) => {
       label: "Audit Logs",
       icon: <History size={20} />,
     },
-    {
-      path: "/dashboard/settings",
-      label: "Settings",
-      icon: <Settings size={20} />,
-    },
   ];
 
   const currentPage = menuItems.find((m) => m.path === location.pathname);
@@ -155,58 +150,9 @@ const MainLayout = ({ onLogout }) => {
             </h2>
           </div>
 
-          <div className="flex items-center gap-3">
-            <button className="text-gray-600 hover:bg-gray-100 rounded-lg p-2">
-              <Bell size={20} />
-            </button>
-
-            {/* Profile Dropdown */}
-            <div className="relative">
-              <button
-                onClick={() => setShowProfileMenu(!showProfileMenu)}
-                className="flex items-center gap-2 p-2 hover:bg-gray-100 rounded-lg"
-              >
-                <div className="w-8 h-8 bg-emerald-500 rounded-lg flex items-center justify-center text-white font-bold">
-                  AB
-                </div>
-                <ChevronDown size={16} className="text-gray-500" />
-              </button>
-
-              {showProfileMenu && (
-                <>
-                  <div
-                    className="fixed inset-0 z-40"
-                    onClick={() => setShowProfileMenu(false)}
-                  />
-                  <div className="absolute right-0 top-full mt-2 w-48 bg-white rounded-lg shadow-lg border border-gray-200 z-50">
-                    <div className="p-3">
-                      <Link
-                        to="/dashboard/settings"
-                        onClick={() => setShowProfileMenu(false)}
-                        className="flex items-center gap-2 px-3 py-2 hover:bg-gray-50"
-                      >
-                        <Settings size={16} />
-                        Settings
-                      </Link>
-                      <button
-                        onClick={() => {
-                          setShowProfileMenu(false);
-                          onLogout();
-                        }}
-                        className="w-full flex items-center gap-2 px-3 py-2 hover:bg-red-50 text-red-600"
-                      >
-                        <LogOut size={16} />
-                        Logout
-                      </button>
-                    </div>
-                  </div>
-                </>
-              )}
-            </div>
-          </div>
+          <div className="flex items-center gap-3"></div>
         </header>
 
-        {/* MAIN CONTENT */}
         <main className="flex-1 overflow-y-auto">
           <Outlet />
         </main>
