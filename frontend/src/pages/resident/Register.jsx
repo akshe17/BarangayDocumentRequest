@@ -96,7 +96,7 @@ const StepHeader = ({ number, title, subtitle }) => (
     </div>
     <div>
       <h2 className="text-lg font-bold text-gray-800 leading-tight">{title}</h2>
-      <p className="text-sm text-gray-500 mt-0.5">{subtitle}</p>
+      <p className="text-sm text-gray-800 mt-0.5">{subtitle}</p>
     </div>
   </div>
 );
@@ -119,7 +119,7 @@ const InputField = ({
     </label>
     <div className="relative">
       {/* Icon */}
-      <div className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-300 group-focus-within:text-emerald-500 transition-colors pointer-events-none">
+      <div className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-500 group-focus-within:text-emerald-500 transition-colors pointer-events-none">
         {React.cloneElement(icon, { size: 18 })}
       </div>
       {/* Input */}
@@ -129,8 +129,8 @@ const InputField = ({
         onChange={onChange}
         type={type}
         placeholder={placeholder}
-        className={`w-full bg-gray-50 border-2 rounded-xl py-3.5 pl-12 pr-12 text-sm font-medium text-gray-800 placeholder:text-gray-300 outline-none transition-all duration-200
-          ${error ? "border-red-300 focus:border-red-400 bg-red-50/40" : "border-gray-200 focus:border-emerald-500 focus:bg-white focus:shadow-sm focus:shadow-emerald-100"}`}
+        className={`w-full bg-gray-50 border-2 rounded-xl py-3.5 pl-12 pr-12 text-sm font-medium text-gray-800 placeholder:text-gray-600 outline-none transition-all duration-200
+          ${error ? "border-red-300 focus:border-red-400 bg-red-50/40" : "border-gray-300 focus:border-emerald-500 focus:bg-white focus:shadow-sm focus:shadow-emerald-100"}`}
       />
       {/* Suffix (e.g. eye toggle) */}
       {suffix && (
