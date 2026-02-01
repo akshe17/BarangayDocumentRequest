@@ -2,11 +2,11 @@ import React, { useState } from "react";
 import { Lock, User, ShieldCheck, Eye, EyeOff, Download } from "lucide-react";
 import logo from "../assets/logo.png";
 import bonbonVideo from "../assets/bonbonVideo.mp4";
+import { Navigate, Link } from "react-router-dom";
 
 const Login = ({ onLogin }) => {
   const [loading, setLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
-  const [rememberMe, setRememberMe] = useState(false);
 
   const handleSubmit = (e) => {
     e.preventDefault();
@@ -33,8 +33,8 @@ const Login = ({ onLogin }) => {
         </video>
 
         {/* Overlay (cleaner, flatter) */}
-        <div className="absolute inset-0 bg-emerald-900/90" />
-        <div className="absolute inset-0 bg-gradient-to-b from-black/40 via-transparent to-black/90" />
+        <div className="absolute inset-0 bg-emerald-950/80 backdrop-blur-[2px] z-10" />
+        <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-black/90 z-10" />
 
         {/* CONTENT */}
         <div className="relative z-10 flex flex-col justify-between h-full p-16">
@@ -86,25 +86,26 @@ const Login = ({ onLogin }) => {
             </div>
           </div>
 
-          {/* BOTTOM INFO */}
-          <div className="flex items-center justify-between text-sm text-gray-300">
-            <div className="flex items-center gap-4">
-              <div className="bg-white/10 backdrop-blur-md rounded-lg p-3 border border-white/20 shadow-lg">
-                <p className="text-white text-xs font-bold mb-1">
-                  Download App
-                </p>
-                <p className="text-gray-200 text-xs mb-2">
-                  Get the mobile app for document requests.
-                </p>
-                <a
-                  href="/barangay-connect.apk"
-                  download="Brgy_Bonbon_App.apk"
-                  className="flex items-center gap-2 bg-emerald-500 hover:bg-emerald-600 text-white px-3 py-1 rounded transition-all text-xs font-bold shadow-md"
-                >
-                  <Download size={12} />
-                  Download
-                </a>
+          {/* Download Component */}
+          <div className="animate-in fade-in slide-in-from-bottom-4 duration-700 delay-200">
+            <div className="inline-flex items-center gap-6 bg-white/5 backdrop-blur-xl rounded-3xl p-6 border border-white/10 shadow-2xl">
+              <div className="p-3 bg-emerald-500 rounded-2xl shadow-lg shadow-emerald-500/20">
+                <Download size={24} className="text-white" />
               </div>
+              <div>
+                <p className="text-white text-sm font-bold">
+                  Download Mobile App
+                </p>
+                <p className="text-emerald-100/50 text-xs">
+                  Request on the go via Android APK
+                </p>
+              </div>
+              <a
+                href="/barangay-connect.apk"
+                className="ml-4 bg-white hover:bg-emerald-50 text-emerald-950 px-6 py-2.5 rounded-xl transition-all text-xs font-black shadow-xl"
+              >
+                INSTALL
+              </a>
             </div>
           </div>
         </div>
@@ -191,30 +192,11 @@ const Login = ({ onLogin }) => {
               </div>
             </div>
 
-            {/* Remember Me and Forgot Password */}
-            <div className="flex items-center justify-between animate-slide-up delay-200">
-              <label className="flex items-center gap-2 text-sm text-gray-600">
-                <input
-                  type="checkbox"
-                  checked={rememberMe}
-                  onChange={(e) => setRememberMe(e.target.checked)}
-                  className="w-4 h-4 text-emerald-600 bg-gray-100 border-gray-300 rounded focus:ring-emerald-500"
-                />
-                Remember Me
-              </label>
-              <a
-                href="#"
-                className="text-sm text-emerald-600 hover:text-emerald-700 font-semibold transition-colors"
-              >
-                Forgot Password?
-              </a>
-            </div>
-
             {/* Submit Button */}
             <button
               type="submit"
               disabled={loading}
-              className="w-full bg-gradient-to-r from-emerald-500 to-emerald-600 hover:from-emerald-600 hover:to-emerald-700 text-white font-bold py-4 rounded-2xl transition-all duration-300 shadow-lg hover:shadow-xl flex items-center justify-center gap-3 mt-8 active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed"
+              className="w-full bg-gradient-to-r cursor-pointer from-emerald-500 to-emerald-600 hover:from-emerald-600 hover:to-emerald-700 text-white font-bold py-4 rounded-2xl transition-all duration-300 shadow-lg hover:shadow-xl flex items-center justify-center gap-3 mt-8 active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed"
               aria-label="Sign In"
             >
               {loading ? (
@@ -224,6 +206,16 @@ const Login = ({ onLogin }) => {
               )}
             </button>
           </form>
+
+          <div className="flex  mt-4 items-center justify-between animate-slide-up delay-200">
+            <Link
+              to="/register"
+              className="text-md text-emerald-600 hover:text-emerald-700 font-semibold transition-colors"
+            >
+              <span className="text-gray-500">Don't have an account yet? </span>
+              Register
+            </Link>
+          </div>
         </div>
       </div>
     </div>

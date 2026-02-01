@@ -24,6 +24,9 @@ return new class extends Migration
     $table->string('house_no', 50);
     $table->string('street', 100);
 
+    // Inside create_residents_table.php
+$table->string('id_image_path')->nullable(); // Stores the path to the uploaded image
+
 });
     }
 
