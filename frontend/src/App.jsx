@@ -11,6 +11,7 @@ import AuditLogs from "./pages/AuditLogs";
 import DownloadApp from "./pages/Download";
 import ResidentDashboard from "./pages/resident/ResidentDashboard";
 import ResidentLayout from "./layout/ResidentLayout";
+import NewRequest from "./pages/resident/NewRequest";
 const App = () => {
   // Simple state to track login status
   const [isAuthenticated, setIsAuthenticated] = useState(false);
@@ -37,14 +38,7 @@ const App = () => {
         {/* Resident Routes */}
         <Route path="/resident" element={<ResidentLayout />}>
           <Route index element={<ResidentDashboard />} />
-          <Route
-            path="new-request"
-            element={
-              <div className="p-10 text-xs font-bold uppercase">
-                New Request Page (Coming Soon)
-              </div>
-            }
-          />
+          <Route path="new-request" element={<NewRequest />} />
           <Route
             path="history"
             element={
