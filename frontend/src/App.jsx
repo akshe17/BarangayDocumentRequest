@@ -15,6 +15,7 @@ import NewRequest from "./pages/resident/NewRequest";
 import ResidentHistory from "./pages/resident/ResidentHistory";
 import ResidentNotification from "./pages/resident/ResidentNotification";
 import Register from "./pages/resident/Register";
+import Practice from "./pages/Practice";
 const App = () => {
   // Simple state to track login status
   const [isAuthenticated, setIsAuthenticated] = useState(false);
@@ -37,6 +38,8 @@ const App = () => {
           }
         />
         <Route path="/download" element={<DownloadApp />} />
+        <Route path="/practice" element={<Practice />} />
+
         <Route path="/register" element={<Register />} />
 
         {/* Resident Routes */}
