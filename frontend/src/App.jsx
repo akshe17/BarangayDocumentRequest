@@ -13,6 +13,7 @@ import ResidentDashboard from "./pages/resident/ResidentDashboard";
 import ResidentLayout from "./layout/ResidentLayout";
 import NewRequest from "./pages/resident/NewRequest";
 import ResidentHistory from "./pages/resident/ResidentHistory";
+import ResidentNotification from "./pages/resident/ResidentNotification";
 const App = () => {
   // Simple state to track login status
   const [isAuthenticated, setIsAuthenticated] = useState(false);
@@ -41,14 +42,7 @@ const App = () => {
           <Route index element={<ResidentDashboard />} />
           <Route path="new-request" element={<NewRequest />} />
           <Route path="history" element={<ResidentHistory />} />
-          <Route
-            path="notifications"
-            element={
-              <div className="p-10 text-xs font-bold uppercase">
-                Notifications Page (Coming Soon)
-              </div>
-            }
-          />
+          <Route path="notifications" element={<ResidentNotification />} />
           <Route
             path="settings"
             element={
