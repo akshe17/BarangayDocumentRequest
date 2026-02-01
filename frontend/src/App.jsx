@@ -12,6 +12,7 @@ import DownloadApp from "./pages/Download";
 import ResidentDashboard from "./pages/resident/ResidentDashboard";
 import ResidentLayout from "./layout/ResidentLayout";
 import NewRequest from "./pages/resident/NewRequest";
+import ResidentHistory from "./pages/resident/ResidentHistory";
 const App = () => {
   // Simple state to track login status
   const [isAuthenticated, setIsAuthenticated] = useState(false);
@@ -39,14 +40,7 @@ const App = () => {
         <Route path="/resident" element={<ResidentLayout />}>
           <Route index element={<ResidentDashboard />} />
           <Route path="new-request" element={<NewRequest />} />
-          <Route
-            path="history"
-            element={
-              <div className="p-10 text-xs font-bold uppercase">
-                History Page (Coming Soon)
-              </div>
-            }
-          />
+          <Route path="history" element={<ResidentHistory />} />
           <Route
             path="notifications"
             element={
