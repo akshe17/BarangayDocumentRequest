@@ -16,61 +16,77 @@ import ResidentHistory from "./pages/resident/ResidentHistory";
 import ResidentNotification from "./pages/resident/ResidentNotification";
 import Register from "./pages/resident/Register";
 import Practice from "./pages/Practice";
+import PublicRoute from "./authorization/PublicRoute";
+import ProtectedRoute from "./authorization/ProtectedRoute";
+import { AuthProvider } from "./context/AuthContext";
 const App = () => {
-  // Simple state to track login status
-  const [isAuthenticated, setIsAuthenticated] = useState(false);
-
-  const handleLogin = () => setIsAuthenticated(true);
-  const handleLogout = () => setIsAuthenticated(false);
-
   return (
     <BrowserRouter>
-      <Routes>
-        {/* Public Routes */}
-        <Route
-          path="/login"
-          element={
-            !isAuthenticated ? (
-              <Login onLogin={handleLogin} />
-            ) : (
-              <Navigate to="/dashboard" />
-            )
-          }
-        />
-        <Route path="/download" element={<DownloadApp />} />
-        <Route path="/practice" element={<Practice />} />
-
-        <Route path="/register" element={<Register />} />
-
-        {/* Resident Routes */}
-        <Route path="/resident" element={<ResidentLayout />}>
-          <Route index element={<ResidentDashboard />} />
-          <Route path="new-request" element={<NewRequest />} />
-          <Route path="history" element={<ResidentHistory />} />
-          <Route path="notifications" element={<ResidentNotification />} />
+      <AuthProvider>
+        <Routes>
+          {/* Public Routes */}
           <Route
-            path="settings"
+            path="/login"
             element={
-              <div className="p-10 text-xs font-bold uppercase">
-                Settings Page (Coming Soon)
-              </div>
+              <PublicRoute>
+                <Login />
+              </PublicRoute>
             }
           />
-        </Route>
+          <Route
+            path="/register"
+            element={
+              <PublicRoute>
+                <Register />
+              </PublicRoute>
+            }
+          />
+          <Route path="/download" element={<DownloadApp />} />
+          <Route path="/practice" element={<Practice />} />
 
-        <Route path="/dashboard" element={<MainLayout />}>
-          <Route index element={<Overview />} />
-          <Route path="requests" element={<RequestTable />} />
-          <Route path="residents" element={<AdminResidents />} />
-          <Route path="documents" element={<Documents />} />
-          <Route path="logs" element={<AuditLogs />} />
-        </Route>
+          {/* Resident Routes (role_id = 2) */}
+          <Route
+            path="/resident"
+            element={
+              <ProtectedRoute allowedRoles={[2]}>
+                <ResidentLayout />
+              </ProtectedRoute>
+            }
+          >
+            <Route index element={<ResidentDashboard />} />
+            <Route path="new-request" element={<NewRequest />} />
+            <Route path="history" element={<ResidentHistory />} />
+            <Route path="notifications" element={<ResidentNotification />} />
+            <Route
+              path="settings"
+              element={
+                <div className="p-10 text-xs font-bold uppercase">
+                  Settings Page (Coming Soon)
+                </div>
+              }
+            />
+          </Route>
 
-        <Route
-          path="/"
-          element={<Navigate to={isAuthenticated ? "/dashboard" : "/login"} />}
-        />
-      </Routes>
+          {/* Admin Routes (role_id = 1) */}
+          <Route
+            path="/dashboard"
+            element={
+              <ProtectedRoute allowedRoles={[1]}>
+                <MainLayout />
+              </ProtectedRoute>
+            }
+          >
+            <Route index element={<Overview />} />
+            <Route path="requests" element={<RequestTable />} />
+            <Route path="residents" element={<AdminResidents />} />
+            <Route path="documents" element={<Documents />} />
+            <Route path="logs" element={<AuditLogs />} />
+          </Route>
+
+          {/* Root redirect */}
+          <Route path="/" element={<Navigate to="/login" replace />} />
+        </Routes>
+      </AuthProvider>
     </BrowserRouter>
   );
 };
