@@ -19,7 +19,10 @@ Route::middleware('auth:sanctum')->get('/debug-auth', function (Request $request
 });
 
 Route::post('/register', [AuthController::class, 'register']);
-
+// Add this placeholder
+Route::post('/login', function() {
+    return response()->json(['message' => 'Login route coming soon'], 200);
+})->name('login');
 Route::get('/genders', [GenderController::class, 'index']);
 
 Route::get('/civil-status', [CivilStatusController::class, 'index']);

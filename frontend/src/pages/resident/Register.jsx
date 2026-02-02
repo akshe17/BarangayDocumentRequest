@@ -226,6 +226,7 @@ const Register = () => {
   const [showPassword, setShowPassword] = useState(false);
   const [selectedImage, setSelectedImage] = useState(null);
   const [currentStep, setCurrentStep] = useState(1);
+  const [imageFile, setImageFile] = useState(null);
 
   const today = new Date().toISOString().split("T")[0];
   const [genders, setGenders] = useState([]);
@@ -251,15 +252,22 @@ const Register = () => {
 
   const handleImageChange = (e) => {
     const file = e.target.files[0];
-    if (file) setSelectedImage(URL.createObjectURL(file));
+    if (file) {
+      setSelectedImage(URL.createObjectURL(file)); // For preview
+      setImageFile(file); // ✅ Store the actual file
+    }
   };
 
   const removeImage = (e) => {
     e.preventDefault();
     setSelectedImage(null);
+    setImageFile(null); // ✅ Clear the file too
   };
-
   const handleRegistration = async () => {
+    if (!imageFile) {
+      alert("Please upload a valid ID image");
+      return;
+    }
     const data = new FormData();
     data.append("email", formData.email);
     data.append("password", formData.password);
@@ -270,11 +278,7 @@ const Register = () => {
     data.append("purok", formData.purok);
     data.append("gender_id", formData.gender_id);
     data.append("civil_status_id", formData.civil_status_id);
-
-    const fileInput = document.querySelector('input[type="file"]');
-    if (fileInput && fileInput.files[0]) {
-      data.append("id_image", fileInput.files[0]);
-    }
+    data.append("id_image", imageFile); // ✅ Use the stored file
 
     try {
       const res = await api.post("/register", data, {
@@ -283,7 +287,10 @@ const Register = () => {
       localStorage.setItem("token", res.data.access_token);
       alert("Account created successfully!");
     } catch (err) {
-      alert(err.response?.data?.message || "Something went wrong");
+      alert(
+        err.response?.data?.message + err.response?.data?.error ||
+          "Something went wrong",
+      );
     }
   };
   // Fetch genders from Laravel on component mount

@@ -14,8 +14,8 @@ return Application::configure(basePath: dirname(__DIR__))
     ->withMiddleware(function (Middleware $middleware): void {
    
        $middleware->validateCsrfTokens(except: [
-            '/api/*', // Only use this if you are NOT using Sanctum's CSRF cookie
-        ]);
+        '/api/*',
+    ]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {
         //

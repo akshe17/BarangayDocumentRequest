@@ -1,6 +1,6 @@
 <?php
 
-namespace App\Http\Controllers\Api;
+namespace App\Http\Controllers;
 
 use App\Http\Controllers\Controller;
 use App\Models\User;
@@ -42,14 +42,14 @@ class AuthController extends Controller
                 'street' => $request->purok,
                 'gender_id' => $request->gender_id,
                 'civil_status_id' => $request->civil_status_id,
-                'verification_id_path' => $path,
+                'id_image_path' => $path,
             ]);
 
             // 4. Create User
             $user = User::create([
                 'email' => $request->email,
                 'password' => Hash::make($request->password),
-                'resident_id' => $resident->resident_id, // Use the correct PK
+              
                 'role_id' => 2,
             ]);
 
@@ -65,7 +65,7 @@ class AuthController extends Controller
             ], 201);
         });
     } catch (\Exception $e) {
-        return response()->json(['message' => 'Registration failed', 'error' => $e->getMessage()], 500);
+        return response()->json(['message' => 'Registration failed ', 'error' => $e->getMessage()], 500);
     }
 }
 }
