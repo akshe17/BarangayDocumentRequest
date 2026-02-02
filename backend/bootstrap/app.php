@@ -12,8 +12,7 @@ return Application::configure(basePath: dirname(__DIR__))
         health: '/up',
     )
     ->withMiddleware(function (Middleware $middleware): void {
-       $middleware->statefulApi(); // This enables Sanctum for React
-
+   
        $middleware->validateCsrfTokens(except: [
             '/api/*', // Only use this if you are NOT using Sanctum's CSRF cookie
         ]);

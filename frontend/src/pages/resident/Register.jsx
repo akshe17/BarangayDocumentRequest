@@ -229,6 +229,7 @@ const Register = () => {
 
   const today = new Date().toISOString().split("T")[0];
   const [genders, setGenders] = useState([]);
+  const [civilStatus, setCivilStatus] = useState([]);
 
   const [formData, setFormData] = useState({
     email: "",
@@ -295,7 +296,18 @@ const Register = () => {
         console.error("Failed to fetch genders:", err);
       }
     };
+
+    const fetchCivilStatus = async () => {
+      try {
+        const response = await api.get("/civil-status");
+        setCivilStatus(response.data); // Assuming response.data is an array of objects
+        console.log(response.data);
+      } catch (err) {
+        console.error("Failed to fetch genders:", err);
+      }
+    };
     fetchGenders();
+    fetchCivilStatus();
   }, []);
   // ── Validation ──────────────────────────────────────────────────────────
   const passwordStrength = useMemo(
@@ -637,11 +649,10 @@ const Register = () => {
                   icon={<Heart />}
                   value={formData.civil_status_id}
                   onChange={handleInputChange}
-                  options={[
-                    { id: 1, label: "Single" },
-                    { id: 2, label: "Married" },
-                    { id: 3, label: "Widowed" },
-                  ]}
+                  options={civilStatus.map((status) => ({
+                    id: status.civil_status_id,
+                    label: status.status_name,
+                  }))}
                 />
               </div>
             </SectionCard>
