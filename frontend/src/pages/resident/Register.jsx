@@ -614,10 +614,9 @@ const Register = () => {
                     icon={<User />}
                     value={formData.gender_id}
                     onChange={handleInputChange}
-                    // Map the DB data to your options
                     options={genders.map((g) => ({
-                      id: g.id,
-                      label: g.name, // Adjust 'name' if your DB column is named differently (e.g., 'gender_name')
+                      id: g.gender_id, // Updated from g.id
+                      label: g.gender_name, // Updated from g.name to match standard seeder
                     }))}
                   />
                 </div>
