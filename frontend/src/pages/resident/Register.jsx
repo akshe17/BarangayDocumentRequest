@@ -390,7 +390,7 @@ const Register = () => {
           <div className="relative z-10 flex flex-col justify-between h-full p-10 lg:p-14">
             {/* Logo */}
             <div className="flex items-center gap-3.5">
-              <div className="w-12 h-12 bg-white rounded-xl flex items-center justify-center shadow-lg">
+              <div className="w-12  rounded-xl flex items-center justify-center ">
                 <img src={logo} alt="Logo" className="w-9 h-9 object-contain" />
               </div>
               <div>
