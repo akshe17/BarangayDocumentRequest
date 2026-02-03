@@ -12,7 +12,12 @@ import api from "../axious/api";
 const AuthContext = createContext(null);
 
 export const AuthProvider = ({ children }) => {
-  const [user, setUser] = useState(null);
+  const [user, setUser] = useState({
+    id: "",
+    role_id: "",
+    name: "",
+    email: "",
+  });
   const [loading, setLoading] = useState(true);
   const [isAuthenticated, setIsAuthenticated] = useState(false);
 
