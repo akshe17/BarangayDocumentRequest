@@ -1,25 +1,26 @@
 import React from "react";
-import { Navigate } from "react-router-dom";
+import { Navigate, Outlet } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 
-const PublicRoute = ({ children }) => {
-  const { isAuthenticated, user, loading } = useAuth();
+const PublicRoute = () => {
+  const { isAuthenticated, loading, isAdmin } = useAuth();
 
+  // 1. Wait for checkAuth to finish
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-emerald-600"></div>
+      <div className="h-screen flex items-center justify-center">
+        <div className="animate-spin rounded-full h-10 w-10 border-t-2 border-emerald-600"></div>
       </div>
     );
   }
 
+  // 2. If already logged in, redirect to dashboard
   if (isAuthenticated) {
-    // Redirect based on role
-    const redirectPath = user?.role_id === 1 ? "/dashboard" : "/resident";
-    return <Navigate to={redirectPath} replace />;
+    return <Navigate to={isAdmin() ? "/dashboard" : "/resident"} replace />;
   }
 
-  return children;
+  // 3. If NOT logged in, show the Login/Register page
+  return <Outlet />;
 };
 
 export default PublicRoute;

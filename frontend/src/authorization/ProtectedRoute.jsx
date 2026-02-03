@@ -1,28 +1,48 @@
 import React from "react";
-import { Navigate } from "react-router-dom";
+import { Navigate, useLocation } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 
 const ProtectedRoute = ({ children, allowedRoles }) => {
-  const { isAuthenticated, user, loading } = useAuth();
+  const { isAuthenticated, user, loading, isAdmin, isResident } = useAuth();
+  const location = useLocation();
 
+  // 1. Wait for the server's /api/user check to finish
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-emerald-600"></div>
+      <div className="h-screen flex items-center justify-center bg-slate-50">
+        <div className="animate-spin rounded-full h-10 w-10 border-t-2 border-emerald-600"></div>
       </div>
     );
   }
 
-  if (!isAuthenticated) {
-    return <Navigate to="/login" replace />;
+  // 2. Not logged in? Go to login
+  if (!isAuthenticated || !user) {
+    return <Navigate to="/login" state={{ from: location }} replace />;
   }
 
-  // Check if user's role is allowed
-  if (allowedRoles && !allowedRoles.includes(user?.role_id)) {
-    // Redirect to appropriate dashboard based on role
-    return (
-      <Navigate to={user?.role_id === 1 ? "/dashboard" : "/resident"} replace />
+  // 3. Page Authorization logic
+  // Normalize both sides to Numbers to prevent "1" vs 1 mismatches
+  const userRole = Number(user?.role_id);
+  const normalizedAllowedRoles = allowedRoles.map((role) => Number(role));
+
+  const hasAccess = normalizedAllowedRoles.includes(userRole);
+
+  if (!hasAccess) {
+    console.warn(
+      `[Auth] Access Denied. User Role: ${userRole}, Required: ${normalizedAllowedRoles}`,
     );
+
+    // Role-based "Jailing"
+    if (isAdmin()) {
+      return <Navigate to="/dashboard" replace />;
+    }
+
+    if (isResident()) {
+      return <Navigate to="/resident" replace />;
+    }
+
+    // If role is unknown, clear session and send to login
+    return <Navigate to="/login" replace />;
   }
 
   return children;

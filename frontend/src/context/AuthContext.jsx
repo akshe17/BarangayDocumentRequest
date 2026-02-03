@@ -1,6 +1,14 @@
-import React, { createContext, useContext, useState, useEffect } from "react";
+import React, {
+  createContext, // <--- 1. Make sure this is imported
+  useContext,
+  useState,
+  useEffect,
+  useRef,
+  useCallback,
+} from "react";
 import api from "../axious/api";
 
+// 2. THIS IS THE MISSING PIECE:
 const AuthContext = createContext(null);
 
 export const AuthProvider = ({ children }) => {
@@ -8,48 +16,53 @@ export const AuthProvider = ({ children }) => {
   const [loading, setLoading] = useState(true);
   const [isAuthenticated, setIsAuthenticated] = useState(false);
 
-  // Check if user is already logged in on mount
-  useEffect(() => {
-    checkAuth();
-  }, []);
-
-  const checkAuth = async () => {
+  const userRef = useRef(null);
+  // ... inside AuthProvider
+  const checkAuth = useCallback(async () => {
     const token = localStorage.getItem("token");
-
     if (!token) {
+      setIsAuthenticated(false);
       setLoading(false);
       return;
     }
 
     try {
-      // Fetch current user data
       const response = await api.get("/user");
+      userRef.current = response.data;
       setUser(response.data);
       setIsAuthenticated(true);
     } catch (error) {
-      console.error("Auth check failed:", error);
-      localStorage.removeItem("token");
-      setUser(null);
+      console.error("CheckAuth Error:", error);
+      // If server is unreachable or CORS fails, we must stop loading
       setIsAuthenticated(false);
+      if (error.response?.status === 401) {
+        logout();
+      }
     } finally {
-      setLoading(false);
+      setLoading(false); // ALWAYS stop loading
     }
-  };
+  }, []);
+
+  // Fix helper functions to handle null user safely
+  const isAdmin = () => Number(userRef.current?.role_id) === 1;
+  const isResident = () => Number(userRef.current?.role_id) === 2;
+  useEffect(() => {
+    checkAuth();
+  }, [checkAuth]);
 
   const login = async (email, password) => {
     try {
       const response = await api.post("/login", { email, password });
+      const token = response.data.access_token;
+      const userData = response.data.user ?? response.data;
 
-      // Store token
-      localStorage.setItem("token", response.data.access_token);
-
-      // Set user data
-      setUser(response.data.user);
+      localStorage.setItem("token", token);
+      userRef.current = userData;
+      setUser(userData);
       setIsAuthenticated(true);
 
-      return { success: true, user: response.data.user };
+      return { success: true, user: userData };
     } catch (error) {
-      console.error("Login failed:", error);
       return {
         success: false,
         error: error.response?.data?.message || "Login failed",
@@ -59,12 +72,10 @@ export const AuthProvider = ({ children }) => {
 
   const logout = () => {
     localStorage.removeItem("token");
+    userRef.current = null;
     setUser(null);
     setIsAuthenticated(false);
   };
-
-  const isAdmin = () => user?.role_id === 1;
-  const isResident = () => user?.role_id === 2;
 
   const value = {
     user,
@@ -77,12 +88,12 @@ export const AuthProvider = ({ children }) => {
     isResident,
   };
 
+  // This refers to the 'const AuthContext' we created at the top
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 };
 
-// Custom hook to use auth context
 export const useAuth = () => {
-  const context = useContext(AuthContext);
+  const context = useContext(AuthContext); // <--- This must match the variable at the top
   if (!context) {
     throw new Error("useAuth must be used within AuthProvider");
   }

@@ -12,22 +12,28 @@ use Illuminate\Support\Facades\Storage;
 
 class AuthController extends Controller
 {
-    public function login(Request $request)
+ public function login(Request $request)
 {
     $credentials = $request->validate([
         'email' => 'required|email',
         'password' => 'required',
     ]);
 
+    // Use the sanctum guard explicitly if needed, 
+    // but usually attempt() works on the default web provider
     if (!auth()->attempt($credentials)) {
         return response()->json(['message' => 'Invalid credentials'], 401);
     }
 
     $user = auth()->user();
+    
+    // Crucial: Clean existing tokens if you want to prevent multiple sessions
+    $user->tokens()->delete(); 
+
     $token = $user->createToken('main')->plainTextToken;
 
     return response()->json([
-        'user' => $user,
+        'user' => $user, // This includes role_id
         'access_token' => $token
     ]);
 }

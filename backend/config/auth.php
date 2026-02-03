@@ -34,13 +34,19 @@ return [
     | Supported: "session"
     |
     */
+// In config/auth.php
 
-    'guards' => [
-        'web' => [
-            'driver' => 'session',
-            'provider' => 'users',
-        ],
+'guards' => [
+    'web' => [
+        'driver' => 'session',
+        'provider' => 'users',
     ],
+
+    'api' => [
+        'driver' => 'sanctum', // Change 'token' to 'sanctum' here
+        'provider' => 'users',
+    ],
+],
 
     /*
     |--------------------------------------------------------------------------

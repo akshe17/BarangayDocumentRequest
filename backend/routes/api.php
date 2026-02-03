@@ -6,11 +6,10 @@ use App\Http\Controllers\AuthController; // Ensure this is imported
 use App\Http\Controllers\GenderController;
 use App\Http\Controllers\CivilStatusController;
 
-Route::get('/user', function (Request $request) {
+
+Route::middleware('auth:sanctum')->get('/user', function (Request $request) {
     return $request->user();
-})->middleware('auth:sanctum');
-
-
+});
 Route::middleware('auth:sanctum')->get('/debug-auth', function (Request $request) {
     return [
         'user' => $request->user(),
@@ -21,7 +20,7 @@ Route::middleware('auth:sanctum')->get('/debug-auth', function (Request $request
 Route::post('/register', [AuthController::class, 'register']);
 
 
-Route::post('/login', [AuthController::class, 'login']);
+Route::post('/login', [AuthController::class, 'login'])->name('login');
 Route::get('/genders', [GenderController::class, 'index']);
 
 Route::get('/civil-status', [CivilStatusController::class, 'index']);

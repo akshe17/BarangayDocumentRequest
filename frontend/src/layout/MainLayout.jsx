@@ -14,8 +14,9 @@ import {
   Package,
 } from "lucide-react";
 import logo from "../assets/logo.png";
-
-const MainLayout = ({ onLogout }) => {
+import { useAuth } from "../context/AuthContext";
+const MainLayout = () => {
+  const { logout } = useAuth();
   const location = useLocation();
   const [isOpen, setIsOpen] = useState(false);
   const [showProfileMenu, setShowProfileMenu] = useState(false);
@@ -74,7 +75,7 @@ const MainLayout = ({ onLogout }) => {
         <div className="p-6 border-b border-gray-700">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
-              <div className="w-10 h-10 bg-emerald-500 rounded-lg flex items-center justify-center">
+              <div className="w-10 h-10 rounded-lg flex items-center justify-center">
                 <img
                   src={logo}
                   alt="Brgy Logo"
@@ -125,7 +126,7 @@ const MainLayout = ({ onLogout }) => {
         {/* ADMIN INFO & LOGOUT */}
         <div className="p-4 border-t border-gray-700">
           <button
-            onClick={onLogout}
+            onClick={logout}
             className="w-full flex items-center gap-3 px-4 py-2 rounded-lg text-gray-400 hover:text-red-400 hover:bg-red-500/10"
           >
             <LogOut size={18} />

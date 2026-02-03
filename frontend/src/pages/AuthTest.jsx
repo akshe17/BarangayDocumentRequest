@@ -1,28 +1,7 @@
-import React, { useState, useMemo } from "react";
-import {
-  Activity,
-  Terminal,
-  Search,
-  Filter,
-  Download,
-  Calendar,
-  User,
-  FileCheck,
-  Edit,
-  Trash2,
-  UserPlus,
-  Settings,
-  LogIn,
-  LogOut,
-  Shield,
-  Clock,
-  CheckCircle2,
-  XCircle,
-  AlertCircle,
-} from "lucide-react";
-
+import React from "react";
 import { useAuth } from "../context/AuthContext";
-const AuditLogs = () => {
+
+const AuthTest = () => {
   const { user, isAuthenticated, loading, isAdmin, isResident } = useAuth();
 
   return (
@@ -80,4 +59,4 @@ const AuditLogs = () => {
   );
 };
 
-export default AuditLogs;
+export default AuthTest;

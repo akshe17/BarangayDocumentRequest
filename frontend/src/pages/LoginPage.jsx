@@ -5,7 +5,7 @@ import bonbonVideo from "../assets/bonbonVideo.mp4";
 import { Link, useNavigate } from "react-router-dom"; // Fixed: Added useNavigate
 import { useAuth } from "../context/AuthContext";
 
-const Login = () => {
+const LoginPage = () => {
   const { login } = useAuth();
   const navigate = useNavigate();
 
@@ -16,16 +16,20 @@ const Login = () => {
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
 
+  // LoginPage.jsx — only the part that changed (inside handleSubmit)
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     setLoading(true);
     setError("");
 
-    // Your AuthContext login function
     const result = await login(email, password);
 
     if (result.success) {
-      navigate("/dashboard");
+      // FIX: navigate based on role instead of hardcoding /dashboard
+      const redirectPath =
+        result.user?.role_id === 1 ? "/dashboard" : "/resident";
+      navigate(redirectPath);
     } else {
       setError(result.error || "Invalid credentials");
     }
@@ -192,4 +196,4 @@ const Login = () => {
   );
 };
 
-export default Login;
+export default LoginPage;
