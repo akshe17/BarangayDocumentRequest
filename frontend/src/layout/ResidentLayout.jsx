@@ -9,8 +9,6 @@ import {
   LogOut,
 } from "lucide-react";
 
-// Assuming logo is in your assets
-// import logo from "../assets/logo.png";
 
 const ResidentLayout = () => {
   const { pathname } = useLocation();

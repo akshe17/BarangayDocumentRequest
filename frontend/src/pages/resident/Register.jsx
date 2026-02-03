@@ -1,5 +1,6 @@
 // Add useEffect here inside the curly braces
 import React, { useState, useEffect, useMemo } from "react";
+import { useNavigate } from "react-router-dom"; // Add useNavigate here
 import {
   Mail,
   Lock,
@@ -19,7 +20,7 @@ import api from "../../axious/api";
 import { Link } from "react-router-dom";
 import logo from "../../assets/logo.png";
 import bonbonVideo from "../../assets/bonbonVideo.mp4";
-
+import { useAuth } from "../../context/AuthContext";
 // ─── PASSWORD STRENGTH ──────────────────────────────────────────────────────
 function getPasswordStrength(password) {
   if (!password) return { score: 0, label: "", color: "bg-gray-200" };
@@ -227,10 +228,13 @@ const Register = () => {
   const [selectedImage, setSelectedImage] = useState(null);
   const [currentStep, setCurrentStep] = useState(1);
   const [imageFile, setImageFile] = useState(null);
-
+  const navigate = useNavigate();
   const today = new Date().toISOString().split("T")[0];
   const [genders, setGenders] = useState([]);
   const [civilStatus, setCivilStatus] = useState([]);
+
+  // Added isAdmin from AuthContext
+  const { isAuthenticated, isAdmin, login } = useAuth();
 
   const [formData, setFormData] = useState({
     email: "",
@@ -245,6 +249,11 @@ const Register = () => {
     civil_status_id: "",
   });
 
+  // 1. Redirect if already authenticated
+  if (isAuthenticated) {
+    return <Navigate to={isAdmin() ? "/dashboard" : "/resident"} replace />;
+  }
+
   const handleInputChange = (e) => {
     const { name, value } = e.target;
     setFormData((prev) => ({ ...prev, [name]: value }));
@@ -253,75 +262,74 @@ const Register = () => {
   const handleImageChange = (e) => {
     const file = e.target.files[0];
     if (file) {
-      setSelectedImage(URL.createObjectURL(file)); // For preview
-      setImageFile(file); // ✅ Store the actual file
+      setSelectedImage(URL.createObjectURL(file));
+      setImageFile(file);
     }
   };
 
   const removeImage = (e) => {
     e.preventDefault();
     setSelectedImage(null);
-    setImageFile(null); // ✅ Clear the file too
+    setImageFile(null);
   };
+
   const handleRegistration = async () => {
     if (!imageFile) {
       alert("Please upload a valid ID image");
       return;
     }
+
     const data = new FormData();
-    data.append("email", formData.email);
-    data.append("password", formData.password);
-    data.append("fname", formData.fname);
-    data.append("lname", formData.lname);
-    data.append("birthdate", formData.birthdate);
-    data.append("address", formData.address);
-    data.append("purok", formData.purok);
-    data.append("gender_id", formData.gender_id);
-    data.append("civil_status_id", formData.civil_status_id);
-    data.append("id_image", imageFile); // ✅ Use the stored file
+    Object.keys(formData).forEach((key) => {
+      if (key !== "confirmPassword") data.append(key, formData[key]);
+    });
+    data.append("id_image", imageFile);
 
     try {
       const res = await api.post("/register", data, {
         headers: { "Content-Type": "multipart/form-data" },
       });
+
+      // Store credentials
       localStorage.setItem("token", res.data.access_token);
-      alert("Account created successfully!");
+      if (res.data.user) {
+        localStorage.setItem("user", JSON.stringify(res.data.user));
+      }
+
+      // Execute login context update
+      await login(formData.email, formData.password);
+
+      // Navigate based on role
+      const targetPath =
+        res.data.user?.role === "admin" ? "/dashboard" : "/resident";
+      navigate(targetPath);
     } catch (err) {
-      alert(
-        err.response?.data?.message + err.response?.data?.error ||
-          "Something went wrong",
-      );
+      alert(err.response?.data?.message || "Something went wrong");
     }
   };
-  // Fetch genders from Laravel on component mount
-  useEffect(() => {
-    const fetchGenders = async () => {
-      try {
-        const response = await api.get("/genders");
-        setGenders(response.data); // Assuming response.data is an array of objects
-      } catch (err) {
-        console.error("Failed to fetch genders:", err);
-      }
-    };
 
-    const fetchCivilStatus = async () => {
+  // Fetch initial data
+  useEffect(() => {
+    const fetchData = async () => {
       try {
-        const response = await api.get("/civil-status");
-        setCivilStatus(response.data); // Assuming response.data is an array of objects
-        console.log(response.data);
+        const [gRes, cRes] = await Promise.all([
+          api.get("/genders"),
+          api.get("/civil-status"),
+        ]);
+        setGenders(gRes.data);
+        setCivilStatus(cRes.data);
       } catch (err) {
-        console.error("Failed to fetch genders:", err);
+        console.error("Failed to fetch initial data:", err);
       }
     };
-    fetchGenders();
-    fetchCivilStatus();
+    fetchData();
   }, []);
-  // ── Validation ──────────────────────────────────────────────────────────
+
+  // Validation Logic
   const passwordStrength = useMemo(
     () => getPasswordStrength(formData.password),
     [formData.password],
   );
-
   const passwordError =
     formData.confirmPassword && formData.password !== formData.confirmPassword
       ? "Passwords do not match"
@@ -329,38 +337,32 @@ const Register = () => {
 
   const birthdateError = (() => {
     if (!formData.birthdate) return "";
-    const birth = new Date(formData.birthdate + "T00:00:00");
+    const birth = new Date(formData.birthdate);
     const now = new Date();
     let age = now.getFullYear() - birth.getFullYear();
     const m = now.getMonth() - birth.getMonth();
     if (m < 0 || (m === 0 && now.getDate() < birth.getDate())) age--;
-    if (age < 18) return "You must be at least 18 years old";
-    return "";
+    return age < 18 ? "You must be at least 18 years old" : "";
   })();
 
   const section1Valid =
     formData.email.includes("@") &&
     formData.password.length >= 6 &&
     formData.password === formData.confirmPassword;
-
   const section2Valid =
     formData.fname.trim() !== "" &&
     formData.lname.trim() !== "" &&
     formData.birthdate !== "" &&
     !birthdateError &&
-    formData.address.trim() !== "" &&
-    formData.purok.trim() !== "" &&
-    formData.gender_id !== "" &&
-    formData.civil_status_id !== "";
-
+    formData.gender_id !== "";
   const isFormValid = section1Valid && section2Valid && selectedImage !== null;
 
-  React.useEffect(() => {
-    if (section1Valid && section2Valid && selectedImage) setCurrentStep(3);
-    else if (section1Valid && section2Valid) setCurrentStep(3);
+  // Step indicator effect
+  useEffect(() => {
+    if (section1Valid && section2Valid) setCurrentStep(3);
     else if (section1Valid) setCurrentStep(2);
     else setCurrentStep(1);
-  }, [section1Valid, section2Valid, selectedImage]);
+  }, [section1Valid, section2Valid]);
 
   // ── Render ──────────────────────────────────────────────────────────────
   return (

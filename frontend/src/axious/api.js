@@ -8,32 +8,13 @@ const api = axios.create({
   },
 });
 
-// Add token to requests
-api.interceptors.request.use(
-  (config) => {
-    const token = localStorage.getItem("token");
-    if (token) {
-      config.headers.Authorization = `Bearer ${token}`;
-    }
-    return config;
-  },
-  (error) => {
-    return Promise.reject(error);
-  },
-);
-
-// Handle responses (optional but useful)
-api.interceptors.response.use(
-  (response) => response,
-  (error) => {
-    // If token expired or invalid (401), clear it
-    if (error.response?.status === 401) {
-      localStorage.removeItem("token");
-      // Optionally redirect to login
-      // window.location.href = '/login';
-    }
-    return Promise.reject(error);
-  },
-);
+// This "Interceptor" runs before every single request
+api.interceptors.request.use((config) => {
+  const token = localStorage.getItem("token");
+  if (token) {
+    config.headers.Authorization = `Bearer ${token}`;
+  }
+  return config;
+});
 
 export default api;
