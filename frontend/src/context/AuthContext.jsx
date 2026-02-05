@@ -1,59 +1,52 @@
 import React, {
-  createContext, // <--- 1. Make sure this is imported
+  createContext,
   useContext,
   useState,
   useEffect,
   useRef,
-  useCallback,
 } from "react";
 import api from "../axious/api";
 
-// 2. THIS IS THE MISSING PIECE:
 const AuthContext = createContext(null);
 
 export const AuthProvider = ({ children }) => {
-  const [user, setUser] = useState({
-    id: "",
-    role_id: "",
-    name: "",
-    email: "",
-  });
+  const [user, setUser] = useState(null);
+
   const [loading, setLoading] = useState(true);
-  const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [passkey, setPasskey] = useState(null); // ✅ CORRECT
+  const [isAuthenticated, setIsAuthenticated] = useState(false); // ✅ CORRECT
+  const hasCheckedAuth = useRef(false);
 
-  const userRef = useRef(null);
-  // ... inside AuthProvider
-  const checkAuth = useCallback(async () => {
-    const token = localStorage.getItem("token");
-    if (!token) {
-      setIsAuthenticated(false);
-      setLoading(false);
-      return;
-    }
-
-    try {
-      const response = await api.get("/user");
-      userRef.current = response.data;
-      setUser(response.data);
-      setIsAuthenticated(true);
-    } catch (error) {
-      console.error("CheckAuth Error:", error);
-      // If server is unreachable or CORS fails, we must stop loading
-      setIsAuthenticated(false);
-      if (error.response?.status === 401) {
-        logout();
-      }
-    } finally {
-      setLoading(false); // ALWAYS stop loading
-    }
-  }, []);
-
-  // Fix helper functions to handle null user safely
-  const isAdmin = () => Number(userRef.current?.role_id) === 1;
-  const isResident = () => Number(userRef.current?.role_id) === 2;
   useEffect(() => {
+    // Only run once on mount
+    if (hasCheckedAuth.current) return;
+    hasCheckedAuth.current = true;
+
+    const checkAuth = async () => {
+      const token = localStorage.getItem("token");
+      const storedUser = localStorage.getItem("user"); // Store user data
+
+      if (!token || !storedUser) {
+        setLoading(false);
+        return;
+      }
+
+      try {
+        // Parse stored user
+        const userData = JSON.parse(storedUser);
+        setUser(userData);
+        setIsAuthenticated(true);
+      } catch (err) {
+        console.error("Invalid stored user data", err);
+        localStorage.removeItem("token");
+        localStorage.removeItem("user");
+      } finally {
+        setLoading(false);
+      }
+    };
+
     checkAuth();
-  }, [checkAuth]);
+  }, []); // Empty dependency array - runs once
 
   const login = async (email, password) => {
     try {
@@ -62,7 +55,7 @@ export const AuthProvider = ({ children }) => {
       const userData = response.data.user ?? response.data;
 
       localStorage.setItem("token", token);
-      userRef.current = userData;
+      localStorage.setItem("user", JSON.stringify(userData)); // Store user
       setUser(userData);
       setIsAuthenticated(true);
 
@@ -74,34 +67,39 @@ export const AuthProvider = ({ children }) => {
       };
     }
   };
+  const logout = async () => {
+    try {
+      res = await api.post("/logout");
+      localStorage.removeItem("token");
+      setUser(null);
+    } catch (e) {
+      console.log(err);
+    }
+  };
 
-  const logout = () => {
-    localStorage.removeItem("token");
-    userRef.current = null;
-    setUser(null);
-    setIsAuthenticated(false);
+  const isAdmin = () => {
+    return user?.role_id && Number(user.role_id) === 1;
+  };
+
+  const isResident = () => {
+    return user?.role_id && Number(user.role_id) === 2;
   };
 
   const value = {
     user,
-    setUser,
     isAuthenticated,
     loading,
     login,
     logout,
-    checkAuth,
     isAdmin,
     isResident,
   };
 
-  // This refers to the 'const AuthContext' we created at the top
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 };
 
 export const useAuth = () => {
-  const context = useContext(AuthContext); // <--- This must match the variable at the top
-  if (!context) {
-    throw new Error("useAuth must be used within AuthProvider");
-  }
+  const context = useContext(AuthContext);
+  if (!context) throw new Error("useAuth must be used within AuthProvider");
   return context;
 };

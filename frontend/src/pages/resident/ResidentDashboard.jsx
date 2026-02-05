@@ -61,8 +61,8 @@ const ResidentDashboard = () => {
         />
         <StatCard
           icon={<HelpCircle size={18} className="text-emerald-500" />}
-          label="Support"
-          value="00"
+          label="Rejected"
+          value="1"
         />
       </div>
 

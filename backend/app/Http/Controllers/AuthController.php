@@ -11,29 +11,28 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 
 class AuthController extends Controller
-{
- public function login(Request $request)
+{public function login(Request $request)
 {
     $credentials = $request->validate([
         'email' => 'required|email',
         'password' => 'required',
     ]);
 
-    // Use the sanctum guard explicitly if needed, 
-    // but usually attempt() works on the default web provider
     if (!auth()->attempt($credentials)) {
         return response()->json(['message' => 'Invalid credentials'], 401);
     }
 
-    $user = auth()->user();
+    // Fetch the actual model instance to ensure custom PK methods are available
+    $user = User::where('email', $request->email)->first();
     
-    // Crucial: Clean existing tokens if you want to prevent multiple sessions
+    // Clean existing tokens to avoid the 'tokenable_id' conflict from orphaned sessions
     $user->tokens()->delete(); 
 
-    $token = $user->createToken('main')->plainTextToken;
+    // This calls the getKey() method we added to your User model
+    $token = $user->createToken($request->password)->plainTextToken;
 
     return response()->json([
-        'user' => $user, // This includes role_id
+        'user' => $user,
         'access_token' => $token
     ]);
 }
@@ -70,16 +69,18 @@ class AuthController extends Controller
                 'id_image_path' => $path,
             ]);
 
-            // 4. Create User
-            $user = User::create([
-                'email' => $request->email,
-                'password' => Hash::make($request->password),
-              
-                'role_id' => 2,
-            ]);
+       // 4. Create User first
+$user = User::create([
+    'email' => $request->email,
+    'password' => Hash::make($request->password),
+    'role_id' => 2, // Default to resident
+]);
 
-            // 5. Update resident with the link back to user
-            $resident->update(['user_id' => $user->user_id]); // Use user_id per your PK
+// 5. Explicitly link them using your custom PK
+$resident->update(['user_id' => $user->user_id]); 
+
+// Force Laravel to recognize the new ID before creating the token
+$user->refresh();
 
             $token = $user->createToken('auth_token')->plainTextToken;
 
@@ -93,4 +94,14 @@ class AuthController extends Controller
         return response()->json(['message' => 'Registration failed ', 'error' => $e->getMessage()], 500);
     }
 }
+
+  public function logout(Request $request)
+    {
+        // Deletes ONLY the token used for this request
+        $request->user()->currentAccessToken()->delete();
+
+        return response()->json([
+            'message' => 'Logged out successfully'
+        ]);
+    }
 }

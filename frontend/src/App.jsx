@@ -28,8 +28,16 @@ import NewRequest from "./pages/resident/NewRequest";
 import ResidentHistory from "./pages/resident/ResidentHistory";
 import ResidentNotification from "./pages/resident/ResidentNotification";
 const App = () => {
-  const { isAuthenticated, isAdmin } = useAuth();
+  const { isAuthenticated, isAdmin, loading } = useAuth();
 
+  // Block ALL routing until auth is verified
+  if (loading) {
+    return (
+      <div className="h-screen flex items-center justify-center bg-gray-50">
+        <div className="animate-spin rounded-full h-10 w-10 border-t-2 border-emerald-600"></div>
+      </div>
+    );
+  }
   return (
     <BrowserRouter>
       <Routes>

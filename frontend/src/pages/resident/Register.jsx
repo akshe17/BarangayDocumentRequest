@@ -1,6 +1,6 @@
 // Add useEffect here inside the curly braces
 import React, { useState, useEffect, useMemo } from "react";
-import { useNavigate } from "react-router-dom"; // Add useNavigate here
+import { useNavigate, Navigate } from "react-router-dom"; // Add useNavigate here
 import {
   Mail,
   Lock,
@@ -234,7 +234,7 @@ const Register = () => {
   const [civilStatus, setCivilStatus] = useState([]);
 
   // Added isAdmin from AuthContext
-  const { isAuthenticated, isAdmin, login } = useAuth();
+  const { isAuthenticated, isAdmin, login, setUser } = useAuth();
 
   const [formData, setFormData] = useState({
     email: "",
@@ -292,9 +292,7 @@ const Register = () => {
 
       // Store credentials
       localStorage.setItem("token", res.data.access_token);
-      if (res.data.user) {
-        localStorage.setItem("user", JSON.stringify(res.data.user));
-      }
+      setUser(JSON.stringify(res.data.user));
 
       // Execute login context update
       await login(formData.email, formData.password);

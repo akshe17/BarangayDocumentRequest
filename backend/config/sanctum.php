@@ -15,8 +15,9 @@ return [
     |
     */
 
-    'stateful' => explode(',', env('SANCTUM_STATEFUL_DOMAINS', '')),
-
+'stateful' => explode(',', env('SANCTUM_STATEFUL_DOMAINS', 
+    'localhost,localhost:5173,127.0.0.1,127.0.0.1:5173'
+)),
     /*
     |--------------------------------------------------------------------------
     | Sanctum Guards
@@ -69,6 +70,7 @@ return [
     | request. You may change the middleware listed below as required.
     |
     */
+'personal_access_token_model' => App\Models\PersonalAccessToken::class,
 
     'middleware' => [
         'authenticate_session' => Laravel\Sanctum\Http\Middleware\AuthenticateSession::class,

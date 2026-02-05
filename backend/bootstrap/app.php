@@ -12,9 +12,11 @@ return Application::configure(basePath: dirname(__DIR__))
         health: '/up',
     )
     ->withMiddleware(function (Middleware $middleware): void {
-   
-       $middleware->validateCsrfTokens(except: [
-        '/api/*',
+        // Exclude API routes from CSRF protection
+  
+        // Add CORS middleware to API routes
+           $middleware->api(prepend: [
+        \Illuminate\Http\Middleware\HandleCors::class,
     ]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {

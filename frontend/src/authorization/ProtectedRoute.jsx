@@ -1,12 +1,10 @@
 import React from "react";
 import { Navigate, useLocation } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
-
 const ProtectedRoute = ({ children, allowedRoles }) => {
   const { isAuthenticated, user, loading, isAdmin, isResident } = useAuth();
   const location = useLocation();
 
-  // 1. Wait for the server's /api/user check to finish
   if (loading) {
     return (
       <div className="h-screen flex items-center justify-center bg-slate-50">
@@ -15,37 +13,19 @@ const ProtectedRoute = ({ children, allowedRoles }) => {
     );
   }
 
-  // 2. Not logged in? Go to login
   if (!isAuthenticated || !user) {
     return <Navigate to="/login" state={{ from: location }} replace />;
   }
 
-  // 3. Page Authorization logic
-  // Normalize both sides to Numbers to prevent "1" vs 1 mismatches
-  const userRole = Number(user?.role_id);
-  const normalizedAllowedRoles = allowedRoles.map((role) => Number(role));
-
-  const hasAccess = normalizedAllowedRoles.includes(userRole);
+  const userRole = Number(user.role_id);
+  const hasAccess = allowedRoles.map(Number).includes(userRole);
 
   if (!hasAccess) {
-    console.warn(
-      `[Auth] Access Denied. User Role: ${userRole}, Required: ${normalizedAllowedRoles}`,
-    );
-
-    // Role-based "Jailing"
-    if (isAdmin()) {
-      return <Navigate to="/dashboard" replace />;
-    }
-
-    if (isResident()) {
-      return <Navigate to="/resident" replace />;
-    }
-
-    // If role is unknown, clear session and send to login
-    return <Navigate to="/login" replace />;
+    // If Admin tries to go to Resident page or vice versa, send them to their own home
+    const homePath = isAdmin() ? "/dashboard" : "/resident";
+    return <Navigate to={homePath} replace />;
   }
 
   return children;
 };
-
 export default ProtectedRoute;

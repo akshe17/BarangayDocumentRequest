@@ -5,21 +5,22 @@ import { useAuth } from "../context/AuthContext";
 const PublicRoute = () => {
   const { isAuthenticated, loading, isAdmin } = useAuth();
 
-  // 1. Wait for checkAuth to finish
+  // 1. MUST BE FIRST: Don't redirect or show the page until checkAuth is done
   if (loading) {
     return (
-      <div className="h-screen flex items-center justify-center">
+      <div className="h-screen flex items-center justify-center bg-gray-50">
         <div className="animate-spin rounded-full h-10 w-10 border-t-2 border-emerald-600"></div>
       </div>
     );
   }
 
-  // 2. If already logged in, redirect to dashboard
+  // 2. If authenticated, move them away from Login/Register
   if (isAuthenticated) {
-    return <Navigate to={isAdmin() ? "/dashboard" : "/resident"} replace />;
+    const destination = isAdmin() ? "/dashboard" : "/resident";
+    return <Navigate to={destination} replace />;
   }
 
-  // 3. If NOT logged in, show the Login/Register page
+  // 3. Otherwise, show Login/Register
   return <Outlet />;
 };
 
