@@ -21,25 +21,41 @@ export const AuthProvider = ({ children }) => {
     // Only run once on mount
     if (hasCheckedAuth.current) return;
     hasCheckedAuth.current = true;
-
     const checkAuth = async () => {
+      // 1. Check if token exists before even trying to call the API
       const token = localStorage.getItem("token");
-      const storedUser = localStorage.getItem("user"); // Store user data
 
-      if (!token || !storedUser) {
+      if (!token) {
+        console.log("No token found, skipping auth check.");
         setLoading(false);
+        setIsAuthenticated(false);
         return;
       }
 
       try {
-        // Parse stored user
-        const userData = JSON.parse(storedUser);
+        console.log("Token found. Checking authentication...");
+
+        const response = await api.get("/user");
+
+        console.log("✅ AUTH SUCCESS:", response.data);
+
+        // Adjust based on your custom middleware/route response structure
+        const userData =
+          response.data.data || response.data.user || response.data;
+
         setUser(userData);
         setIsAuthenticated(true);
-      } catch (err) {
-        console.error("Invalid stored user data", err);
-        localStorage.removeItem("token");
-        localStorage.removeItem("user");
+      } catch (error) {
+        console.error("❌ AUTH FAILED");
+
+        // If the token is invalid/expired, clean up localStorage
+        if (error.response?.status === 401) {
+          localStorage.removeItem("token");
+          localStorage.removeItem("user");
+        }
+
+        setUser(null);
+        setIsAuthenticated(false);
       } finally {
         setLoading(false);
       }

@@ -13,6 +13,13 @@ return Application::configure(basePath: dirname(__DIR__))
     )
     ->withMiddleware(function (Middleware $middleware): void {
         // Exclude API routes from CSRF protection
+        $middleware->statefulApi();
+        $middleware->alias([
+        'custom.auth' => \App\Http\Middleware\CustomTokenAuth::class,
+    ]);
+    $middleware->validateCsrfTokens(except: [
+        'api/*',
+    ]);
   
         // Add CORS middleware to API routes
            $middleware->api(prepend: [
