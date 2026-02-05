@@ -14,23 +14,14 @@ Route::middleware('custom.auth')->get('/user', function (Request $request) {
         'user' => $request->user()->load('resident'),
         'debug' => 'Used custom middleware successfully!'
     ]);
-});
-Route::middleware('auth:sanctum')->get('/debug-auth', function (Request $request) {
-    return [
-        'user' => $request->user(),
-        'auth_type' => $request->bearerToken() ? 'Bearer Token' : 'Session Cookie'
-    ];
+
+     
 });
 
 Route::post('/register', [AuthController::class, 'register']);
-
+ Route::post('/logout', [AuthController::class, 'logout']);
 
 Route::post('/login', [AuthController::class, 'login'])->name('login');
 Route::get('/genders', [GenderController::class, 'index']);
 
 Route::get('/civil-status', [CivilStatusController::class, 'index']);
-
-Route::middleware('auth:sanctum')->group(function () {
-    Route::post('/logout', [AuthController::class, 'logout']);
-    // Route::post('/logout-all', [AuthController::class, 'logoutAll']); // optional
-});

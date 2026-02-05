@@ -85,11 +85,18 @@ export const AuthProvider = ({ children }) => {
   };
   const logout = async () => {
     try {
-      res = await api.post("/logout");
+      // This will now find the route correctly
+      await api.post("/logout");
+    } catch (error) {
+      // Changed 'err' to 'error' to match the catch variable
+      console.error("Server logout failed:", error);
+    } finally {
+      // ALWAYS clear these, even if the server is offline
       localStorage.removeItem("token");
+      localStorage.removeItem("user");
       setUser(null);
-    } catch (e) {
-      console.log(err);
+      setIsAuthenticated(false);
+      console.log("Logged out locally.");
     }
   };
 

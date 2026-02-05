@@ -9,7 +9,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
-
+use Laravel\Sanctum\PersonalAccessToken;
 class AuthController extends Controller
 {public function login(Request $request)
 {
@@ -94,14 +94,23 @@ $user->refresh();
         return response()->json(['message' => 'Registration failed ', 'error' => $e->getMessage()], 500);
     }
 }
+public function logout(Request $request)
+{
+    // 1. Get the plain text token from the header
+    $tokenString = $request->bearerToken();
 
-  public function logout(Request $request)
-    {
-        // Deletes ONLY the token used for this request
-        $request->user()->currentAccessToken()->delete();
+    if ($tokenString) {
+        // 2. Find the token in the database
+        $token = PersonalAccessToken::findToken($tokenString);
 
-        return response()->json([
-            'message' => 'Logged out successfully'
-        ]);
+        // 3. Delete it if it exists
+        if ($token) {
+            $token->delete();
+        }
     }
+
+    return response()->json([
+        'message' => 'Logged out successfully'
+    ]);
+}
 }
