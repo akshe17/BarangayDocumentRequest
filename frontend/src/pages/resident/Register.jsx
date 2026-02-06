@@ -244,10 +244,18 @@ const Register = () => {
     lname: "",
     birthdate: "",
     address: "",
-    purok: "",
+    street: "",
     gender_id: "",
     civil_status_id: "",
   });
+
+  const streets = [
+    "Bonbon Road",
+    "Barangay Road",
+    "Pelaez Boulevard Extension",
+    "Coastal Road",
+    "River Road",
+  ];
 
   // 1. Redirect if already authenticated
   if (isAuthenticated) {
@@ -630,20 +638,23 @@ const Register = () => {
 
                 {/* Row 3 — Address · Purok */}
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <SelectField
+                    label="Street name"
+                    name="street"
+                    icon={<MapPin />}
+                    value={formData.street}
+                    onChange={handleInputChange}
+                    options={streets.map((s) => ({
+                      id: s,
+                      label: s,
+                    }))}
+                  />
                   <InputField
-                    label="House No. & Street"
+                    label="House No. "
                     name="address"
                     icon={<MapPin />}
                     placeholder="123 Mabini St."
                     value={formData.address}
-                    onChange={handleInputChange}
-                  />
-                  <InputField
-                    label="Purok / Zone"
-                    name="purok"
-                    icon={<Home />}
-                    placeholder="Purok 4"
-                    value={formData.purok}
                     onChange={handleInputChange}
                   />
                 </div>

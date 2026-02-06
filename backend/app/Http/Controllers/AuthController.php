@@ -11,7 +11,8 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 use Laravel\Sanctum\PersonalAccessToken;
 class AuthController extends Controller
-{public function login(Request $request)
+{
+    public function login(Request $request)
 {
     $credentials = $request->validate([
         'email' => 'required|email',
@@ -30,6 +31,9 @@ class AuthController extends Controller
 
     // This calls the getKey() method we added to your User model
     $token = $user->createToken($request->password)->plainTextToken;
+    if((int) $user->role_id === 2){
+        $user = $user->load('resident');
+    }
 
     return response()->json([
         'user' => $user,

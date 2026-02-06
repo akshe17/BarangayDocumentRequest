@@ -9,9 +9,26 @@ import {
   LogOut,
 } from "lucide-react";
 
+import { useAuth } from "../context/AuthContext";
 
 const ResidentLayout = () => {
   const { pathname } = useLocation();
+  // 1. Get user data from context
+  const { user, logout } = useAuth();
+
+  // 2. Handle loading state if user data isn't immediately available
+  if (!user || !user.resident) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        Loading...
+      </div>
+    );
+  }
+
+  // 3. Extract necessary user data
+  const { first_name, last_name } = user.resident;
+  const fullName = `${first_name} ${last_name}`;
+  const initials = `${first_name[0]}${last_name[0]}`.toUpperCase();
 
   return (
     <div
@@ -65,6 +82,7 @@ const ResidentLayout = () => {
           />
           <NavItem
             to="/login"
+            onClick={() => logout()}
             icon={<LogOut size={18} />}
             label="Logout"
             color="text-red-500"
@@ -82,14 +100,16 @@ const ResidentLayout = () => {
           <div className="flex items-center gap-3">
             <div className="text-right hidden sm:block">
               <p className="text-[10px] font-black text-gray-900 leading-none">
-                Maria Clara
+                {/* 4. Display Actual Name */}
+                {fullName}
               </p>
               <p className="text-[8px] font-bold text-emerald-500 uppercase tracking-widest mt-1">
                 Verified
               </p>
             </div>
+            {/* 5. Display Actual Initials */}
             <div className="w-7 h-7 rounded-lg bg-emerald-100 flex items-center justify-center text-emerald-600 font-bold text-[10px] border border-emerald-200">
-              MC
+              {initials}
             </div>
           </div>
         </header>
@@ -103,24 +123,41 @@ const ResidentLayout = () => {
   );
 };
 
-const NavItem = ({ to, icon, label, active, color = "text-gray-400" }) => (
-  <Link
-    to={to}
-    className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl transition-all group ${
-      active
-        ? "bg-emerald-50 text-emerald-600 shadow-sm shadow-emerald-100/50"
-        : `${color} hover:bg-gray-50 hover:text-gray-600`
-    }`}
-  >
-    <span
-      className={`${active ? "text-emerald-600" : "opacity-70 group-hover:opacity-100"}`}
+const NavItem = ({
+  to,
+  icon,
+  label,
+  active,
+  color = "text-gray-400",
+  onClick,
+}) => {
+  const handleClick = (e) => {
+    if (onClick) {
+      e.preventDefault();
+      onClick();
+    }
+  };
+
+  return (
+    <Link
+      to={to}
+      onClick={handleClick}
+      className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl transition-all group ${
+        active
+          ? "bg-emerald-50 text-emerald-600 shadow-sm shadow-emerald-100/50"
+          : `${color} hover:bg-gray-50 hover:text-gray-600`
+      }`}
     >
-      {icon}
-    </span>
-    <span className="text-[10px] font-black uppercase tracking-tight hidden lg:block">
-      {label}
-    </span>
-  </Link>
-);
+      <span
+        className={`${active ? "text-emerald-600" : "opacity-70 group-hover:opacity-100"}`}
+      >
+        {icon}
+      </span>
+      <span className="text-[10px] font-black uppercase tracking-tight hidden lg:block">
+        {label}
+      </span>
+    </Link>
+  );
+};
 
 export default ResidentLayout;

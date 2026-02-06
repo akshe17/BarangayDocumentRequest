@@ -6,7 +6,8 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 use Laravel\Sanctum\HasApiTokens;
-
+use App\Models\Resident;
+use App\Models\Role;
 class User extends Authenticatable
 {
     use HasApiTokens, HasFactory, Notifiable;
@@ -33,12 +34,11 @@ class User extends Authenticatable
     {
         return 'user_id';
     }
-
-    public function resident()
-    {
-        return $this->belongsTo(Resident::class, 'resident_id', 'resident_id');
-    }
-
+public function resident()
+{
+    // 'user_id' is the foreign key in the residents table
+    return $this->hasOne(Resident::class, 'user_id', 'user_id');
+}
     public function role()
     {
         return $this->belongsTo(Role::class, 'role_id', 'role_id');
