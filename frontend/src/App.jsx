@@ -27,6 +27,7 @@ import ResidentDashboard from "./pages/resident/ResidentDashboard";
 import NewRequest from "./pages/resident/NewRequest";
 import ResidentHistory from "./pages/resident/ResidentHistory";
 import ResidentNotification from "./pages/resident/ResidentNotification";
+import ResidentProfile from "./pages/resident/ResidentProfile";
 const App = () => {
   const { isAuthenticated, isAdmin, loading } = useAuth();
 
@@ -93,14 +94,7 @@ const App = () => {
           <Route path="new-request" element={<NewRequest />} />
           <Route path="history" element={<ResidentHistory />} />
           <Route path="notifications" element={<ResidentNotification />} />
-          <Route
-            path="settings"
-            element={
-              <div className="p-10 text-xs font-bold uppercase">
-                Settings Coming Soon
-              </div>
-            }
-          />
+          <Route path="profile" element={<ResidentProfile />} />
         </Route>
 
         {/* 6. SMART CATCH-ALL */}

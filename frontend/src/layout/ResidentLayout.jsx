@@ -5,7 +5,7 @@ import {
   FileText,
   Clock,
   Bell,
-  Settings,
+  UserCircle, // Changed icon
   LogOut,
 } from "lucide-react";
 
@@ -13,10 +13,8 @@ import { useAuth } from "../context/AuthContext";
 
 const ResidentLayout = () => {
   const { pathname } = useLocation();
-  // 1. Get user data from context
   const { user, logout } = useAuth();
 
-  // 2. Handle loading state if user data isn't immediately available
   if (!user || !user.resident) {
     return (
       <div className="min-h-screen flex items-center justify-center">
@@ -25,7 +23,6 @@ const ResidentLayout = () => {
     );
   }
 
-  // 3. Extract necessary user data
   const { first_name, last_name } = user.resident;
   const fullName = `${first_name} ${last_name}`;
   const initials = `${first_name[0]}${last_name[0]}`.toUpperCase();
@@ -74,11 +71,12 @@ const ResidentLayout = () => {
         </nav>
 
         <div className="p-4 border-t border-gray-50 space-y-1.5">
+          {/* UPDATED: Profile Link */}
           <NavItem
-            to="/resident/settings"
-            icon={<Settings size={18} />}
-            label="Settings"
-            active={pathname === "/resident/settings"}
+            to="/resident/profile"
+            icon={<UserCircle size={18} />}
+            label="Profile"
+            active={pathname === "/resident/profile"}
           />
           <NavItem
             to="/login"
@@ -100,14 +98,12 @@ const ResidentLayout = () => {
           <div className="flex items-center gap-3">
             <div className="text-right hidden sm:block">
               <p className="text-[10px] font-black text-gray-900 leading-none">
-                {/* 4. Display Actual Name */}
                 {fullName}
               </p>
               <p className="text-[8px] font-bold text-emerald-500 uppercase tracking-widest mt-1">
                 Verified
               </p>
             </div>
-            {/* 5. Display Actual Initials */}
             <div className="w-7 h-7 rounded-lg bg-emerald-100 flex items-center justify-center text-emerald-600 font-bold text-[10px] border border-emerald-200">
               {initials}
             </div>
