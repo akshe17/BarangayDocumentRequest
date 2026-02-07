@@ -17,7 +17,7 @@ protected $fillable = [
     'last_name', 
     'birthdate', 
     'house_no', 
-    'street', 
+    'zone', 
     'id_image_path'
 ];
 
