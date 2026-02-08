@@ -18,7 +18,9 @@ protected $fillable = [
     'birthdate', 
     'house_no', 
     'zone', 
-    'id_image_path'
+    'id_image_path',
+    'is_active',
+    'is_verified'
 ];
 
 public function user() 

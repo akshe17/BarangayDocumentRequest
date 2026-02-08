@@ -89,6 +89,8 @@ public function register(Request $request)
                 'gender_id' => $request->gender_id,
                 'civil_status_id' => $request->civil_status_id,
                 'id_image_path' => $path,
+                'is_active' => true,
+                'is_verified' => false,
             ]);
 
             // 4. Create User

@@ -26,6 +26,8 @@ return new class extends Migration
 
     // Inside create_residents_table.php
 $table->string('id_image_path')->nullable(); // Stores the path to the uploaded image
+$table->boolean('is_active')->default(true);
+$table->boolean('is_verified')->default(true);
     $table->timestamps();
 });
     }
