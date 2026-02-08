@@ -38,7 +38,7 @@ const ResidentLayout = () => {
     <div className="flex min-h-screen bg-gray-50 font-sans">
       {/* SIDE NAVIGATION - Mobile Toggle & Responsive Behavior */}
       <aside
-        className={`fixed inset-y-0 left-0 bg-white border-r border-gray-100 flex flex-col z-30 transition-transform duration-300 ease-in-out w-64 lg:w-64
+        className={`fixed inset-y-0 left-0 bg-white flex flex-col z-30 transition-transform duration-300 ease-in-out w-64 lg:w-64
         ${
           isSidebarOpen ? "translate-x-0" : "-translate-x-full"
         } lg:translate-x-0`}
@@ -92,7 +92,7 @@ const ResidentLayout = () => {
           />
         </nav>
 
-        <div className="p-4 border-t border-gray-50 space-y-1.5">
+        <div className="p-4  space-y-1.5">
           <NavItem
             to="/resident/profile"
             icon={<UserCircle size={18} />}
@@ -116,7 +116,7 @@ const ResidentLayout = () => {
       {/* Main Content Area */}
       <div className="flex-1 lg:ml-64 flex flex-col">
         {/* TOP NAVBAR */}
-        <header className="h-14 bg-white border-b border-gray-100 flex items-center justify-between px-4 lg:px-6 sticky top-0 z-10">
+        <header className="h-14 bg-white flex items-center justify-between px-4 lg:px-6 sticky top-0 z-10">
           <div className="flex items-center gap-3">
             {/* MOBILE VIEW: Name and Status on the LEFT */}
             <div className="lg:hidden flex flex-col">
@@ -193,13 +193,11 @@ const NavItem = ({
       onClick={handleClick}
       className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl transition-all group ${
         active
-          ? "bg-emerald-50 text-emerald-600 shadow-sm shadow-emerald-100/50"
-          : `${color} hover:bg-gray-50 hover:text-gray-700`
+          ? "bg-emerald-500 text-white shadow-sm shadow-emerald-100/50"
+          : `${color} hover:bg-gray-200 hover:text-gray-700`
       }`}
     >
-      <span
-        className={`${active ? "text-emerald-600" : "opacity-70 group-hover:opacity-100"}`}
-      >
+      <span className={`${active ? "text-white" : " text-gray-500"}`}>
         {icon}
       </span>
       <span className="text-xs font-poppins font-bold uppercase tracking-tight">
