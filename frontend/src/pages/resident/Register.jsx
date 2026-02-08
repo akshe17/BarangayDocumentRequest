@@ -18,7 +18,8 @@ import { Link } from "react-router-dom";
 import logo from "../../assets/logo.png";
 import bonbonVideo from "../../assets/bonbonVideo.mp4";
 import { useAuth } from "../../context/AuthContext";
-// ─── PASSWORD STRENGTH ──────────────────────────────────────────────────────
+
+// ─── PASSWORD STRENGTH FUNCTION ─────────────────────────────────────────────
 function getPasswordStrength(password) {
   if (!password) return { score: 0, label: "", color: "bg-gray-200" };
   let score = 0;
@@ -111,6 +112,7 @@ const InputField = ({
   type = "text",
   suffix,
   error,
+  children, // Added to allow password strength indicator
 }) => (
   <div className="w-full group">
     <label className="text-xs font-bold text-gray-500 uppercase tracking-widest ml-0.5 mb-2 block group-focus-within:text-emerald-600 transition-colors">
@@ -139,6 +141,7 @@ const InputField = ({
         </div>
       )}
     </div>
+    {children} {/* Renders password strength indicator here */}
     {error && (
       <p className="text-xs text-red-500 mt-1.5 ml-0.5 font-medium">{error}</p>
     )}
@@ -261,6 +264,11 @@ const Register = () => {
     gender_id: "",
     civil_status_id: "",
   });
+
+  // ─── PASSWORD STRENGTH CALCULATION ───────────────────────────────────────
+  const passwordStrength = useMemo(() => {
+    return getPasswordStrength(formData.password);
+  }, [formData.password]);
 
   const zones = [
     "Zone 1",
@@ -501,7 +509,34 @@ const Register = () => {
                         )}
                       </button>
                     }
-                  />
+                  >
+                    {/* ─── PASSWORD STRENGTH INDICATOR ───────────────────────── */}
+                    {formData.password && (
+                      <div className="mt-2 ml-0.5">
+                        <div className="flex gap-1.5 h-1.5 mb-1.5">
+                          {[...Array(5)].map((_, i) => (
+                            <div
+                              key={i}
+                              className={`flex-1 rounded-full transition-colors duration-300 ${
+                                i < passwordStrength.score
+                                  ? passwordStrength.color
+                                  : "bg-gray-200"
+                              }`}
+                            />
+                          ))}
+                        </div>
+                        <p
+                          className={`text-xs font-semibold ${
+                            passwordStrength.score < 3
+                              ? "text-red-500"
+                              : "text-emerald-600"
+                          }`}
+                        >
+                          {passwordStrength.label}
+                        </p>
+                      </div>
+                    )}
+                  </InputField>
                   <InputField
                     label="Confirm Password"
                     name="confirmPassword"
@@ -677,7 +712,6 @@ const Register = () => {
                   </strong>
                   <ul className="list-disc list-inside mt-2">
                     {Object.entries(errors).map(([key, value]) => (
-                      // Value is usually an array of messages for that field
                       <li key={key}>
                         {Array.isArray(value) ? value[0] : value}
                       </li>
