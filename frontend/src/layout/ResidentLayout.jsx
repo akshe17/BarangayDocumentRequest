@@ -35,7 +35,7 @@ const ResidentLayout = () => {
   const toggleSidebar = () => setIsSidebarOpen(!isSidebarOpen);
 
   return (
-    <div className="flex min-h-screen bg-gray-50 font-sans">
+    <div className="flex min-h-screen bg-white font-sans">
       {/* SIDE NAVIGATION - Mobile Toggle & Responsive Behavior */}
       <aside
         className={`fixed inset-y-0 left-0 bg-white flex flex-col z-30 transition-transform duration-300 ease-in-out w-64 lg:w-64
@@ -165,7 +165,7 @@ const ResidentLayout = () => {
         </header>
 
         {/* PAGE CONTENT */}
-        <main className="p-6 lg:p-10 max-w-6xl mx-auto w-full">
+        <main className="p-6 bg-white lg:p-10 max-w-6xl mx-auto w-full">
           <Outlet />
         </main>
       </div>

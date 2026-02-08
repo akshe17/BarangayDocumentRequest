@@ -71,7 +71,7 @@ const ResidentDashboard = () => {
   ];
 
   return (
-    <div className="space-y-8 animate-in fade-in duration-500">
+    <div className="space-y-8 bg-white animate-in fade-in duration-500">
       {/* HERO SECTION WITH VIDEO BACKGROUND */}
       <div className="relative bg-gradient-to-br from-emerald-600 to-emerald-700 rounded-3xl p-10 text-white overflow-hidden">
         {/* Video Background */}
