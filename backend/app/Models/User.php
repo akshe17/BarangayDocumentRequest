@@ -34,10 +34,10 @@ class User extends Authenticatable
     {
         return 'user_id';
     }
+
 public function resident()
 {
-    // 'user_id' is the foreign key in the residents table
-    return $this->hasOne(Resident::class, 'user_id', 'user_id');
+    return $this->hasOne(Resident::class, 'user_id');
 }
     public function role()
     {
