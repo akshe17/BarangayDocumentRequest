@@ -31,6 +31,7 @@ const ResidentProfile = () => {
   const [showPasswordModal, setShowPasswordModal] = useState(false);
   const [videoError, setVideoError] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+  const [previewId, setPreviewId] = useState(null);
 
   const [toast, setToast] = useState({
     show: false,
@@ -132,7 +133,7 @@ const ResidentProfile = () => {
   const handleIdUpload = async (e) => {
     const file = e.target.files[0];
     if (!file) return;
-
+    setPreviewId(URL.createObjectURL(file));
     if (file.size > 5 * 1024 * 1024) {
       triggerToast("File size must be less than 5MB", "error");
       return;
@@ -570,26 +571,63 @@ const ResidentProfile = () => {
 
       {showUploadModal && (
         <Modal
-          onClose={() => setShowUploadModal(false)}
-          title="Upload Valid ID"
+          onClose={() => {
+            setShowUploadModal(false);
+            setPreviewId(null);
+          }}
+          title="Submit Valid ID"
         >
-          <div className="p-6">
-            <label className="flex flex-col items-center justify-center w-full h-64 border-2 border-dashed border-gray-300 rounded-xl cursor-pointer bg-gray-50 hover:bg-gray-100 transition-colors">
-              <div className="flex flex-col items-center justify-center pt-5 pb-6">
-                {isLoading ? (
-                  <Loader2 className="w-12 h-12 text-emerald-600 animate-spin mb-3" />
-                ) : (
-                  <Upload className="w-12 h-12 text-gray-400 mb-3" />
-                )}
-                <input
-                  type="file"
-                  className="hidden"
-                  accept="image/*"
-                  onChange={handleIdUpload}
-                  disabled={isLoading}
-                />
-              </div>
+          <div className="p-6 space-y-5">
+            {/* Info */}
+            <div className="flex gap-3 bg-yellow-50 border border-yellow-200 p-4 rounded-xl">
+              <AlertTriangle className="text-yellow-600" />
+              <p className="text-sm text-yellow-800 font-medium">
+                Please upload a clear photo of a government-issued ID.
+              </p>
+            </div>
+
+            {/* Preview */}
+            {previewId && (
+              <img
+                src={previewId}
+                alt="ID Preview"
+                className="w-full rounded-xl border"
+              />
+            )}
+
+            {/* Upload */}
+            <label className="flex flex-col items-center justify-center w-full h-56 border-2 border-dashed border-emerald-300 rounded-xl cursor-pointer hover:bg-emerald-50 transition">
+              {isLoading ? (
+                <Loader2 className="w-12 h-12 animate-spin text-emerald-600" />
+              ) : (
+                <>
+                  <Upload className="w-10 h-10 text-emerald-600 mb-2" />
+                  <p className="text-sm font-semibold text-gray-700">
+                    Click to upload or drag image here
+                  </p>
+                  <p className="text-xs text-gray-500 mt-1">
+                    JPG, PNG • Max 5MB
+                  </p>
+                </>
+              )}
+              <input
+                type="file"
+                className="hidden"
+                accept="image/png, image/jpeg"
+                onChange={handleIdUpload}
+                disabled={isLoading}
+              />
             </label>
+
+            {/* Actions */}
+            <div className="flex gap-3">
+              <button
+                onClick={() => setShowUploadModal(false)}
+                className="flex-1 border px-6 py-3 rounded-xl font-semibold"
+              >
+                Cancel
+              </button>
+            </div>
           </div>
         </Modal>
       )}
