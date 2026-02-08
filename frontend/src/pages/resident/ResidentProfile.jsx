@@ -29,6 +29,12 @@ const ResidentProfile = () => {
   const [showIdModal, setShowIdModal] = useState(false);
   const [showUploadModal, setShowUploadModal] = useState(false);
   const [showPasswordModal, setShowPasswordModal] = useState(false);
+  const [showPassword, setShowPassword] = useState({
+    current: false,
+    new: false,
+    confirm: false,
+  });
+
   const [videoError, setVideoError] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [previewId, setPreviewId] = useState(null);
@@ -637,15 +643,123 @@ const ResidentProfile = () => {
           onClose={() => setShowPasswordModal(false)}
           title="Change Password"
         >
-          <form onSubmit={handlePasswordChange} className="p-6">
+          <form onSubmit={handlePasswordChange} className="p-6 space-y-5">
+            {/* Current Password */}
+            <div>
+              <label className="text-sm font-semibold text-gray-700">
+                Current Password
+              </label>
+              <div className="relative mt-1">
+                <input
+                  type={showPassword.current ? "text" : "password"}
+                  value={passwordData.current_password}
+                  onChange={(e) =>
+                    setPasswordData({
+                      ...passwordData,
+                      current_password: e.target.value,
+                    })
+                  }
+                  required
+                  className="w-full px-4 py-3 border rounded-xl focus:ring-2 focus:ring-emerald-500"
+                />
+                <button
+                  type="button"
+                  onClick={() =>
+                    setShowPassword({
+                      ...showPassword,
+                      current: !showPassword.current,
+                    })
+                  }
+                  className="absolute right-3 top-3 text-gray-400"
+                >
+                  <Eye size={18} />
+                </button>
+              </div>
+            </div>
+
+            {/* New Password */}
+            <div>
+              <label className="text-sm font-semibold text-gray-700">
+                New Password
+              </label>
+              <div className="relative mt-1">
+                <input
+                  type={showPassword.new ? "text" : "password"}
+                  value={passwordData.new_password}
+                  onChange={(e) =>
+                    setPasswordData({
+                      ...passwordData,
+                      new_password: e.target.value,
+                    })
+                  }
+                  required
+                  className="w-full px-4 py-3 border rounded-xl focus:ring-2 focus:ring-emerald-500"
+                />
+                <button
+                  type="button"
+                  onClick={() =>
+                    setShowPassword({ ...showPassword, new: !showPassword.new })
+                  }
+                  className="absolute right-3 top-3 text-gray-400"
+                >
+                  <Eye size={18} />
+                </button>
+              </div>
+
+              <p className="text-xs text-gray-500 mt-1">
+                Must be at least 8 characters
+              </p>
+            </div>
+
+            {/* Confirm Password */}
+            <div>
+              <label className="text-sm font-semibold text-gray-700">
+                Confirm New Password
+              </label>
+              <div className="relative mt-1">
+                <input
+                  type={showPassword.confirm ? "text" : "password"}
+                  value={passwordData.new_password_confirmation}
+                  onChange={(e) =>
+                    setPasswordData({
+                      ...passwordData,
+                      new_password_confirmation: e.target.value,
+                    })
+                  }
+                  required
+                  className="w-full px-4 py-3 border rounded-xl focus:ring-2 focus:ring-emerald-500"
+                />
+                <button
+                  type="button"
+                  onClick={() =>
+                    setShowPassword({
+                      ...showPassword,
+                      confirm: !showPassword.confirm,
+                    })
+                  }
+                  className="absolute right-3 top-3 text-gray-400"
+                >
+                  <Eye size={18} />
+                </button>
+              </div>
+            </div>
+
+            {/* Actions */}
             <div className="flex gap-3 pt-4">
+              <button
+                type="button"
+                onClick={() => setShowPasswordModal(false)}
+                className="flex-1 border px-6 py-3 rounded-xl font-semibold"
+              >
+                Cancel
+              </button>
               <button
                 type="submit"
                 disabled={isLoading}
-                className="flex-1 bg-emerald-600 text-white px-6 py-3 rounded-xl text-base font-semibold hover:bg-emerald-700 transition-all disabled:opacity-50 flex items-center justify-center gap-2"
+                className="flex-1 bg-emerald-600 text-white px-6 py-3 rounded-xl font-semibold hover:bg-emerald-700 disabled:opacity-50 flex items-center justify-center gap-2"
               >
                 {isLoading && <Loader2 size={18} className="animate-spin" />}
-                {isLoading ? "Changing..." : "Change Password"}
+                Update Password
               </button>
             </div>
           </form>
