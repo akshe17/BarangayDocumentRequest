@@ -49,7 +49,7 @@ const RequestTable = () => {
       documents: ["Barangay Clearance"],
       date: "1 hour ago",
       dateCreated: "Jan 29, 2026",
-      status: "In Progress",
+      status: "Approved",
       purpose: "Employment requirement",
       avatar: "AB",
       paymentStatus: "Unpaid",
@@ -61,7 +61,7 @@ const RequestTable = () => {
       documents: ["Certificate of Residency", "Barangay ID"],
       date: "3 hours ago",
       dateCreated: "Jan 29, 2026",
-      status: "Approved",
+      status: "Completed",
       purpose: "School enrollment",
       avatar: "MC",
       paymentStatus: "Paid",
@@ -137,6 +137,14 @@ const RequestTable = () => {
     }
   };
 
+  const handleComplete = (id) => {
+    setRequests((prev) =>
+      prev.map((req) =>
+        req.id === id ? { ...req, status: "Completed" } : req,
+      ),
+    );
+  };
+
   const handleView = (request) => {
     setSelectedRequest(request);
     setShowViewModal(true);
@@ -159,8 +167,8 @@ const RequestTable = () => {
   const stats = {
     total: requests.length,
     pending: requests.filter((r) => r.status === "Pending").length,
-    inProgress: requests.filter((r) => r.status === "In Progress").length,
     approved: requests.filter((r) => r.status === "Approved").length,
+    completed: requests.filter((r) => r.status === "Completed").length,
     rejected: requests.filter((r) => r.status === "Rejected").length,
   };
 
@@ -168,9 +176,9 @@ const RequestTable = () => {
     switch (status) {
       case "Pending":
         return "bg-amber-100 text-amber-700 border-amber-200";
-      case "In Progress":
-        return "bg-blue-100 text-blue-700 border-blue-200";
       case "Approved":
+        return "bg-blue-100 text-blue-700 border-blue-200";
+      case "Completed":
         return "bg-emerald-100 text-emerald-700 border-emerald-200";
       case "Rejected":
         return "bg-red-100 text-red-700 border-red-200";
@@ -183,9 +191,9 @@ const RequestTable = () => {
     switch (status) {
       case "Pending":
         return <Clock size={12} />;
-      case "In Progress":
-        return <AlertCircle size={12} />;
       case "Approved":
+        return <AlertCircle size={12} />;
+      case "Completed":
         return <CheckCircle2 size={12} />;
       case "Rejected":
         return <XCircle size={12} />;
@@ -248,15 +256,15 @@ const RequestTable = () => {
 
         <div
           className="bg-white p-4 rounded-xl border border-gray-200 shadow-sm cursor-pointer hover:shadow-md transition-shadow"
-          onClick={() => setFilterStatus("inprogress")}
+          onClick={() => setFilterStatus("approved")}
         >
           <div className="flex items-center justify-between">
             <div>
               <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide">
-                In Progress
+                Approved
               </p>
               <h3 className="text-2xl font-black text-blue-600 mt-1">
-                {stats.inProgress}
+                {stats.approved}
               </h3>
             </div>
             <div className="w-10 h-10 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-lg flex items-center justify-center text-white shadow-md">
@@ -267,15 +275,15 @@ const RequestTable = () => {
 
         <div
           className="bg-white p-4 rounded-xl border border-gray-200 shadow-sm cursor-pointer hover:shadow-md transition-shadow"
-          onClick={() => setFilterStatus("approved")}
+          onClick={() => setFilterStatus("completed")}
         >
           <div className="flex items-center justify-between">
             <div>
               <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide">
-                Approved
+                Completed
               </p>
               <h3 className="text-2xl font-black text-emerald-600 mt-1">
-                {stats.approved}
+                {stats.completed}
               </h3>
             </div>
             <div className="w-10 h-10 bg-gradient-to-br from-emerald-500 to-green-600 rounded-lg flex items-center justify-center text-white shadow-md">
@@ -349,30 +357,36 @@ const RequestTable = () => {
                 )}
               </button>
               <button
-                onClick={() => setFilterStatus("inprogress")}
-                className={`px-4 py-2 rounded-lg text-xs font-bold transition-all ${
-                  filterStatus === "inprogress"
-                    ? "bg-white text-blue-600 shadow-sm"
-                    : "text-gray-500 hover:text-gray-700"
-                }`}
-              >
-                In Progress
-              </button>
-              <button
                 onClick={() => setFilterStatus("approved")}
                 className={`px-4 py-2 rounded-lg text-xs font-bold transition-all ${
                   filterStatus === "approved"
-                    ? "bg-white text-emerald-600 shadow-sm"
+                    ? "bg-white text-blue-600 shadow-sm"
                     : "text-gray-500 hover:text-gray-700"
                 }`}
               >
                 Approved
               </button>
+              <button
+                onClick={() => setFilterStatus("completed")}
+                className={`px-4 py-2 rounded-lg text-xs font-bold transition-all ${
+                  filterStatus === "completed"
+                    ? "bg-white text-emerald-600 shadow-sm"
+                    : "text-gray-500 hover:text-gray-700"
+                }`}
+              >
+                Completed
+              </button>
+              <button
+                onClick={() => setFilterStatus("rejected")}
+                className={`px-4 py-2 rounded-lg text-xs font-bold transition-all ${
+                  filterStatus === "rejected"
+                    ? "bg-white text-red-600 shadow-sm"
+                    : "text-gray-500 hover:text-gray-700"
+                }`}
+              >
+                Rejected
+              </button>
             </div>
-
-            <button className="p-3 bg-gray-50 border border-gray-200 rounded-xl hover:bg-gray-100 transition-colors">
-              <Download size={18} className="text-gray-600" />
-            </button>
           </div>
         </div>
 
@@ -512,6 +526,15 @@ const RequestTable = () => {
                               <X size={16} strokeWidth={2.5} />
                             </button>
                           </>
+                        )}
+                        {req.status === "Approved" && (
+                          <button
+                            onClick={() => handleComplete(req.id)}
+                            className="p-2.5 bg-emerald-100 text-emerald-600 rounded-lg hover:bg-emerald-500 hover:text-white transition-all shadow-sm hover:shadow-md"
+                            title="Mark as Completed"
+                          >
+                            <CheckCircle2 size={16} strokeWidth={2.5} />
+                          </button>
                         )}
                         <button
                           onClick={() => handleView(req)}
@@ -762,7 +785,20 @@ const RequestTable = () => {
                     </button>
                   </>
                 )}
-                {selectedRequest.status !== "Pending" && (
+                {selectedRequest.status === "Approved" && (
+                  <button
+                    onClick={() => {
+                      handleComplete(selectedRequest.id);
+                      setShowViewModal(false);
+                    }}
+                    className="w-full px-4 py-2.5 rounded-xl font-bold text-white bg-gradient-to-r from-emerald-600 to-green-600 hover:from-emerald-700 hover:to-green-700 transition-all text-sm shadow-lg hover:scale-105 flex items-center justify-center gap-2"
+                  >
+                    <CheckCircle2 size={16} />
+                    Mark as Completed
+                  </button>
+                )}
+                {(selectedRequest.status === "Completed" ||
+                  selectedRequest.status === "Rejected") && (
                   <button
                     onClick={() => setShowViewModal(false)}
                     className="w-full px-4 py-2.5 rounded-xl font-bold text-gray-700 bg-gray-100 hover:bg-gray-200 transition-all text-sm"
