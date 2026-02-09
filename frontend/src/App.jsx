@@ -33,6 +33,12 @@ import ResidentProfile from "./pages/resident/ResidentProfile";
 import ClerkLayout from "./layout/ClerkLayout";
 import ClerkDashboard from "./pages/clerk/ClerkDashboard";
 import PaymentVerification from "./pages/clerk/PaymentVerification";
+
+//Zone Leader pages
+import ZoneLeaderLayout from "./layout/ZoneLeaderLayout";
+import ZoneMap from "./pages/zoneLeader/ZoneMap";
+import ZoneResidentDirectory from "./pages/zoneLeader/ZoneResidentDirectory";
+import ZoneLeaderDashboard from "./pages/zoneLeader/ZoneLeaderDashboard";
 const App = () => {
   const { isAuthenticated, isAdmin, loading } = useAuth();
 
@@ -105,6 +111,13 @@ const App = () => {
         <Route path="/clerk" element={<ClerkLayout />}>
           <Route path="dashboard" element={<ClerkDashboard />} />
           <Route path="payments" element={<PaymentVerification />} />
+        </Route>
+
+        <Route path="/zone-leader" element={<ZoneLeaderLayout />}>
+          <Route index element={<Navigate to="dashboard" replace />} />
+          <Route path="dashboard" element={<ZoneLeaderDashboard />} />
+          <Route path="residents" element={<ZoneResidentDirectory />} />
+          <Route path="zone-map" element={<ZoneMap />} />
         </Route>
 
         {/* 6. SMART CATCH-ALL */}
