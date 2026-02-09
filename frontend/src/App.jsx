@@ -28,6 +28,11 @@ import NewRequest from "./pages/resident/NewRequest";
 import ResidentHistory from "./pages/resident/ResidentHistory";
 import ResidentNotification from "./pages/resident/ResidentNotification";
 import ResidentProfile from "./pages/resident/ResidentProfile";
+
+//Clerk pages
+import ClerkLayout from "./layout/ClerkLayout";
+import ClerkDashboard from "./pages/clerk/ClerkDashboard";
+import PaymentVerification from "./pages/clerk/PaymentVerification";
 const App = () => {
   const { isAuthenticated, isAdmin, loading } = useAuth();
 
@@ -95,6 +100,11 @@ const App = () => {
           <Route path="history" element={<ResidentHistory />} />
           <Route path="notifications" element={<ResidentNotification />} />
           <Route path="profile" element={<ResidentProfile />} />
+        </Route>
+
+        <Route path="/clerk" element={<ClerkLayout />}>
+          <Route path="dashboard" element={<ClerkDashboard />} />
+          <Route path="payments" element={<PaymentVerification />} />
         </Route>
 
         {/* 6. SMART CATCH-ALL */}
