@@ -16,7 +16,7 @@ import Register from "./pages/resident/Register";
 import DownloadApp from "./pages/Download";
 import Practice from "./pages/Practice";
 
-// Admin Pages
+// Admin Pages (Also Shared with Clerk)
 import Overview from "./pages/Overview";
 import RequestTable from "./pages/RequestTable";
 import AdminResidents from "./pages/AdminResidents";
@@ -41,7 +41,6 @@ import ZoneResidentDirectory from "./pages/zoneLeader/ZoneResidentDirectory";
 import ZoneLeaderDashboard from "./pages/zoneLeader/ZoneLeaderDashboard";
 
 const App = () => {
-  // Assuming 'user' object is returned by useAuth() to check roles
   const { isAuthenticated, isAdmin, loading, user } = useAuth();
 
   // Block ALL routing until auth is verified
@@ -53,20 +52,18 @@ const App = () => {
     );
   }
 
-  // --- FIX APPLIED HERE ---
   // Helper to determine home route based on specific role
   const getHomeRoute = () => {
     if (!isAuthenticated) return "/login";
 
     // Check specific roles if user object exists
     if (user?.role === 1) return "/dashboard";
-    if (user?.role === 4) return "/zone-leader/dashboard"; // Redirect Zone Leader to their dashboard
+    if (user?.role === 4) return "/zone-leader/dashboard";
     if (user?.role === 3) return "/clerk/dashboard";
 
     // Default for Residents
     return "/resident";
   };
-  // -------------------------
 
   return (
     <BrowserRouter>
@@ -121,7 +118,10 @@ const App = () => {
         <Route path="/clerk" element={<ClerkLayout />}>
           <Route index element={<Navigate to="dashboard" replace />} />
           <Route path="dashboard" element={<ClerkDashboard />} />
-          <Route path="payments" element={<PaymentVerification />} />
+
+          {/* Shared components with Admin */}
+          <Route path="requests" element={<RequestTable />} />
+          <Route path="logs" element={<AuditLogs />} />
         </Route>
 
         {/* 7. ZONE LEADER SECTOR (TEST ROUTE - No Protection) */}

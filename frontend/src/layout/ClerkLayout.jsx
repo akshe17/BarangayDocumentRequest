@@ -1,6 +1,14 @@
 import React, { useState } from "react";
 import { Outlet, Link, useLocation } from "react-router-dom";
-import { LayoutDashboard, CreditCard, LogOut, Menu, X } from "lucide-react";
+import {
+  LayoutDashboard,
+  CreditCard,
+  LogOut,
+  Menu,
+  X,
+  FileText,
+  History,
+} from "lucide-react";
 // Assuming you have your logo and auth context imported here
 import logo from "../assets/logo.png";
 import { useAuth } from "../context/AuthContext";
@@ -19,10 +27,16 @@ const ClerkLayout = () => {
       label: "Dashboard",
       icon: <LayoutDashboard size={20} />,
     },
+
     {
-      path: "/clerk/payments",
-      label: "Payment Verification",
-      icon: <CreditCard size={20} />,
+      path: "/clerk/requests",
+      label: "Document Requests",
+      icon: <FileText size={20} />,
+    },
+    {
+      path: "/clerk/logs",
+      label: "Audit Logs",
+      icon: <History size={20} />,
     },
   ];
 
