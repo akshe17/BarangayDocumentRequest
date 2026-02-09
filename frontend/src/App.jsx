@@ -2,11 +2,13 @@ import React from "react";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import PublicRoute from "./authorization/PublicRoute";
 import ProtectedRoute from "./authorization/ProtectedRoute";
-import { useAuth } from "./context/AuthContext"; // Import useAuth for the catch-all
+import { useAuth } from "./context/AuthContext";
 
 // Layouts
 import MainLayout from "./layout/MainLayout";
 import ResidentLayout from "./layout/ResidentLayout";
+import ClerkLayout from "./layout/ClerkLayout";
+import ZoneLeaderLayout from "./layout/ZoneLeaderLayout";
 
 // Public Pages
 import LoginPage from "./pages/LoginPage";
@@ -30,17 +32,17 @@ import ResidentNotification from "./pages/resident/ResidentNotification";
 import ResidentProfile from "./pages/resident/ResidentProfile";
 
 //Clerk pages
-import ClerkLayout from "./layout/ClerkLayout";
 import ClerkDashboard from "./pages/clerk/ClerkDashboard";
 import PaymentVerification from "./pages/clerk/PaymentVerification";
 
 //Zone Leader pages
-import ZoneLeaderLayout from "./layout/ZoneLeaderLayout";
 import ZoneMap from "./pages/zoneLeader/ZoneMap";
 import ZoneResidentDirectory from "./pages/zoneLeader/ZoneResidentDirectory";
 import ZoneLeaderDashboard from "./pages/zoneLeader/ZoneLeaderDashboard";
+
 const App = () => {
-  const { isAuthenticated, isAdmin, loading } = useAuth();
+  // Assuming 'user' object is returned by useAuth() to check roles
+  const { isAuthenticated, isAdmin, loading, user } = useAuth();
 
   // Block ALL routing until auth is verified
   if (loading) {
@@ -50,20 +52,27 @@ const App = () => {
       </div>
     );
   }
+
+  // --- FIX APPLIED HERE ---
+  // Helper to determine home route based on specific role
+  const getHomeRoute = () => {
+    if (!isAuthenticated) return "/login";
+
+    // Check specific roles if user object exists
+    if (user?.role === 1) return "/dashboard";
+    if (user?.role === 4) return "/zone-leader/dashboard"; // Redirect Zone Leader to their dashboard
+    if (user?.role === 3) return "/clerk/dashboard";
+
+    // Default for Residents
+    return "/resident";
+  };
+  // -------------------------
+
   return (
     <BrowserRouter>
       <Routes>
         {/* 1. ROOT LOGIC */}
-        <Route
-          path="/"
-          element={
-            isAuthenticated ? (
-              <Navigate to={isAdmin() ? "/dashboard" : "/resident"} replace />
-            ) : (
-              <Navigate to="/login" replace />
-            )
-          }
-        />
+        <Route path="/" element={<Navigate to={getHomeRoute()} replace />} />
 
         {/* 2. GUEST ONLY (Login/Register) */}
         <Route element={<PublicRoute />}>
@@ -108,11 +117,14 @@ const App = () => {
           <Route path="profile" element={<ResidentProfile />} />
         </Route>
 
+        {/* 6. CLERK SECTOR (TEST ROUTE - No Protection) */}
         <Route path="/clerk" element={<ClerkLayout />}>
+          <Route index element={<Navigate to="dashboard" replace />} />
           <Route path="dashboard" element={<ClerkDashboard />} />
           <Route path="payments" element={<PaymentVerification />} />
         </Route>
 
+        {/* 7. ZONE LEADER SECTOR (TEST ROUTE - No Protection) */}
         <Route path="/zone-leader" element={<ZoneLeaderLayout />}>
           <Route index element={<Navigate to="dashboard" replace />} />
           <Route path="dashboard" element={<ZoneLeaderDashboard />} />
@@ -120,17 +132,8 @@ const App = () => {
           <Route path="zone-map" element={<ZoneMap />} />
         </Route>
 
-        {/* 6. SMART CATCH-ALL */}
-        <Route
-          path="*"
-          element={
-            isAuthenticated ? (
-              <Navigate to={isAdmin() ? "/dashboard" : "/resident"} replace />
-            ) : (
-              <Navigate to="/login" replace />
-            )
-          }
-        />
+        {/* 8. SMART CATCH-ALL */}
+        <Route path="*" element={<Navigate to={getHomeRoute()} replace />} />
       </Routes>
     </BrowserRouter>
   );
