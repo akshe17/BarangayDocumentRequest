@@ -12,11 +12,10 @@ import {
 const NewRequest = () => {
   const [selectedDocs, setSelectedDocs] = useState([]);
   const [purpose, setPurpose] = useState("");
-  const [documentList, setDocumentList] = useState([]); // State for fetched docs
+  const [documentList, setDocumentList] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState(null);
 
-  // 2. Fetch Documents on Component Mount
   useEffect(() => {
     fetchAvailableDocuments();
   }, []);
@@ -25,7 +24,6 @@ const NewRequest = () => {
     setIsLoading(true);
     try {
       console.log("Fetching available documents...");
-      // Replace with your actual endpoint to get available documents
       const response = await api.get("/documents");
       console.log("Fetched docs:", response.data);
       setDocumentList(response.data);
@@ -39,7 +37,6 @@ const NewRequest = () => {
   };
 
   const toggleDocument = (doc) => {
-    // Note: Assuming document_id from your logs, changed from item.id
     if (selectedDocs.find((item) => item.document_id === doc.document_id)) {
       setSelectedDocs(
         selectedDocs.filter((item) => item.document_id !== doc.document_id),
@@ -49,7 +46,6 @@ const NewRequest = () => {
     }
   };
 
-  // Note: Assuming fee property from your logs
   const totalFee = selectedDocs.reduce(
     (acc, curr) => acc + (parseFloat(curr.fee) || 0),
     0,
@@ -85,7 +81,6 @@ const NewRequest = () => {
             </div>
           ) : (
             documentList.map((doc) => {
-              // Note: Using API property names
               const isSelected = selectedDocs.find(
                 (item) => item.document_id === doc.document_id,
               );
@@ -121,7 +116,7 @@ const NewRequest = () => {
                       <h3
                         className={`text-base font-black uppercase tracking-tight ${isSelected ? "text-white" : "text-gray-800"}`}
                       >
-                        {doc.document_name} {/* Note: Changed from doc.name */}
+                        {doc.document_name}
                       </h3>
                       <span
                         className={`text-sm font-black ${isSelected ? "text-emerald-50" : fee === 0 ? "text-emerald-500" : "text-gray-900"}`}
@@ -129,12 +124,29 @@ const NewRequest = () => {
                         {fee === 0 ? "FREE" : `₱${fee.toFixed(2)}`}
                       </span>
                     </div>
-                    <p
-                      className={`text-xs font-medium leading-relaxed ${isSelected ? "text-emerald-100" : "text-gray-500"}`}
-                    >
-                      {doc.description || "No description available."}{" "}
-                      {/* Note: Adjusted property */}
-                    </p>
+
+                    {/* --- FIX APPLIED HERE --- */}
+                    {doc.requirements && doc.requirements.length > 0 ? (
+                      <div
+                        className={`text-xs font-medium leading-relaxed ${isSelected ? "text-emerald-100" : "text-gray-500"}`}
+                      >
+                        <p className="font-semibold mb-1">Requirements:</p>
+                        <ul className="list-disc list-inside space-y-0.5">
+                          {doc.requirements.map((req) => (
+                            <li key={req.requirement_id}>
+                              {req.requirement_name}: {req.description}
+                            </li>
+                          ))}
+                        </ul>
+                      </div>
+                    ) : (
+                      <p
+                        className={`text-xs font-medium leading-relaxed ${isSelected ? "text-emerald-100" : "text-gray-500"}`}
+                      >
+                        No requirements listed.
+                      </p>
+                    )}
+                    {/* ------------------------ */}
                   </div>
                 </div>
               );
