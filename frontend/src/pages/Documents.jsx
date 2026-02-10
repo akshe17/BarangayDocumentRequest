@@ -33,7 +33,6 @@ const Documents = () => {
 
   const [documents, setDocuments] = useState([]);
 
-  // 2. Fetch Documents on Component Mount
   useEffect(() => {
     fetchDocuments();
   }, []);
@@ -41,57 +40,49 @@ const Documents = () => {
   const fetchDocuments = async () => {
     setIsLoading(true);
     try {
-      console.log("Fetching documents via custom API instance...");
-      // Using /documents based on your previous structure
       const response = await api.get("/documents");
-      console.log("Documents fetched:", response.data);
-      // Adjust based on your API response structure (e.g., response.data.data)
+      // Assuming response.data is an array of documents
       setDocuments(response.data);
       setError(null);
     } catch (err) {
       console.error("Error fetching documents:", err);
-      setError("Failed to fetch documents. Check console.");
+      setError("Failed to fetch documents.");
     } finally {
       setIsLoading(false);
     }
   };
 
-  // Filter documents
-  // Filter documents
   const filteredDocuments = useMemo(() => {
     return documents.filter((doc) => {
-      // 1. Check if doc exists and has a name/document_name
-      // 2. Use optional chaining (?.) to prevent crashes
-      const docName = doc.name || doc.document_name || "";
+      const docName = doc.document_name || "";
       return docName.toLowerCase().includes(searchTerm.toLowerCase());
     });
   }, [documents, searchTerm]);
-  // Stats
+
   const stats = {
     total: documents.length,
-    active: documents.filter((d) => d.inUse).length,
-    inactive: documents.filter((d) => !d.inUse).length,
+    active: documents.filter((d) => d.in_use).length,
+    inactive: documents.filter((d) => !d.in_use).length,
     totalRevenue: documents.reduce(
-      (sum, doc) => sum + (parseFloat(doc.fee) || 0) * (doc.totalIssued || 0),
+      (sum, doc) => sum + (parseFloat(doc.fee) || 0),
       0,
     ),
   };
 
-  // Modal handlers
   const openModal = (type, document = null) => {
     setModalType(type);
     setSelectedDocument(document);
+
     if (document && type === "edit") {
       setFormData({
-        name: document.name,
-        fee: document.fee,
+        name: document.document_name || "",
+        fee: document.fee || "",
         requirements: document.requirements || [],
       });
     } else {
       setFormData({ name: "", fee: "", requirements: [] });
     }
   };
-
   const closeModal = () => {
     setModalType(null);
     setSelectedDocument(null);
@@ -119,9 +110,12 @@ const Documents = () => {
     setFormData({ ...formData, requirements: newRequirements });
   };
 
-  // 3. Handle Save (Create/Update)
   const handleSave = async () => {
+    // --- FIX: Use document_id for logging ---
+    console.log("Selected Document ID:", selectedDocument?.document_id);
     console.log("Save initiated:", modalType);
+
+    // Validation
     if (!formData.name.trim() || formData.fee === "") {
       alert("Please fill in Document Name and Fee");
       return;
@@ -135,43 +129,61 @@ const Documents = () => {
 
     try {
       if (modalType === "add") {
-        console.log("Sending POST request...");
         const response = await api.post("/documents", docData);
-        console.log("Create response:", response.data);
         setDocuments([...documents, response.data]);
       } else if (modalType === "edit") {
-        console.log("Sending PUT request for ID:", selectedDocument.id);
+        // --- FIX: Check for document_id ---
+        if (!selectedDocument || !selectedDocument.document_id) {
+          alert("Error: Document ID not found.");
+          return;
+        }
+
+        // --- FIX: Use document_id in URL ---
         const response = await api.put(
-          `/documents/${selectedDocument.id}`,
+          `/documents/${selectedDocument.document_id}`,
           docData,
         );
-        console.log("Update response:", response.data);
+
+        // --- FIX: Update state using document_id ---
         setDocuments(
           documents.map((doc) =>
-            doc.id === selectedDocument.id ? response.data : doc,
+            doc.document_id === selectedDocument.document_id
+              ? response.data
+              : doc,
           ),
         );
       }
       closeModal();
     } catch (err) {
       console.error("Error saving document:", err);
-      alert("Failed to save document. Check console for details.");
+      alert(
+        `Failed to save document: ${err.response?.data?.message || err.message}`,
+      );
     }
   };
 
-  // 4. Handle Delete
   const handleDelete = async () => {
-    console.log("Delete initiated for ID:", selectedDocument.id);
-    if (selectedDocument.inUse) {
+    // --- FIX: Use document_id for check ---
+    if (!selectedDocument || !selectedDocument.document_id) {
+      alert("Error: Document ID not found.");
+      return;
+    }
+
+    if (selectedDocument.in_use) {
       setModalType("warning");
       return;
     }
 
     try {
-      console.log("Sending DELETE request...");
-      await api.delete(`/documents/${selectedDocument.id}`);
-      console.log("Delete successful");
-      setDocuments(documents.filter((doc) => doc.id !== selectedDocument.id));
+      // --- FIX: Use document_id in URL ---
+      await api.delete(`/documents/${selectedDocument.document_id}`);
+
+      // --- FIX: Filter using document_id ---
+      setDocuments(
+        documents.filter(
+          (doc) => doc.document_id !== selectedDocument.document_id,
+        ),
+      );
       closeModal();
     } catch (err) {
       console.error("Error deleting document:", err);
@@ -184,9 +196,8 @@ const Documents = () => {
       {/* HEADER */}
       <div className="mb-8">
         <h1 className="text-3xl font-black text-gray-900 mb-2">
-          Document Management (Authenticated)
+          Document Management
         </h1>
-        <p className="text-gray-500">Base URL: http://localhost:8000/api</p>
       </div>
 
       {/* ERROR DISPLAY */}
@@ -213,7 +224,6 @@ const Documents = () => {
             </div>
           </div>
         </div>
-        {/* Other stat cards remain same */}
         <div className="bg-white p-5 rounded-xl border border-gray-200 shadow-sm">
           <div className="flex items-center justify-between">
             <div>
@@ -256,7 +266,7 @@ const Documents = () => {
           <div className="flex items-center justify-between">
             <div>
               <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide">
-                Total Fee Collected
+                Total Fees (Type)
               </p>
               <h3 className="text-2xl font-black text-amber-600 mt-1">
                 {isLoading ? (
@@ -288,7 +298,6 @@ const Documents = () => {
               onChange={(e) => setSearchTerm(e.target.value)}
             />
           </div>
-
           <button
             onClick={() => openModal("add")}
             className="bg-gradient-to-r from-emerald-600 to-green-600 text-white px-6 py-3 rounded-xl font-bold text-sm hover:shadow-lg hover:scale-105 transition-all flex items-center gap-2 shadow-md whitespace-nowrap"
@@ -315,10 +324,9 @@ const Documents = () => {
         ) : (
           filteredDocuments.map((doc) => (
             <div
-              key={doc.id}
+              key={doc.document_id} // --- FIX: Use document_id ---
               className="bg-white rounded-xl border border-gray-200 shadow-sm hover:shadow-md transition-all overflow-hidden group"
             >
-              {/* Card Header & Body - Content remains same */}
               <div className="p-5 border-b border-gray-100 bg-gradient-to-r from-gray-50 to-white">
                 <div className="flex items-start justify-between gap-3">
                   <div className="flex items-start gap-3 flex-1">
@@ -327,13 +335,13 @@ const Documents = () => {
                     </div>
                     <div className="flex-1 min-w-0">
                       <h3 className="font-bold text-gray-900 text-base mb-1 truncate">
-                        {doc.name}
+                        {doc.document_name}
                       </h3>
                       <div className="flex items-center gap-2">
                         <span
-                          className={`px-2 py-1 rounded text-[10px] font-bold uppercase ${doc.inUse ? "bg-emerald-100 text-emerald-700" : "bg-gray-100 text-gray-600"}`}
+                          className={`px-2 py-1 rounded text-[10px] font-bold uppercase ${doc.in_use ? "bg-emerald-100 text-emerald-700" : "bg-gray-100 text-gray-600"}`}
                         >
-                          {doc.inUse ? "Active" : "Inactive"}
+                          {doc.in_use ? "Active" : "Inactive"}
                         </span>
                       </div>
                     </div>
@@ -354,7 +362,6 @@ const Documents = () => {
                     </div>
                   </div>
                 </div>
-                {/* Requirements display */}
                 <div className="mb-4">
                   <h4 className="text-xs font-bold text-gray-500 uppercase tracking-wide mb-2">
                     Requirements
@@ -370,10 +377,6 @@ const Documents = () => {
                       No requirements
                     </p>
                   )}
-                </div>
-                <div className="text-xs text-gray-500 space-y-1 mb-4 pt-3 border-t border-gray-100">
-                  <p>Created: {doc.createdDate}</p>
-                  <p>Updated: {doc.lastUpdated}</p>
                 </div>
                 <div className="flex gap-2">
                   <button
@@ -395,11 +398,10 @@ const Documents = () => {
         )}
       </div>
 
-      {/* MODALS - Unchanged, just for UI interaction */}
+      {/* MODALS */}
       {modalType && (
         <div className="fixed inset-0 bg-black/70 backdrop-blur-sm z-[100] flex items-center justify-center p-4 overflow-y-auto">
           <div className="bg-white rounded-2xl w-full max-w-lg shadow-2xl my-8">
-            {/* MODAL HEADER */}
             <div className="sticky top-0 z-10 p-5 border-b border-gray-200 flex justify-between items-center bg-white rounded-t-2xl">
               <h3 className="font-black text-gray-900 text-base flex items-center gap-3">
                 {modalType === "add" && "Add New Document"}
@@ -413,8 +415,6 @@ const Documents = () => {
                 <X size={20} />
               </button>
             </div>
-
-            {/* MODAL BODY */}
             <div className="p-5">
               {(modalType === "add" || modalType === "edit") && (
                 <div className="space-y-4">
@@ -431,7 +431,6 @@ const Documents = () => {
                       className="w-full px-4 py-2.5 rounded-xl border-2 border-gray-200 bg-white outline-none focus:border-emerald-500 transition-all font-medium text-sm"
                     />
                   </div>
-
                   <div>
                     <label className="text-xs font-bold text-gray-700 uppercase tracking-wide block mb-2">
                       Processing Fee (₱)
@@ -445,8 +444,6 @@ const Documents = () => {
                       className="w-full px-4 py-2.5 rounded-xl border-2 border-gray-200 bg-white outline-none focus:border-emerald-500 transition-all font-medium text-sm"
                     />
                   </div>
-
-                  {/* REQUIREMENTS INPUT SECTION */}
                   <div className="border-t border-gray-100 pt-4">
                     <div className="flex justify-between items-center mb-3">
                       <label className="text-xs font-bold text-gray-700 uppercase tracking-wide block">
@@ -460,7 +457,6 @@ const Documents = () => {
                         <ListPlus size={14} /> Add Requirement
                       </button>
                     </div>
-
                     <div className="space-y-3">
                       {formData.requirements.map((req, index) => (
                         <div
@@ -514,7 +510,7 @@ const Documents = () => {
                     <Trash2 size={32} strokeWidth={2} />
                   </div>
                   <p className="text-base font-bold text-gray-900 mb-2">
-                    Delete "{selectedDocument?.name}"?
+                    Delete "{selectedDocument?.document_name}"?
                   </p>
                   <p className="text-sm text-gray-500">
                     This action cannot be undone.
@@ -535,8 +531,6 @@ const Documents = () => {
                 </div>
               )}
             </div>
-
-            {/* MODAL FOOTER */}
             <div className="sticky bottom-0 p-5 border-t border-gray-200 bg-white rounded-b-2xl">
               <div className="flex gap-3">
                 <button
@@ -548,11 +542,7 @@ const Documents = () => {
                 {modalType !== "warning" && (
                   <button
                     onClick={modalType === "delete" ? handleDelete : handleSave}
-                    className={`flex-1 px-4 py-2.5 rounded-xl font-bold text-white transition-all text-sm shadow-lg hover:scale-105 flex items-center justify-center gap-2 ${
-                      modalType === "delete"
-                        ? "bg-gradient-to-r from-red-600 to-red-700"
-                        : "bg-gradient-to-r from-emerald-600 to-green-600"
-                    }`}
+                    className={`flex-1 px-4 py-2.5 rounded-xl font-bold text-white transition-all text-sm shadow-lg hover:scale-105 flex items-center justify-center gap-2 ${modalType === "delete" ? "bg-gradient-to-r from-red-600 to-red-700" : "bg-gradient-to-r from-emerald-600 to-green-600"}`}
                   >
                     {modalType === "delete" ? (
                       <>
