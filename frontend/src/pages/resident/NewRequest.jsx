@@ -1,58 +1,59 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
+import api from "../../axious/api";
 import {
   FileText,
   Info,
   CheckCircle2,
   AlertCircle,
   ArrowRight,
+  Loader2,
 } from "lucide-react";
 
 const NewRequest = () => {
   const [selectedDocs, setSelectedDocs] = useState([]);
   const [purpose, setPurpose] = useState("");
+  const [documentList, setDocumentList] = useState([]); // State for fetched docs
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState(null);
 
-  const documentList = [
-    {
-      id: "bc",
-      name: "Barangay Clearance",
-      fee: 50,
-      desc: "Required for job applications and government IDs.",
-    },
-    {
-      id: "coi",
-      name: "Certificate of Indigency",
-      fee: 0,
-      desc: "For scholarship, medical, or burial assistance.",
-    },
-    {
-      id: "cor",
-      name: "Certificate of Residency",
-      fee: 75,
-      desc: "Proof of address for bank and government transactions.",
-    },
-    {
-      id: "bp",
-      name: "Business Permit",
-      fee: 150,
-      desc: "For operating small businesses or community stalls.",
-    },
-    {
-      id: "fencing",
-      name: "Fencing Permit",
-      fee: 200,
-      desc: "Required for property construction and boundary walling.",
-    },
-  ];
+  // 2. Fetch Documents on Component Mount
+  useEffect(() => {
+    fetchAvailableDocuments();
+  }, []);
+
+  const fetchAvailableDocuments = async () => {
+    setIsLoading(true);
+    try {
+      console.log("Fetching available documents...");
+      // Replace with your actual endpoint to get available documents
+      const response = await api.get("/documents");
+      console.log("Fetched docs:", response.data);
+      setDocumentList(response.data);
+      setError(null);
+    } catch (err) {
+      console.error("Error fetching documents:", err);
+      setError("Failed to load documents.");
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   const toggleDocument = (doc) => {
-    if (selectedDocs.find((item) => item.id === doc.id)) {
-      setSelectedDocs(selectedDocs.filter((item) => item.id !== doc.id));
+    // Note: Assuming document_id from your logs, changed from item.id
+    if (selectedDocs.find((item) => item.document_id === doc.document_id)) {
+      setSelectedDocs(
+        selectedDocs.filter((item) => item.document_id !== doc.document_id),
+      );
     } else {
       setSelectedDocs([...selectedDocs, doc]);
     }
   };
 
-  const totalFee = selectedDocs.reduce((acc, curr) => acc + curr.fee, 0);
+  // Note: Assuming fee property from your logs
+  const totalFee = selectedDocs.reduce(
+    (acc, curr) => acc + (parseFloat(curr.fee) || 0),
+    0,
+  );
 
   return (
     <div className="max-w-5xl mx-auto animate-in fade-in slide-in-from-bottom-4 duration-500 pb-20">
@@ -72,56 +73,75 @@ const NewRequest = () => {
           <label className="text-xs font-black text-gray-400 uppercase tracking-[0.2em] mb-2 block ml-1">
             Available Documents
           </label>
-          {documentList.map((doc) => {
-            const isSelected = selectedDocs.find((item) => item.id === doc.id);
-            return (
-              <div
-                key={doc.id}
-                onClick={() => toggleDocument(doc)}
-                className={`group p-6 rounded-2xl border-2 transition-all cursor-pointer flex items-center gap-6 ${
-                  isSelected
-                    ? "bg-emerald-600 border-emerald-600 shadow-xl shadow-emerald-100 scale-[1.01]"
-                    : "bg-white border-gray-200 hover:border-emerald-400 hover:shadow-md"
-                }`}
-              >
-                {/* HIGH CONTRAST CHECKBOX */}
+
+          {isLoading ? (
+            <div className="text-center py-10 text-gray-500">
+              <Loader2 className="animate-spin mx-auto mb-2" size={32} />
+              Loading documents...
+            </div>
+          ) : error ? (
+            <div className="text-center py-10 text-red-500 bg-red-50 rounded-xl">
+              {error}
+            </div>
+          ) : (
+            documentList.map((doc) => {
+              // Note: Using API property names
+              const isSelected = selectedDocs.find(
+                (item) => item.document_id === doc.document_id,
+              );
+              const fee = parseFloat(doc.fee) || 0;
+
+              return (
                 <div
-                  className={`w-8 h-8 rounded-full flex items-center justify-center transition-all shrink-0 ${
+                  key={doc.document_id}
+                  onClick={() => toggleDocument(doc)}
+                  className={`group p-6 rounded-2xl border-2 transition-all cursor-pointer flex items-center gap-6 ${
                     isSelected
-                      ? "bg-white text-emerald-600"
-                      : "bg-gray-100 text-gray-300 border border-gray-200"
+                      ? "bg-emerald-600 border-emerald-600 shadow-xl shadow-emerald-100 scale-[1.01]"
+                      : "bg-white border-gray-200 hover:border-emerald-400 hover:shadow-md"
                   }`}
                 >
-                  <CheckCircle2
-                    size={24}
-                    fill={isSelected ? "white" : "none"}
-                    strokeWidth={3}
-                  />
-                </div>
-
-                <div className="flex-1">
-                  <div className="flex justify-between items-center mb-1">
-                    <h3
-                      className={`text-base font-black uppercase tracking-tight ${isSelected ? "text-white" : "text-gray-800"}`}
-                    >
-                      {doc.name}
-                    </h3>
-                    <span
-                      className={`text-sm font-black ${isSelected ? "text-emerald-50" : doc.fee === 0 ? "text-emerald-500" : "text-gray-900"}`}
-                    >
-                      {doc.fee === 0 ? "FREE" : `₱${doc.fee.toFixed(2)}`}
-                    </span>
-                  </div>
-                  <p
-                    className={`text-xs font-medium leading-relaxed ${isSelected ? "text-emerald-100" : "text-gray-500"}`}
+                  {/* CHECKBOX */}
+                  <div
+                    className={`w-8 h-8 rounded-full flex items-center justify-center transition-all shrink-0 ${
+                      isSelected
+                        ? "bg-white text-emerald-600"
+                        : "bg-gray-100 text-gray-300 border border-gray-200"
+                    }`}
                   >
-                    {doc.desc}
-                  </p>
-                </div>
-              </div>
-            );
-          })}
+                    <CheckCircle2
+                      size={24}
+                      fill={isSelected ? "white" : "none"}
+                      strokeWidth={3}
+                    />
+                  </div>
 
+                  <div className="flex-1">
+                    <div className="flex justify-between items-center mb-1">
+                      <h3
+                        className={`text-base font-black uppercase tracking-tight ${isSelected ? "text-white" : "text-gray-800"}`}
+                      >
+                        {doc.document_name} {/* Note: Changed from doc.name */}
+                      </h3>
+                      <span
+                        className={`text-sm font-black ${isSelected ? "text-emerald-50" : fee === 0 ? "text-emerald-500" : "text-gray-900"}`}
+                      >
+                        {fee === 0 ? "FREE" : `₱${fee.toFixed(2)}`}
+                      </span>
+                    </div>
+                    <p
+                      className={`text-xs font-medium leading-relaxed ${isSelected ? "text-emerald-100" : "text-gray-500"}`}
+                    >
+                      {doc.description || "No description available."}{" "}
+                      {/* Note: Adjusted property */}
+                    </p>
+                  </div>
+                </div>
+              );
+            })
+          )}
+
+          {/* PURPOSE INPUT */}
           <div className="mt-10">
             <label className="text-xs font-black text-gray-400 uppercase tracking-[0.2em] mb-3 block ml-1">
               Purpose of Request
@@ -154,14 +174,14 @@ const NewRequest = () => {
               ) : (
                 selectedDocs.map((item) => (
                   <div
-                    key={item.id}
+                    key={item.document_id}
                     className="flex justify-between items-center animate-in zoom-in-95 duration-200"
                   >
                     <span className="text-sm font-bold text-gray-600">
-                      {item.name}
+                      {item.document_name}
                     </span>
                     <span className="text-sm font-black text-gray-900">
-                      ₱{item.fee.toFixed(2)}
+                      ₱{parseFloat(item.fee).toFixed(2)}
                     </span>
                   </div>
                 ))
@@ -179,7 +199,7 @@ const NewRequest = () => {
               </div>
 
               <button
-                disabled={selectedDocs.length === 0 || !purpose}
+                disabled={selectedDocs.length === 0 || !purpose || isLoading}
                 className="w-full bg-gray-900 text-white py-5 rounded-2xl font-black text-xs uppercase tracking-widest flex items-center justify-center gap-3 hover:bg-emerald-600 disabled:bg-gray-100 disabled:text-gray-400 transition-all shadow-xl active:scale-95"
               >
                 Confirm and Submit <ArrowRight size={18} />

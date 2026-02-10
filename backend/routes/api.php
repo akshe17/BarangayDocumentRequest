@@ -6,7 +6,7 @@ use App\Http\Controllers\AuthController; // Ensure this is imported
 use App\Http\Controllers\GenderController;
 use App\Http\Controllers\CivilStatusController;
 use App\Http\Controllers\ResidentController;
-
+use App\Http\Controllers\DocumentController;
 // routes/api.php
 
 Route::middleware('custom.auth')->get('/user', function (Request $request) {
@@ -22,7 +22,16 @@ Route::middleware(['custom.auth'])->group(function () {
     Route::post('/resident/profile/update', [ResidentController::class, 'updateProfile']);
     Route::post('/resident/profile/change-password', [ResidentController::class, 'changePassword']);
     Route::post('/resident/profile/upload-id', [ResidentController::class, 'uploadValidId']);
+
+
+
+    Route::get('/documents', [DocumentController::class, 'index']);
+Route::post('/documents', [DocumentController::class, 'store']);
+Route::put('/documents/{id}', [DocumentController::class, 'update']);
+Route::delete('/documents/{id}', [DocumentController::class, 'destroy']);
      Route::post('/logout', [AuthController::class, 'logout']);
+
+
 
 });
 

@@ -8,9 +8,8 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 class DocumentType extends Model
 {
     protected $primaryKey = 'document_id';
-    protected $fillable = ['document_name', 'fee'];
+    protected $fillable = ['document_name', 'fee', 'in_use'];
 
-    // Get requirements for this document
     public function requirements(): HasMany
     {
         return $this->hasMany(DocumentRequirement::class, 'document_id', 'document_id');

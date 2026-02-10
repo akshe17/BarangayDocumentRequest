@@ -1,4 +1,5 @@
-import React, { useState, useMemo } from "react";
+import React, { useState, useEffect, useMemo } from "react";
+import api from "../axious/api";
 import {
   Search,
   Plus,
@@ -14,70 +15,64 @@ import {
   Clock,
   CheckCircle2,
   ListPlus,
+  Loader2,
 } from "lucide-react";
 
 const Documents = () => {
   const [searchTerm, setSearchTerm] = useState("");
-  const [modalType, setModalType] = useState(null); // 'add', 'edit', 'delete', 'warning'
+  const [modalType, setModalType] = useState(null);
   const [selectedDocument, setSelectedDocument] = useState(null);
-  // --- UPDATED FORM DATA STRUCTURE ---
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState(null);
+
   const [formData, setFormData] = useState({
     name: "",
     fee: "",
-    requirements: [], // Array of { requirement_name: "", description: "" }
+    requirements: [],
   });
 
-  const [documents, setDocuments] = useState([
-    {
-      id: 1,
-      name: "Barangay Clearance",
-      fee: 50,
-      inUse: true,
-      activeRequests: 12,
-      totalIssued: 245,
-      createdDate: "Jan 15, 2026",
-      lastUpdated: "Jan 28, 2026",
-      // --- ADDED REQUIREMENTS DATA ---
-      requirements: [
-        {
-          requirement_name: "Valid ID",
-          description: "Photocopy of government ID",
-        },
-        { requirement_name: "Cedula", description: "Current year" },
-      ],
-    },
-    {
-      id: 2,
-      name: "Certificate of Indigency",
-      fee: 0,
-      inUse: true,
-      activeRequests: 8,
-      totalIssued: 189,
-      createdDate: "Jan 15, 2026",
-      lastUpdated: "Jan 28, 2026",
-      requirements: [
-        {
-          requirement_name: "Barangay Certification",
-          description: "From purok leader",
-        },
-      ],
-    },
-  ]);
+  const [documents, setDocuments] = useState([]);
+
+  // 2. Fetch Documents on Component Mount
+  useEffect(() => {
+    fetchDocuments();
+  }, []);
+
+  const fetchDocuments = async () => {
+    setIsLoading(true);
+    try {
+      console.log("Fetching documents via custom API instance...");
+      // Using /documents based on your previous structure
+      const response = await api.get("/documents");
+      console.log("Documents fetched:", response.data);
+      // Adjust based on your API response structure (e.g., response.data.data)
+      setDocuments(response.data);
+      setError(null);
+    } catch (err) {
+      console.error("Error fetching documents:", err);
+      setError("Failed to fetch documents. Check console.");
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   // Filter documents
+  // Filter documents
   const filteredDocuments = useMemo(() => {
-    return documents.filter((doc) =>
-      doc.name.toLowerCase().includes(searchTerm.toLowerCase()),
-    );
+    return documents.filter((doc) => {
+      // 1. Check if doc exists and has a name/document_name
+      // 2. Use optional chaining (?.) to prevent crashes
+      const docName = doc.name || doc.document_name || "";
+      return docName.toLowerCase().includes(searchTerm.toLowerCase());
+    });
   }, [documents, searchTerm]);
-
   // Stats
   const stats = {
     total: documents.length,
     active: documents.filter((d) => d.inUse).length,
     inactive: documents.filter((d) => !d.inUse).length,
     totalRevenue: documents.reduce(
-      (sum, doc) => sum + doc.fee * doc.totalIssued,
+      (sum, doc) => sum + (parseFloat(doc.fee) || 0) * (doc.totalIssued || 0),
       0,
     ),
   };
@@ -90,7 +85,7 @@ const Documents = () => {
       setFormData({
         name: document.name,
         fee: document.fee,
-        requirements: document.requirements || [], // Load existing requirements
+        requirements: document.requirements || [],
       });
     } else {
       setFormData({ name: "", fee: "", requirements: [] });
@@ -103,7 +98,6 @@ const Documents = () => {
     setFormData({ name: "", fee: "", requirements: [] });
   };
 
-  // --- REQUIREMENT HANDLERS ---
   const addRequirementField = () => {
     setFormData({
       ...formData,
@@ -125,60 +119,64 @@ const Documents = () => {
     setFormData({ ...formData, requirements: newRequirements });
   };
 
-  const handleSave = () => {
-    if (!formData.name.trim() || !formData.fee) {
+  // 3. Handle Save (Create/Update)
+  const handleSave = async () => {
+    console.log("Save initiated:", modalType);
+    if (!formData.name.trim() || formData.fee === "") {
       alert("Please fill in Document Name and Fee");
       return;
-    }
-
-    // Validate requirements
-    for (let req of formData.requirements) {
-      if (!req.requirement_name.trim()) {
-        alert("Requirement name cannot be empty");
-        return;
-      }
     }
 
     const docData = {
       name: formData.name.trim(),
       fee: parseFloat(formData.fee),
       requirements: formData.requirements,
-      lastUpdated: new Date().toLocaleDateString("en-US", {
-        month: "short",
-        day: "numeric",
-        year: "numeric",
-      }),
     };
 
-    if (modalType === "add") {
-      setDocuments([
-        ...documents,
-        {
-          ...docData,
-          id: Date.now(), // Simple unique ID
-          inUse: false,
-          activeRequests: 0,
-          totalIssued: 0,
-          createdDate: docData.lastUpdated,
-        },
-      ]);
-    } else if (modalType === "edit") {
-      setDocuments(
-        documents.map((doc) =>
-          doc.id === selectedDocument.id ? { ...doc, ...docData } : doc,
-        ),
-      );
+    try {
+      if (modalType === "add") {
+        console.log("Sending POST request...");
+        const response = await api.post("/documents", docData);
+        console.log("Create response:", response.data);
+        setDocuments([...documents, response.data]);
+      } else if (modalType === "edit") {
+        console.log("Sending PUT request for ID:", selectedDocument.id);
+        const response = await api.put(
+          `/documents/${selectedDocument.id}`,
+          docData,
+        );
+        console.log("Update response:", response.data);
+        setDocuments(
+          documents.map((doc) =>
+            doc.id === selectedDocument.id ? response.data : doc,
+          ),
+        );
+      }
+      closeModal();
+    } catch (err) {
+      console.error("Error saving document:", err);
+      alert("Failed to save document. Check console for details.");
     }
-    closeModal();
   };
 
-  const handleDelete = () => {
+  // 4. Handle Delete
+  const handleDelete = async () => {
+    console.log("Delete initiated for ID:", selectedDocument.id);
     if (selectedDocument.inUse) {
       setModalType("warning");
       return;
     }
-    setDocuments(documents.filter((doc) => doc.id !== selectedDocument.id));
-    closeModal();
+
+    try {
+      console.log("Sending DELETE request...");
+      await api.delete(`/documents/${selectedDocument.id}`);
+      console.log("Delete successful");
+      setDocuments(documents.filter((doc) => doc.id !== selectedDocument.id));
+      closeModal();
+    } catch (err) {
+      console.error("Error deleting document:", err);
+      alert("Failed to delete document.");
+    }
   };
 
   return (
@@ -186,16 +184,20 @@ const Documents = () => {
       {/* HEADER */}
       <div className="mb-8">
         <h1 className="text-3xl font-black text-gray-900 mb-2">
-          Document Management
+          Document Management (Authenticated)
         </h1>
-        <p className="text-gray-500">
-          Manage available documents, fees, and requirements
-        </p>
+        <p className="text-gray-500">Base URL: http://localhost:8000/api</p>
       </div>
 
-      {/* STATS CARDS (Unchanged) */}
+      {/* ERROR DISPLAY */}
+      {error && (
+        <div className="bg-red-50 text-red-700 p-4 rounded-xl border border-red-200 font-medium text-sm">
+          {error}
+        </div>
+      )}
+
+      {/* STATS CARDS */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
-        {/* ... Stats cards remain the same ... */}
         <div className="bg-white p-5 rounded-xl border border-gray-200 shadow-sm">
           <div className="flex items-center justify-between">
             <div>
@@ -203,7 +205,7 @@ const Documents = () => {
                 Total Documents
               </p>
               <h3 className="text-2xl font-black text-gray-900 mt-1">
-                {stats.total}
+                {isLoading ? <Loader2 className="animate-spin" /> : stats.total}
               </h3>
             </div>
             <div className="w-12 h-12 bg-gradient-to-br from-blue-500 to-blue-600 rounded-xl flex items-center justify-center text-white shadow-lg">
@@ -211,6 +213,7 @@ const Documents = () => {
             </div>
           </div>
         </div>
+        {/* Other stat cards remain same */}
         <div className="bg-white p-5 rounded-xl border border-gray-200 shadow-sm">
           <div className="flex items-center justify-between">
             <div>
@@ -218,7 +221,11 @@ const Documents = () => {
                 Active
               </p>
               <h3 className="text-2xl font-black text-emerald-600 mt-1">
-                {stats.active}
+                {isLoading ? (
+                  <Loader2 className="animate-spin" />
+                ) : (
+                  stats.active
+                )}
               </h3>
             </div>
             <div className="w-12 h-12 bg-gradient-to-br from-emerald-500 to-green-600 rounded-xl flex items-center justify-center text-white shadow-lg">
@@ -233,7 +240,11 @@ const Documents = () => {
                 Inactive
               </p>
               <h3 className="text-2xl font-black text-gray-600 mt-1">
-                {stats.inactive}
+                {isLoading ? (
+                  <Loader2 className="animate-spin" />
+                ) : (
+                  stats.inactive
+                )}
               </h3>
             </div>
             <div className="w-12 h-12 bg-gradient-to-br from-gray-400 to-gray-500 rounded-xl flex items-center justify-center text-white shadow-lg">
@@ -248,7 +259,11 @@ const Documents = () => {
                 Total Fee Collected
               </p>
               <h3 className="text-2xl font-black text-amber-600 mt-1">
-                ₱{stats.totalRevenue.toLocaleString()}
+                {isLoading ? (
+                  <Loader2 className="animate-spin" />
+                ) : (
+                  `₱${stats.totalRevenue.toLocaleString()}`
+                )}
               </h3>
             </div>
             <div className="w-12 h-12 bg-gradient-to-br from-amber-500 to-orange-500 rounded-xl flex items-center justify-center text-white shadow-lg">
@@ -285,11 +300,16 @@ const Documents = () => {
 
       {/* DOCUMENTS GRID */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-        {filteredDocuments.length === 0 ? (
+        {isLoading ? (
+          <div className="col-span-full text-center py-12 text-gray-500">
+            <Loader2 className="animate-spin mx-auto mb-2" size={32} />
+            Loading documents...
+          </div>
+        ) : filteredDocuments.length === 0 ? (
           <div className="col-span-full bg-white p-12 rounded-xl border border-gray-200 shadow-sm text-center">
             <Search size={48} className="mx-auto mb-3 text-gray-300" />
             <p className="font-semibold text-sm text-gray-500">
-              No documents found
+              No documents found.
             </p>
           </div>
         ) : (
@@ -298,7 +318,7 @@ const Documents = () => {
               key={doc.id}
               className="bg-white rounded-xl border border-gray-200 shadow-sm hover:shadow-md transition-all overflow-hidden group"
             >
-              {/* Card Header (Unchanged) */}
+              {/* Card Header & Body - Content remains same */}
               <div className="p-5 border-b border-gray-100 bg-gradient-to-r from-gray-50 to-white">
                 <div className="flex items-start justify-between gap-3">
                   <div className="flex items-start gap-3 flex-1">
@@ -320,10 +340,7 @@ const Documents = () => {
                   </div>
                 </div>
               </div>
-
-              {/* Card Body */}
               <div className="p-5">
-                {/* Fee */}
                 <div className="bg-amber-50 border border-amber-200 rounded-xl p-4 mb-4">
                   <div className="flex items-center justify-between">
                     <span className="text-xs font-bold text-gray-600 uppercase tracking-wide">
@@ -337,8 +354,7 @@ const Documents = () => {
                     </div>
                   </div>
                 </div>
-
-                {/* --- DISPLAY REQUIREMENTS --- */}
+                {/* Requirements display */}
                 <div className="mb-4">
                   <h4 className="text-xs font-bold text-gray-500 uppercase tracking-wide mb-2">
                     Requirements
@@ -351,12 +367,10 @@ const Documents = () => {
                     </ul>
                   ) : (
                     <p className="text-sm text-gray-400 italic">
-                      No requirements set
+                      No requirements
                     </p>
                   )}
                 </div>
-
-                {/* Dates & Actions (Unchanged) */}
                 <div className="text-xs text-gray-500 space-y-1 mb-4 pt-3 border-t border-gray-100">
                   <p>Created: {doc.createdDate}</p>
                   <p>Updated: {doc.lastUpdated}</p>
@@ -381,7 +395,7 @@ const Documents = () => {
         )}
       </div>
 
-      {/* MODALS */}
+      {/* MODALS - Unchanged, just for UI interaction */}
       {modalType && (
         <div className="fixed inset-0 bg-black/70 backdrop-blur-sm z-[100] flex items-center justify-center p-4 overflow-y-auto">
           <div className="bg-white rounded-2xl w-full max-w-lg shadow-2xl my-8">
@@ -432,7 +446,7 @@ const Documents = () => {
                     />
                   </div>
 
-                  {/* --- REQUIREMENTS INPUT SECTION --- */}
+                  {/* REQUIREMENTS INPUT SECTION */}
                   <div className="border-t border-gray-100 pt-4">
                     <div className="flex justify-between items-center mb-3">
                       <label className="text-xs font-bold text-gray-700 uppercase tracking-wide block">
@@ -494,7 +508,6 @@ const Documents = () => {
                   </div>
                 </div>
               )}
-              {/* ... (Other modal types unchanged) ... */}
               {modalType === "delete" && (
                 <div className="text-center py-4">
                   <div className="w-16 h-16 bg-red-100 text-red-600 rounded-2xl flex items-center justify-center mx-auto mb-4 shadow-lg">
@@ -502,6 +515,22 @@ const Documents = () => {
                   </div>
                   <p className="text-base font-bold text-gray-900 mb-2">
                     Delete "{selectedDocument?.name}"?
+                  </p>
+                  <p className="text-sm text-gray-500">
+                    This action cannot be undone.
+                  </p>
+                </div>
+              )}
+              {modalType === "warning" && (
+                <div className="text-center py-4">
+                  <div className="w-16 h-16 bg-amber-100 text-amber-600 rounded-2xl flex items-center justify-center mx-auto mb-4 shadow-lg">
+                    <AlertTriangle size={32} strokeWidth={2} />
+                  </div>
+                  <p className="text-base font-bold text-gray-900 mb-2">
+                    Cannot Delete Document
+                  </p>
+                  <p className="text-sm text-gray-500">
+                    This document is currently in use or has active requests.
                   </p>
                 </div>
               )}
@@ -516,12 +545,26 @@ const Documents = () => {
                 >
                   Cancel
                 </button>
-                <button
-                  onClick={handleSave}
-                  className="flex-1 px-4 py-2.5 rounded-xl font-bold text-white bg-gradient-to-r from-emerald-600 to-green-600 hover:from-emerald-700 hover:to-green-700 transition-all text-sm shadow-lg hover:scale-105 flex items-center justify-center gap-2"
-                >
-                  <Check size={16} /> Save Changes
-                </button>
+                {modalType !== "warning" && (
+                  <button
+                    onClick={modalType === "delete" ? handleDelete : handleSave}
+                    className={`flex-1 px-4 py-2.5 rounded-xl font-bold text-white transition-all text-sm shadow-lg hover:scale-105 flex items-center justify-center gap-2 ${
+                      modalType === "delete"
+                        ? "bg-gradient-to-r from-red-600 to-red-700"
+                        : "bg-gradient-to-r from-emerald-600 to-green-600"
+                    }`}
+                  >
+                    {modalType === "delete" ? (
+                      <>
+                        <Trash2 size={16} /> Delete Document
+                      </>
+                    ) : (
+                      <>
+                        <Check size={16} /> Save Changes
+                      </>
+                    )}
+                  </button>
+                )}
               </div>
             </div>
           </div>
