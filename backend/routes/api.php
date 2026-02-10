@@ -7,6 +7,7 @@ use App\Http\Controllers\GenderController;
 use App\Http\Controllers\CivilStatusController;
 use App\Http\Controllers\ResidentController;
 use App\Http\Controllers\DocumentController;
+use App\Http\Controllers\DocumentRequestController;
 // routes/api.php
 
 Route::middleware('custom.auth')->get('/user', function (Request $request) {
@@ -29,6 +30,10 @@ Route::middleware(['custom.auth'])->group(function () {
 Route::post('/documents', [DocumentController::class, 'store']);
 Route::put('/documents/{id}', [DocumentController::class, 'update']);
 Route::delete('/documents/{id}', [DocumentController::class, 'destroy']);
+
+
+  Route::post('/request-document', [DocumentRequestController::class, 'store']);
+
      Route::post('/logout', [AuthController::class, 'logout']);
 
 

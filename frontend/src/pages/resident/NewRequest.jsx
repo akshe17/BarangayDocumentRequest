@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import api from "../../axious/api";
+import api from "../../axious/api"; // Ensure this path is correct
 import {
   FileText,
   Info,
@@ -7,6 +7,7 @@ import {
   AlertCircle,
   ArrowRight,
   Loader2,
+  Check,
 } from "lucide-react";
 
 const NewRequest = () => {
@@ -14,6 +15,7 @@ const NewRequest = () => {
   const [purpose, setPurpose] = useState("");
   const [documentList, setDocumentList] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState(null);
 
   useEffect(() => {
@@ -23,9 +25,8 @@ const NewRequest = () => {
   const fetchAvailableDocuments = async () => {
     setIsLoading(true);
     try {
-      console.log("Fetching available documents...");
+      // Assuming this endpoint returns documents with their requirements
       const response = await api.get("/documents");
-      console.log("Fetched docs:", response.data);
       setDocumentList(response.data);
       setError(null);
     } catch (err) {
@@ -50,6 +51,44 @@ const NewRequest = () => {
     (acc, curr) => acc + (parseFloat(curr.fee) || 0),
     0,
   );
+
+  // --- SUBMISSION LOGIC ---
+  const handleSubmit = async () => {
+    if (selectedDocs.length === 0 || !purpose) return;
+
+    setIsSubmitting(true);
+    setError(null);
+
+    // Prepare data based on your Eloquent Models
+    const payload = {
+      purpose: purpose,
+      status_id: 1, // 1 = Pending
+      // Send document IDs and assume quantity 1 based on UI
+      document_items: selectedDocs.map((doc) => ({
+        document_id: doc.document_id,
+        quantity: 1,
+      })),
+    };
+
+    try {
+      // POST request to your Laravel backend
+      await api.post("/request-document", payload);
+
+      // Success: Clear form and notify user
+      setSelectedDocs([]);
+      setPurpose("");
+      alert("Request submitted successfully!");
+    } catch (err) {
+      console.error("Submission error:", err);
+      setError(err.response?.data?.message || "Failed to submit request.");
+      alert(
+        "Error: " + (err.response?.data?.message || "Something went wrong."),
+      );
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+  // -------------------------
 
   return (
     <div className="max-w-5xl mx-auto animate-in fade-in slide-in-from-bottom-4 duration-500 pb-20">
@@ -104,11 +143,11 @@ const NewRequest = () => {
                         : "bg-gray-100 text-gray-300 border border-gray-200"
                     }`}
                   >
-                    <CheckCircle2
-                      size={24}
-                      fill={isSelected ? "white" : "none"}
-                      strokeWidth={3}
-                    />
+                    {isSelected ? (
+                      <Check size={20} strokeWidth={4} />
+                    ) : (
+                      <CheckCircle2 size={24} strokeWidth={2} />
+                    )}
                   </div>
 
                   <div className="flex-1">
@@ -125,7 +164,6 @@ const NewRequest = () => {
                       </span>
                     </div>
 
-                    {/* --- FIX APPLIED HERE --- */}
                     {doc.requirements && doc.requirements.length > 0 ? (
                       <div
                         className={`text-xs font-medium leading-relaxed ${isSelected ? "text-emerald-100" : "text-gray-500"}`}
@@ -146,7 +184,6 @@ const NewRequest = () => {
                         No requirements listed.
                       </p>
                     )}
-                    {/* ------------------------ */}
                   </div>
                 </div>
               );
@@ -160,7 +197,7 @@ const NewRequest = () => {
             </label>
             <textarea
               rows="4"
-              placeholder="Please explain why you are requesting these documents (e.g., Employment, Scholarship, etc.)"
+              placeholder="Please explain why you are requesting these documents"
               className="w-full bg-white border-2 border-gray-200 rounded-2xl p-5 text-sm font-medium outline-none focus:ring-4 focus:ring-emerald-500/10 focus:border-emerald-500 transition-all shadow-sm"
               value={purpose}
               onChange={(e) => setPurpose(e.target.value)}
@@ -210,11 +247,26 @@ const NewRequest = () => {
                 </span>
               </div>
 
+              {/* --- SUBMIT BUTTON --- */}
               <button
-                disabled={selectedDocs.length === 0 || !purpose || isLoading}
+                onClick={handleSubmit}
+                disabled={
+                  selectedDocs.length === 0 ||
+                  !purpose ||
+                  isSubmitting ||
+                  isLoading
+                }
                 className="w-full bg-gray-900 text-white py-5 rounded-2xl font-black text-xs uppercase tracking-widest flex items-center justify-center gap-3 hover:bg-emerald-600 disabled:bg-gray-100 disabled:text-gray-400 transition-all shadow-xl active:scale-95"
               >
-                Confirm and Submit <ArrowRight size={18} />
+                {isSubmitting ? (
+                  <>
+                    <Loader2 className="animate-spin" size={18} /> Submitting...
+                  </>
+                ) : (
+                  <>
+                    Confirm and Submit <ArrowRight size={18} />
+                  </>
+                )}
               </button>
 
               <div className="mt-6 flex gap-3 items-start p-4 bg-amber-50 rounded-2xl border border-amber-100">
