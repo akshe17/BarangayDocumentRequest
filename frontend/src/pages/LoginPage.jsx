@@ -125,7 +125,7 @@ const LoginPage = () => {
           <form className="space-y-6" onSubmit={handleSubmit}>
             <div className="space-y-2 animate-slide-up">
               <label className="text-xs font-bold text-gray-600 uppercase tracking-widest ml-1">
-                Email / Username
+                Email
               </label>
               <div className="relative group">
                 <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none text-gray-400 group-focus-within:text-emerald-600">
