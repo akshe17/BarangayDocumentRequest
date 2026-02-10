@@ -43,4 +43,82 @@ class DocumentRequestController extends Controller
             'request' => $docRequest
         ], 201);
     }
+public function getHistory()
+{
+    try {
+        $resident = auth()->user()->resident;
+        
+        if (!$resident) {
+            return response()->json(['message' => 'User is not linked to a resident'], 400);
+        }
+
+        $requests = DocumentRequest::where('resident_id', $resident->resident_id)
+            ->with([
+                'items.document', // Load document details for each item
+                'status'          // Load status details
+            ])
+            ->orderBy('request_date', 'desc')
+            ->get();
+
+        // Debug: Log the data to see what's being returned
+        \Log::info('Request History:', ['data' => $requests->toArray()]);
+
+        return response()->json($requests, 200);
+        
+    } catch (\Exception $e) {
+        \Log::error('Error fetching history:', ['error' => $e->getMessage()]);
+        return response()->json([
+            'message' => 'Error fetching history',
+            'error' => $e->getMessage()
+        ], 500);
+    }
 }
+
+// app/Http/Controllers/DocumentRequestController.php
+
+// app/Http/Controllers/DocumentRequestController.php
+
+public function getDashboardStats()
+{
+    try {
+        $resident = auth()->user()->resident;
+        
+        if (!$resident) {
+            return response()->json(['message' => 'User is not linked to a resident'], 400);
+        }
+
+        // Get all requests for the resident
+        $allRequests = DocumentRequest::where('resident_id', $resident->resident_id)
+            ->with('status')
+            ->get();
+
+        // Calculate Stats
+        $stats = [
+            'total' => $allRequests->count(),
+            'pending' => $allRequests->where('status.status_name', 'pending')->count(),
+            'approved' => $allRequests->where('status.status_name', 'approved')->count(),
+            'completed' => $allRequests->where('status.status_name', 'completed')->count(),
+            'rejected' => $allRequests->where('status.status_name', 'rejected')->count(),
+        ];
+
+        // Get recent requests (last 5)
+        $recentRequests = DocumentRequest::where('resident_id', $resident->resident_id)
+            ->with(['items.document', 'status'])
+            ->orderBy('request_date', 'desc')
+            ->limit(5) // Increased limit to show more
+            ->get();
+
+        return response()->json([
+            'stats' => $stats,
+            'recent_requests' => $recentRequests,
+        ], 200);
+
+    } catch (\Exception $e) {
+        return response()->json([
+            'message' => 'Error fetching dashboard data',
+            'error' => $e->getMessage()
+        ], 500);
+    }
+}
+}
+

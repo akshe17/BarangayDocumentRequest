@@ -5,8 +5,21 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Model;
 
 class RequestItem extends Model
-{protected $primaryKey = 'item_id'; //
-    protected $fillable = ['request_id', 'document_id', 'quantity']; //
+{
+    protected $table = 'request_items'; // Make sure this matches your table name
+    protected $primaryKey = 'item_id'; // Adjust if your primary key is different
+    
+    protected $fillable = ['request_id', 'document_id', 'quantity'];
 
-    public function type() { return $this->belongsTo(DocumentType::class, 'document_id'); } //
+    // Relationship to DocumentRequest
+    public function documentRequest()
+    {
+        return $this->belongsTo(DocumentRequest::class, 'request_id', 'request_id');
+    }
+
+    // ADD THIS RELATIONSHIP - This is what's missing!
+    public function document()
+    {
+        return $this->belongsTo(DocumentType::class, 'document_id', 'document_id');
+    }
 }

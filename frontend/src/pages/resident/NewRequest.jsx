@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from "react";
-import api from "../../axious/api"; // Ensure this path is correct
+import api from "../../axious/api";
+import Toast from "../../components/toast";
 import {
   FileText,
   Info,
@@ -18,6 +19,21 @@ const NewRequest = () => {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState(null);
 
+  // Toast state
+  const [toast, setToast] = useState({
+    show: false,
+    message: "",
+    type: "success",
+  });
+
+  // Toast trigger function
+  const triggerToast = (message, type = "success") => {
+    setToast({ show: true, message, type });
+    setTimeout(() => {
+      setToast({ show: false, message: "", type: "success" });
+    }, 4000);
+  };
+
   useEffect(() => {
     fetchAvailableDocuments();
   }, []);
@@ -25,13 +41,13 @@ const NewRequest = () => {
   const fetchAvailableDocuments = async () => {
     setIsLoading(true);
     try {
-      // Assuming this endpoint returns documents with their requirements
       const response = await api.get("/documents");
       setDocumentList(response.data);
       setError(null);
     } catch (err) {
       console.error("Error fetching documents:", err);
       setError("Failed to load documents.");
+      triggerToast("Failed to load documents. Please try again.", "error");
     } finally {
       setIsLoading(false);
     }
@@ -52,18 +68,21 @@ const NewRequest = () => {
     0,
   );
 
-  // --- SUBMISSION LOGIC ---
   const handleSubmit = async () => {
-    if (selectedDocs.length === 0 || !purpose) return;
+    if (selectedDocs.length === 0 || !purpose) {
+      triggerToast(
+        "Please select at least one document and provide a purpose.",
+        "warning",
+      );
+      return;
+    }
 
     setIsSubmitting(true);
     setError(null);
 
-    // Prepare data based on your Eloquent Models
     const payload = {
       purpose: purpose,
-      status_id: 1, // 1 = Pending
-      // Send document IDs and assume quantity 1 based on UI
+      status_id: 1,
       document_items: selectedDocs.map((doc) => ({
         document_id: doc.document_id,
         quantity: 1,
@@ -71,27 +90,45 @@ const NewRequest = () => {
     };
 
     try {
-      // POST request to your Laravel backend
       await api.post("/request-document", payload);
 
       // Success: Clear form and notify user
       setSelectedDocs([]);
       setPurpose("");
-      alert("Request submitted successfully!");
+      triggerToast(
+        "Request submitted successfully! You can track it in your history.",
+        "success",
+      );
     } catch (err) {
       console.error("Submission error:", err);
+
+      // Handle validation errors
+      if (err.response?.data?.errors) {
+        const firstError = Object.values(err.response.data.errors)[0][0];
+        triggerToast(firstError, "error");
+      } else {
+        const errorMessage =
+          err.response?.data?.message ||
+          "Failed to submit request. Please try again.";
+        triggerToast(errorMessage, "error");
+      }
+
       setError(err.response?.data?.message || "Failed to submit request.");
-      alert(
-        "Error: " + (err.response?.data?.message || "Something went wrong."),
-      );
     } finally {
       setIsSubmitting(false);
     }
   };
-  // -------------------------
 
   return (
     <div className="max-w-5xl mx-auto animate-in fade-in slide-in-from-bottom-4 duration-500 pb-20">
+      {/* Toast Component */}
+      <Toast
+        show={toast.show}
+        message={toast.message}
+        type={toast.type}
+        onClose={() => setToast({ ...toast, show: false })}
+      />
+
       {/* HEADER */}
       <div className="mb-10">
         <h1 className="text-3xl font-black text-gray-900 tracking-tight">
@@ -117,6 +154,12 @@ const NewRequest = () => {
           ) : error ? (
             <div className="text-center py-10 text-red-500 bg-red-50 rounded-xl">
               {error}
+              <button
+                onClick={fetchAvailableDocuments}
+                className="mt-4 px-4 py-2 bg-red-600 text-white rounded-lg text-sm font-semibold hover:bg-red-700 transition-colors"
+              >
+                Retry
+              </button>
             </div>
           ) : (
             documentList.map((doc) => {
@@ -247,7 +290,7 @@ const NewRequest = () => {
                 </span>
               </div>
 
-              {/* --- SUBMIT BUTTON --- */}
+              {/* SUBMIT BUTTON */}
               <button
                 onClick={handleSubmit}
                 disabled={

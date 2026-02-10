@@ -33,7 +33,8 @@ Route::delete('/documents/{id}', [DocumentController::class, 'destroy']);
 
 
   Route::post('/request-document', [DocumentRequestController::class, 'store']);
-
+  Route::get('/request-document/history', [DocumentRequestController::class, 'getHistory']);
+  Route::get('/resident/dashboard', [DocumentRequestController::class, 'getDashboardStats']);
      Route::post('/logout', [AuthController::class, 'logout']);
 
 
