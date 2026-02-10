@@ -1,73 +1,125 @@
-import React from "react";
-import { Users, FileCheck, Clock, TrendingUp } from "lucide-react";
+import React, { useState, useEffect } from "react";
+import api from "../axious/api";
 import {
-  BarChart,
-  Bar,
+  Users,
+  FileText,
+  Clock,
+  CheckCircle2,
+  XCircle,
+  Loader2,
+  AlertTriangle,
+} from "lucide-react";
+import {
+  PieChart,
+  Pie,
+  Cell,
+  LineChart,
+  Line,
   XAxis,
   YAxis,
   CartesianGrid,
   Tooltip,
   ResponsiveContainer,
-  PieChart,
-  Pie,
-  Cell,
   Legend,
 } from "recharts";
 
 const Overview = () => {
-  const stats = [
+  const [dashboardData, setDashboardData] = useState({
+    stats: {
+      total_residents: 0,
+      total_requests: 0,
+      pending_requests: 0,
+      approved_requests: 0,
+      completed_requests: 0,
+      rejected_requests: 0,
+    },
+    trends: {
+      residents: 0,
+      pending: 0,
+    },
+    document_distribution: [],
+    trend_data: [],
+  });
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState(null);
+
+  useEffect(() => {
+    fetchDashboardData();
+  }, []);
+
+  const fetchDashboardData = async () => {
+    setIsLoading(true);
+    setError(null);
+    try {
+      const response = await api.get("/admin/dashboard/overview");
+      setDashboardData(response.data);
+    } catch (err) {
+      console.error("Error fetching dashboard data:", err);
+      setError("Failed to load dashboard data");
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const statsConfig = [
     {
       label: "Total Residents",
-      value: "1,284",
-      icon: <Users />,
-      color: "bg-gradient-to-br from-blue-500 to-blue-600",
-      lightBg: "bg-blue-50",
-      trend: "+5.2%",
+      value: dashboardData.stats.total_residents.toLocaleString(),
+      icon: Users,
+      color: "text-blue-600",
+      bg: "bg-blue-100",
+      trend: dashboardData.trends.residents,
     },
     {
-      label: "Pending Requests",
-      value: "24",
-      icon: <Clock />,
-      color: "bg-gradient-to-br from-amber-500 to-orange-500",
-      lightBg: "bg-amber-50",
-      trend: "-12%",
+      label: "Total Requests",
+      value: dashboardData.stats.total_requests.toLocaleString(),
+      icon: FileText,
+      color: "text-gray-600",
+      bg: "bg-gray-100",
     },
     {
-      label: "Completed Today",
-      value: "15",
-      icon: <FileCheck />,
-      color: "bg-gradient-to-br from-emerald-500 to-green-600",
-      lightBg: "bg-emerald-50",
-      trend: "+8.1%",
+      label: "Pending",
+      value: dashboardData.stats.pending_requests.toLocaleString(),
+      icon: Clock,
+      color: "text-amber-600",
+      bg: "bg-amber-100",
+      trend: dashboardData.trends.pending,
     },
     {
-      label: "Growth Rate",
-      value: "+12%",
-      icon: <TrendingUp />,
-      color: "bg-gradient-to-br from-indigo-500 to-purple-600",
-      lightBg: "bg-indigo-50",
-      trend: "+2.4%",
+      label: "Approved",
+      value: dashboardData.stats.approved_requests.toLocaleString(),
+      icon: CheckCircle2,
+      color: "text-sky-600",
+      bg: "bg-sky-100",
+    },
+    {
+      label: "Completed",
+      value: dashboardData.stats.completed_requests.toLocaleString(),
+      icon: CheckCircle2,
+      color: "text-emerald-600",
+      bg: "bg-emerald-100",
+    },
+    {
+      label: "Rejected",
+      value: dashboardData.stats.rejected_requests.toLocaleString(),
+      icon: XCircle,
+      color: "text-red-600",
+      bg: "bg-red-100",
     },
   ];
 
-  const chartData = [
-    { name: "Brgy Clearance", value: 400 },
-    { name: "Indigency", value: 300 },
-    { name: "Residency", value: 200 },
-    { name: "Permits", value: 100 },
-  ];
+  const PIE_COLORS = ["#10b981", "#3b82f6", "#f59e0b", "#ef4444"];
 
-  const COLORS = ["#10b981", "#34d399", "#6ee7b7", "#a7f3d0"];
-
-  const CustomTooltip = ({ active, payload }) => {
+  const CustomTooltip = ({ active, payload, label }) => {
     if (active && payload && payload.length) {
       return (
-        <div className="bg-white px-4 py-3 rounded-xl shadow-lg border border-gray-100">
-          <p className="text-sm font-semibold text-gray-800">
-            {payload[0].payload.name}
+        <div className="bg-white p-4 rounded-lg shadow-xl border border-gray-100">
+          <p className="text-sm font-bold text-gray-900">
+            {label || payload[0].payload.name}
           </p>
-          <p className="text-lg font-bold text-emerald-600">
-            {payload[0].value} requests
+          <p className="text-lg font-black text-emerald-600">
+            {payload[0].value}{" "}
+            <span className="text-sm font-medium text-gray-500">requests</span>
           </p>
         </div>
       );
@@ -75,46 +127,56 @@ const Overview = () => {
     return null;
   };
 
+  if (isLoading)
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <Loader2 className="w-12 h-12 animate-spin text-emerald-600" />
+      </div>
+    );
+  if (error)
+    return (
+      <div className="text-center text-red-600 pt-20 flex flex-col items-center">
+        <AlertTriangle size={40} /> {error}
+      </div>
+    );
+
   return (
-    <div className="space-y-6 p-6 bg-gradient-to-br from-gray-50 to-gray-100 min-h-screen">
-      {/* Header */}
-      <div className="mb-8">
-        <h1 className="text-3xl font-black text-gray-900 mb-2">
+    <div className="space-y-8 p-8 bg-gray-50 min-h-screen">
+      <div className="flex justify-between items-center">
+        <h1 className="text-4xl font-extrabold text-gray-950 tracking-tight">
           Dashboard Overview
         </h1>
-        <p className="text-gray-500">
-          Welcome back! Here's what's happening today.
-        </p>
+        <button
+          onClick={fetchDashboardData}
+          className="px-4 py-2 bg-white border border-gray-200 rounded-xl text-sm font-semibold hover:bg-gray-50 shadow-sm"
+        >
+          Refresh Data
+        </button>
       </div>
 
-      {/* Stats Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-5">
-        {stats.map((stat, i) => (
+      {/* Stats Grid - Improved Design */}
+      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-6">
+        {statsConfig.map((stat, i) => (
           <div
             key={i}
-            className="group bg-white p-6 rounded-2xl border border-gray-200 shadow-sm hover:shadow-xl hover:-translate-y-1 transition-all duration-300 cursor-pointer"
+            className="bg-white p-6 rounded-3xl border border-gray-100 shadow-sm flex flex-col justify-between"
           >
-            <div className="flex items-start justify-between mb-4">
-              <div
-                className={`${stat.color} p-3 rounded-xl text-white shadow-lg group-hover:scale-110 transition-transform duration-300`}
-              >
-                {React.cloneElement(stat.icon, { size: 22, strokeWidth: 2.5 })}
+            <div className="flex justify-between items-start mb-4">
+              <div className={`${stat.bg} ${stat.color} p-3 rounded-2xl`}>
+                <stat.icon size={24} />
               </div>
-              <span
-                className={`text-xs font-bold px-2 py-1 rounded-full ${
-                  stat.trend.startsWith("+")
-                    ? "bg-emerald-100 text-emerald-700"
-                    : "bg-red-100 text-red-700"
-                }`}
-              >
-                {stat.trend}
-              </span>
+              {stat.trend !== undefined && (
+                <span
+                  className={`text-xs font-bold px-2 py-1 rounded-full ${stat.trend >= 0 ? "bg-emerald-50 text-emerald-700" : "bg-red-50 text-red-700"}`}
+                >
+                  {stat.trend >= 0 ? "+" : ""}
+                  {stat.trend}%
+                </span>
+              )}
             </div>
             <div>
-              <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1">
-                {stat.label}
-              </p>
-              <h3 className="text-3xl font-black text-gray-900">
+              <p className="text-sm font-medium text-gray-500">{stat.label}</p>
+              <h3 className="text-4xl font-extrabold text-gray-950 tracking-tight">
                 {stat.value}
               </h3>
             </div>
@@ -122,136 +184,91 @@ const Overview = () => {
         ))}
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Main Chart */}
-        <div className="lg:col-span-2 bg-white p-8 rounded-2xl border border-gray-200 shadow-sm">
-          <div className="flex items-center justify-between mb-6">
-            <div>
-              <h3 className="text-xl font-bold text-gray-900">
-                Document Request Trends
-              </h3>
-              <p className="text-sm text-gray-500 mt-1">
-                Last 30 days performance
-              </p>
-            </div>
-            <div className="flex gap-2">
-              <button className="px-4 py-2 text-sm font-semibold text-emerald-600 bg-emerald-50 rounded-lg hover:bg-emerald-100 transition-colors">
-                Week
-              </button>
-              <button className="px-4 py-2 text-sm font-semibold text-gray-500 hover:bg-gray-100 rounded-lg transition-colors">
-                Month
-              </button>
-            </div>
+      {/* Charts Section - Larger and labeled */}
+      <div className="grid grid-cols-1 xl:grid-cols-3 gap-8">
+        {/* Main Chart - Requests Over Time */}
+        <div className="xl:col-span-2 bg-white p-8 rounded-3xl border border-gray-100 shadow-sm">
+          <div className="flex justify-between items-center mb-6">
+            <h3 className="text-2xl font-bold text-gray-950">
+              Request Volume Trends
+            </h3>
+            <span className="text-sm font-medium text-gray-500">
+              Last 7 Days
+            </span>
           </div>
-          <div className="h-80 w-full">
+          <div className="h-96 w-full">
             <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={chartData}>
-                <defs>
-                  <linearGradient id="barGradient" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="0%" stopColor="#10b981" stopOpacity={1} />
-                    <stop offset="100%" stopColor="#34d399" stopOpacity={0.8} />
-                  </linearGradient>
-                </defs>
+              <LineChart
+                data={dashboardData.trend_data}
+                margin={{ top: 10, right: 10, left: 0, bottom: 0 }}
+              >
                 <CartesianGrid
                   strokeDasharray="3 3"
                   vertical={false}
-                  stroke="#e5e7eb"
+                  stroke="#f0f0f0"
                 />
                 <XAxis
-                  dataKey="name"
+                  dataKey="date"
                   axisLine={false}
                   tickLine={false}
-                  tick={{ fill: "#6b7280", fontSize: 13, fontWeight: 500 }}
+                  tick={{ fill: "#6b7280", fontSize: 12 }}
                 />
                 <YAxis
                   axisLine={false}
                   tickLine={false}
-                  tick={{ fill: "#6b7280", fontSize: 13 }}
+                  tick={{ fill: "#6b7280", fontSize: 12 }}
                 />
-                <Tooltip
-                  content={<CustomTooltip />}
-                  cursor={{ fill: "#f0fdf4" }}
+                <Tooltip content={<CustomTooltip />} />
+                <Line
+                  type="monotone"
+                  dataKey="requests"
+                  stroke="#10b981"
+                  strokeWidth={4}
+                  dot={{ fill: "#10b981", r: 5 }}
+                  activeDot={{ r: 7 }}
                 />
-                <Bar
-                  dataKey="value"
-                  fill="url(#barGradient)"
-                  radius={[12, 12, 0, 0]}
-                  barSize={50}
-                />
-              </BarChart>
+              </LineChart>
             </ResponsiveContainer>
           </div>
         </div>
 
-        {/* Distribution Pie */}
-        <div className="bg-white p-8 rounded-2xl border border-gray-200 shadow-sm">
-          <h3 className="text-xl font-bold text-gray-900 mb-1">
-            Request Distribution
+        {/* Pie Chart - Distribution */}
+        <div className="bg-white p-8 rounded-3xl border border-gray-100 shadow-sm">
+          <h3 className="text-2xl font-bold text-gray-950 mb-6">
+            Document Type Breakdown
           </h3>
-          <p className="text-sm text-gray-500 mb-6">Document type breakdown</p>
-          <div className="h-56 w-full flex items-center justify-center">
-            <ResponsiveContainer width="100%" height="100%">
-              <PieChart>
-                <defs>
-                  {COLORS.map((color, index) => (
-                    <linearGradient
-                      key={index}
-                      id={`pieGradient${index}`}
-                      x1="0"
-                      y1="0"
-                      x2="1"
-                      y2="1"
-                    >
-                      <stop offset="0%" stopColor={color} stopOpacity={1} />
-                      <stop offset="100%" stopColor={color} stopOpacity={0.7} />
-                    </linearGradient>
-                  ))}
-                </defs>
-                <Pie
-                  data={chartData}
-                  innerRadius={55}
-                  outerRadius={85}
-                  paddingAngle={3}
-                  dataKey="value"
-                >
-                  {chartData.map((entry, index) => (
-                    <Cell
-                      key={`cell-${index}`}
-                      fill={`url(#pieGradient${index})`}
-                      className="hover:opacity-80 transition-opacity cursor-pointer"
-                    />
-                  ))}
-                </Pie>
-                <Tooltip content={<CustomTooltip />} />
-              </PieChart>
-            </ResponsiveContainer>
-          </div>
-          <div className="mt-6 space-y-3">
-            {chartData.map((item, i) => (
-              <div
-                key={i}
-                className="flex justify-between items-center p-3 rounded-xl hover:bg-gray-50 transition-colors cursor-pointer group"
-              >
-                <div className="flex items-center gap-3">
-                  <div
-                    className="w-3 h-3 rounded-full shadow-sm group-hover:scale-125 transition-transform"
-                    style={{ backgroundColor: COLORS[i] }}
-                  ></div>
-                  <span className="text-sm font-medium text-gray-700">
-                    {item.name}
-                  </span>
-                </div>
-                <div className="text-right">
-                  <span className="text-lg font-bold text-gray-900">
-                    {item.value}
-                  </span>
-                  <span className="text-xs text-gray-500 ml-2">
-                    ({Math.round((item.value / 1000) * 100)}%)
-                  </span>
-                </div>
-              </div>
-            ))}
-          </div>
+          {dashboardData.document_distribution.length > 0 ? (
+            <div className="h-96 w-full">
+              <ResponsiveContainer width="100%" height="100%">
+                <PieChart>
+                  <Pie
+                    data={dashboardData.document_distribution}
+                    innerRadius={70}
+                    outerRadius={100}
+                    paddingAngle={5}
+                    dataKey="value"
+                    label={({ name, percent }) =>
+                      `${name} (${(percent * 100).toFixed(0)}%)`
+                    }
+                    labelLine={false}
+                  >
+                    {dashboardData.document_distribution.map((entry, index) => (
+                      <Cell
+                        key={index}
+                        fill={PIE_COLORS[index % PIE_COLORS.length]}
+                      />
+                    ))}
+                  </Pie>
+                  <Tooltip content={<CustomTooltip />} />
+                  <Legend iconType="circle" />
+                </PieChart>
+              </ResponsiveContainer>
+            </div>
+          ) : (
+            <div className="text-center py-20 text-gray-400">
+              No distribution data available
+            </div>
+          )}
         </div>
       </div>
     </div>

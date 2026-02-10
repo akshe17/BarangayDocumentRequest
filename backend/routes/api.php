@@ -8,6 +8,8 @@ use App\Http\Controllers\CivilStatusController;
 use App\Http\Controllers\ResidentController;
 use App\Http\Controllers\DocumentController;
 use App\Http\Controllers\DocumentRequestController;
+
+use App\Http\Controllers\AdminDashboardController;
 // routes/api.php
 
 Route::middleware('custom.auth')->get('/user', function (Request $request) {
@@ -35,6 +37,10 @@ Route::delete('/documents/{id}', [DocumentController::class, 'destroy']);
   Route::post('/request-document', [DocumentRequestController::class, 'store']);
   Route::get('/request-document/history', [DocumentRequestController::class, 'getHistory']);
   Route::get('/resident/dashboard', [DocumentRequestController::class, 'getDashboardStats']);
+
+    Route::get('/admin/dashboard/overview', [AdminDashboardController::class, 'getOverview']);
+
+
      Route::post('/logout', [AuthController::class, 'logout']);
 
 
