@@ -20,7 +20,6 @@ import {
   CartesianGrid,
   Tooltip,
   ResponsiveContainer,
-  Legend,
 } from "recharts";
 
 const Overview = () => {
@@ -61,65 +60,64 @@ const Overview = () => {
     }
   };
 
-  const statsConfig = [
+  const stats = [
     {
       label: "Total Residents",
       value: dashboardData.stats.total_residents.toLocaleString(),
-      icon: Users,
-      color: "text-blue-600",
-      bg: "bg-blue-100",
-      trend: dashboardData.trends.residents,
+      icon: <Users />,
+      color: "from-blue-500 to-blue-600",
+      trend:
+        dashboardData.trends.residents >= 0
+          ? `+${dashboardData.trends.residents}%`
+          : `${dashboardData.trends.residents}%`,
     },
     {
       label: "Total Requests",
       value: dashboardData.stats.total_requests.toLocaleString(),
-      icon: FileText,
-      color: "text-gray-600",
-      bg: "bg-gray-100",
+      icon: <FileText />,
+      color: "from-gray-500 to-gray-600",
     },
     {
       label: "Pending",
       value: dashboardData.stats.pending_requests.toLocaleString(),
-      icon: Clock,
-      color: "text-amber-600",
-      bg: "bg-amber-100",
-      trend: dashboardData.trends.pending,
+      icon: <Clock />,
+      color: "from-amber-500 to-orange-500",
+      trend:
+        dashboardData.trends.pending >= 0
+          ? `+${dashboardData.trends.pending}%`
+          : `${dashboardData.trends.pending}%`,
     },
     {
       label: "Approved",
       value: dashboardData.stats.approved_requests.toLocaleString(),
-      icon: CheckCircle2,
-      color: "text-sky-600",
-      bg: "bg-sky-100",
+      icon: <CheckCircle2 />,
+      color: "from-blue-400 to-blue-600",
     },
     {
       label: "Completed",
       value: dashboardData.stats.completed_requests.toLocaleString(),
-      icon: CheckCircle2,
-      color: "text-emerald-600",
-      bg: "bg-emerald-100",
+      icon: <CheckCircle2 />,
+      color: "from-emerald-500 to-green-600",
     },
     {
       label: "Rejected",
       value: dashboardData.stats.rejected_requests.toLocaleString(),
-      icon: XCircle,
-      color: "text-red-600",
-      bg: "bg-red-100",
+      icon: <XCircle />,
+      color: "from-red-500 to-red-600",
     },
   ];
 
-  const PIE_COLORS = ["#10b981", "#3b82f6", "#f59e0b", "#ef4444"];
+  const COLORS = ["#10b981", "#3b82f6", "#f59e0b", "#ef4444"];
 
-  const CustomTooltip = ({ active, payload, label }) => {
+  const CustomTooltip = ({ active, payload }) => {
     if (active && payload && payload.length) {
       return (
-        <div className="bg-white p-4 rounded-lg shadow-xl border border-gray-100">
-          <p className="text-sm font-bold text-gray-900">
-            {label || payload[0].payload.name}
+        <div className="bg-white px-4 py-3 rounded-xl shadow-lg border border-gray-100">
+          <p className="text-sm font-semibold text-gray-800">
+            {payload[0].payload.name || payload[0].payload.date}
           </p>
-          <p className="text-lg font-black text-emerald-600">
-            {payload[0].value}{" "}
-            <span className="text-sm font-medium text-gray-500">requests</span>
+          <p className="text-lg font-bold text-emerald-600">
+            {payload[0].value} {payload[0].payload.name ? "requests" : ""}
           </p>
         </div>
       );
@@ -134,49 +132,41 @@ const Overview = () => {
       </div>
     );
   if (error)
-    return (
-      <div className="text-center text-red-600 pt-20 flex flex-col items-center">
-        <AlertTriangle size={40} /> {error}
-      </div>
-    );
+    return <div className="text-center text-red-600 pt-20">{error}</div>;
 
   return (
-    <div className="space-y-8 p-8 bg-gray-50 min-h-screen">
-      <div className="flex justify-between items-center">
-        <h1 className="text-4xl font-extrabold text-gray-950 tracking-tight">
+    <div className="space-y-6 p-6 bg-gradient-to-br from-gray-50 to-gray-100 min-h-screen">
+      <div className="mb-8">
+        <h1 className="text-3xl font-black text-gray-900 mb-2">
           Dashboard Overview
         </h1>
-        <button
-          onClick={fetchDashboardData}
-          className="px-4 py-2 bg-white border border-gray-200 rounded-xl text-sm font-semibold hover:bg-gray-50 shadow-sm"
-        >
-          Refresh Data
-        </button>
       </div>
 
-      {/* Stats Grid - Improved Design */}
-      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-6">
-        {statsConfig.map((stat, i) => (
+      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-5">
+        {stats.map((stat, i) => (
           <div
             key={i}
-            className="bg-white p-6 rounded-3xl border border-gray-100 shadow-sm flex flex-col justify-between"
+            className="group bg-white p-5 rounded-2xl border border-gray-200 shadow-sm hover:shadow-lg transition-all"
           >
-            <div className="flex justify-between items-start mb-4">
-              <div className={`${stat.bg} ${stat.color} p-3 rounded-2xl`}>
-                <stat.icon size={24} />
+            <div className="flex items-start justify-between mb-3">
+              <div
+                className={`bg-gradient-to-br ${stat.color} p-2.5 rounded-xl text-white shadow-lg`}
+              >
+                {React.cloneElement(stat.icon, { size: 20 })}
               </div>
-              {stat.trend !== undefined && (
+              {stat.trend && (
                 <span
-                  className={`text-xs font-bold px-2 py-1 rounded-full ${stat.trend >= 0 ? "bg-emerald-50 text-emerald-700" : "bg-red-50 text-red-700"}`}
+                  className={`text-xs font-bold px-2 py-0.5 rounded-full ${stat.trend.startsWith("+") ? "bg-emerald-100 text-emerald-700" : "bg-red-100 text-red-700"}`}
                 >
-                  {stat.trend >= 0 ? "+" : ""}
-                  {stat.trend}%
+                  {stat.trend}
                 </span>
               )}
             </div>
             <div>
-              <p className="text-sm font-medium text-gray-500">{stat.label}</p>
-              <h3 className="text-4xl font-extrabold text-gray-950 tracking-tight">
+              <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-0.5">
+                {stat.label}
+              </p>
+              <h3 className="text-2xl font-black text-gray-900">
                 {stat.value}
               </h3>
             </div>
@@ -184,28 +174,18 @@ const Overview = () => {
         ))}
       </div>
 
-      {/* Charts Section - Larger and labeled */}
-      <div className="grid grid-cols-1 xl:grid-cols-3 gap-8">
-        {/* Main Chart - Requests Over Time */}
-        <div className="xl:col-span-2 bg-white p-8 rounded-3xl border border-gray-100 shadow-sm">
-          <div className="flex justify-between items-center mb-6">
-            <h3 className="text-2xl font-bold text-gray-950">
-              Request Volume Trends
-            </h3>
-            <span className="text-sm font-medium text-gray-500">
-              Last 7 Days
-            </span>
-          </div>
-          <div className="h-96 w-full">
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <div className="lg:col-span-2 bg-white p-8 rounded-2xl border border-gray-200 shadow-sm">
+          <h3 className="text-xl font-bold text-gray-900 mb-6">
+            Request Trends (Last 7 Days)
+          </h3>
+          <div className="h-100 w-full">
             <ResponsiveContainer width="100%" height="100%">
-              <LineChart
-                data={dashboardData.trend_data}
-                margin={{ top: 10, right: 10, left: 0, bottom: 0 }}
-              >
+              <LineChart data={dashboardData.trend_data}>
                 <CartesianGrid
                   strokeDasharray="3 3"
                   vertical={false}
-                  stroke="#f0f0f0"
+                  stroke="#e5e7eb"
                 />
                 <XAxis
                   dataKey="date"
@@ -223,50 +203,47 @@ const Overview = () => {
                   type="monotone"
                   dataKey="requests"
                   stroke="#10b981"
-                  strokeWidth={4}
-                  dot={{ fill: "#10b981", r: 5 }}
-                  activeDot={{ r: 7 }}
+                  strokeWidth={3}
+                  dot={{ fill: "#10b981", r: 4 }}
+                  activeDot={{ r: 6 }}
                 />
               </LineChart>
             </ResponsiveContainer>
           </div>
         </div>
 
-        {/* Pie Chart - Distribution */}
-        <div className="bg-white p-8 rounded-3xl border border-gray-100 shadow-sm">
-          <h3 className="text-2xl font-bold text-gray-950 mb-6">
-            Document Type Breakdown
+        <div className="bg-white p-8 rounded-2xl border border-gray-200 shadow-sm">
+          <h3 className="text-xl font-bold text-gray-900 mb-6">
+            Request Distribution
           </h3>
           {dashboardData.document_distribution.length > 0 ? (
-            <div className="h-96 w-full">
+            <div className="h-70 w-full">
               <ResponsiveContainer width="100%" height="100%">
                 <PieChart>
                   <Pie
                     data={dashboardData.document_distribution}
-                    innerRadius={70}
-                    outerRadius={100}
-                    paddingAngle={5}
+                    innerRadius={50}
+                    outerRadius={80}
+                    paddingAngle={3}
                     dataKey="value"
+                    // --- ADDED LABEL PROPS ---
                     label={({ name, percent }) =>
-                      `${name} (${(percent * 100).toFixed(0)}%)`
+                      `${name} ${(percent * 100).toFixed(0)}%`
                     }
                     labelLine={false}
+                    // --------------------------
                   >
                     {dashboardData.document_distribution.map((entry, index) => (
-                      <Cell
-                        key={index}
-                        fill={PIE_COLORS[index % PIE_COLORS.length]}
-                      />
+                      <Cell key={index} fill={COLORS[index % COLORS.length]} />
                     ))}
                   </Pie>
                   <Tooltip content={<CustomTooltip />} />
-                  <Legend iconType="circle" />
                 </PieChart>
               </ResponsiveContainer>
             </div>
           ) : (
-            <div className="text-center py-20 text-gray-400">
-              No distribution data available
+            <div className="text-center py-10 text-gray-400">
+              No data available
             </div>
           )}
         </div>
