@@ -58,7 +58,7 @@ class DocumentRequestController extends Controller
     {
         // Direct validation
         $validator = Validator::make($request->all(), [
-            'resident_id' => 'required|exists:residents,id',
+          'resident_id' => 'required|exists:residents,resident_id',
             'purpose' => 'required|string',
             'documents' => 'required|array',
         ]);

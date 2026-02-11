@@ -10,7 +10,7 @@ import {
   Loader2,
   Check,
 } from "lucide-react";
-
+import { useAuth } from "../../context/AuthContext";
 const NewRequest = () => {
   const [selectedDocs, setSelectedDocs] = useState([]);
   const [purpose, setPurpose] = useState("");
@@ -18,6 +18,7 @@ const NewRequest = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState(null);
+  const { user } = useAuth();
 
   // Toast state
   const [toast, setToast] = useState({
@@ -67,8 +68,8 @@ const NewRequest = () => {
     (acc, curr) => acc + (parseFloat(curr.fee) || 0),
     0,
   );
-
   const handleSubmit = async () => {
+    // 1. Validation check
     if (selectedDocs.length === 0 || !purpose) {
       triggerToast(
         "Please select at least one document and provide a purpose.",
@@ -80,13 +81,13 @@ const NewRequest = () => {
     setIsSubmitting(true);
     setError(null);
 
+    // 2. Prepare payload to match backend 'store' method
     const payload = {
       purpose: purpose,
-      status_id: 1,
-      document_items: selectedDocs.map((doc) => ({
-        document_id: doc.document_id,
-        quantity: 1,
-      })),
+      // Assuming you have the logged-in user's ID available
+      resident_id: user.resident.resident_id,
+      // Backend expects an array of IDs based on 'documents' => 'required|array'
+      documents: selectedDocs.map((doc) => doc.document_id),
     };
 
     try {
@@ -102,10 +103,11 @@ const NewRequest = () => {
     } catch (err) {
       console.error("Submission error:", err);
 
-      // Handle validation errors
+      // Handle validation errors (422)
       if (err.response?.data?.errors) {
-        const firstError = Object.values(err.response.data.errors)[0][0];
-        triggerToast(firstError, "error");
+        // Get the first error message from the validation array
+        const errorMessages = Object.values(err.response.data.errors).flat();
+        triggerToast(errorMessages[0], "error");
       } else {
         const errorMessage =
           err.response?.data?.message ||
