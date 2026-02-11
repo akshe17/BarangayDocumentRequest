@@ -12,6 +12,7 @@ import {
   Image as ImageIcon,
   Eye,
   RefreshCcw,
+  Loader2, // Added for loading icon
 } from "lucide-react";
 
 import api from "../axious/api";
@@ -24,6 +25,11 @@ const AdminResidents = () => {
   const [activeMenu, setActiveMenu] = useState(null);
   const [filterStatus, setFilterStatus] = useState("all");
   const [loading, setLoading] = useState(true);
+
+  // --- ACTION LOADING STATE ---
+  // Tracks if an action (verify/reject) is in progress
+  const [actionLoading, setActionLoading] = useState(false);
+  // ----------------------------
 
   // Rejection Workflow State
   const [isRejecting, setIsRejecting] = useState(false);
@@ -43,10 +49,7 @@ const AdminResidents = () => {
 
   const showToast = (message, type = "success") => {
     setToast({ show: true, message, type });
-    setTimeout(
-      () => setToast({ show: false, message: "", type: "success" }),
-      4000,
-    );
+    setTimeout(() => setToast((prev) => ({ ...prev, show: false })), 4000);
   };
   // -------------------
 
@@ -117,12 +120,15 @@ const AdminResidents = () => {
   };
 
   const closeModal = () => {
+    if (actionLoading) return; // Prevent closing while action is in progress
     setModalType(null);
     setSelectedResident(null);
     setIsRejecting(false);
   };
 
+  // --- HANDLE VERIFY ---
   const handleVerify = async (residentId) => {
+    setActionLoading(true); // Start loading
     try {
       await api.post(`/residents/${residentId}/verify`);
 
@@ -139,9 +145,13 @@ const AdminResidents = () => {
     } catch (error) {
       console.error("Error approving resident:", error);
       showToast("Failed to verify resident", "error");
+    } finally {
+      setActionLoading(false); // Stop loading
     }
   };
+  // ---------------------
 
+  // --- HANDLE REJECT ---
   const handleReject = async (residentId) => {
     // 1. Check if the input is empty
     if (!rejectionReasonInput.trim()) {
@@ -149,6 +159,7 @@ const AdminResidents = () => {
       return;
     }
 
+    setActionLoading(true); // Start loading
     try {
       // 2. Send the request
       await api.post(`/residents/${residentId}/reject`, {
@@ -162,8 +173,6 @@ const AdminResidents = () => {
             ? {
                 ...r,
                 status: "Rejected",
-                // Notice: In the new backend logic, you might not be storing
-                // this permanently in the DB, but updating UI is fine.
                 rejectionReason: rejectionReasonInput,
               }
             : r,
@@ -175,8 +184,11 @@ const AdminResidents = () => {
     } catch (error) {
       console.error("Error rejecting resident:", error);
       showToast("Failed to reject resident", "error");
+    } finally {
+      setActionLoading(false); // Stop loading
     }
   };
+  // ---------------------
 
   const stats = {
     total: residents.length,
@@ -192,7 +204,7 @@ const AdminResidents = () => {
         show={toast.show}
         message={toast.message}
         type={toast.type}
-        onClose={() => setToast({ ...toast, show: false })}
+        onClose={() => setToast((prev) => ({ ...prev, show: false }))}
       />
       {/* ----------------------- */}
 
@@ -443,7 +455,8 @@ const AdminResidents = () => {
                 </div>
                 <button
                   onClick={closeModal}
-                  className="p-2 hover:bg-slate-100 rounded-full transition-colors"
+                  disabled={actionLoading}
+                  className="p-2 hover:bg-slate-100 rounded-full transition-colors disabled:opacity-50"
                 >
                   <X size={20} />
                 </button>
@@ -467,21 +480,31 @@ const AdminResidents = () => {
                     <textarea
                       value={rejectionReasonInput}
                       onChange={(e) => setRejectionReasonInput(e.target.value)}
-                      className="w-full p-4 bg-red-50 border border-red-100 rounded-2xl text-sm focus:ring-2 focus:ring-red-500 outline-none h-32"
+                      disabled={actionLoading}
+                      className="w-full p-4 bg-red-50 border border-red-100 rounded-2xl text-sm focus:ring-2 focus:ring-red-500 outline-none h-32 disabled:opacity-60"
                       placeholder="Example: The ID image is blurry or expired..."
                     />
                     <div className="flex gap-2">
                       <button
                         onClick={() => setIsRejecting(false)}
-                        className="flex-1 py-3 text-sm font-bold text-slate-500"
+                        disabled={actionLoading}
+                        className="flex-1 py-3 text-sm font-bold text-slate-500 disabled:opacity-50"
                       >
                         Cancel
                       </button>
                       <button
                         onClick={() => handleReject(selectedResident.id)}
-                        className="flex-[2] py-3 bg-red-600 text-white rounded-xl text-sm font-bold shadow-lg shadow-red-200"
+                        disabled={actionLoading}
+                        className="flex-[2] py-3 bg-red-600 text-white rounded-xl text-sm font-bold shadow-lg shadow-red-200 hover:bg-red-700 transition-all flex items-center justify-center gap-2 disabled:bg-red-400"
                       >
-                        Confirm Reject
+                        {actionLoading ? (
+                          <>
+                            <Loader2 size={16} className="animate-spin" />
+                            Rejecting...
+                          </>
+                        ) : (
+                          "Confirm Reject"
+                        )}
                       </button>
                     </div>
                   </div>
@@ -496,13 +519,24 @@ const AdminResidents = () => {
                       <div className="flex flex-col gap-2 pt-4">
                         <button
                           onClick={() => handleVerify(selectedResident.id)}
-                          className="w-full py-4 bg-emerald-600 text-white rounded-2xl font-black text-sm shadow-xl shadow-emerald-100 hover:bg-emerald-700 transition-all flex items-center justify-center gap-2"
+                          disabled={actionLoading}
+                          className="w-full py-4 bg-emerald-600 text-white rounded-2xl font-black text-sm shadow-xl shadow-emerald-100 hover:bg-emerald-700 transition-all flex items-center justify-center gap-2 disabled:bg-emerald-400"
                         >
-                          <CheckCircle2 size={18} /> Approve Verification
+                          {actionLoading ? (
+                            <>
+                              <Loader2 size={18} className="animate-spin" />
+                              Approving...
+                            </>
+                          ) : (
+                            <>
+                              <CheckCircle2 size={18} /> Approve Verification
+                            </>
+                          )}
                         </button>
                         <button
                           onClick={() => setIsRejecting(true)}
-                          className="w-full py-4 bg-white border border-slate-200 text-red-600 rounded-2xl font-black text-sm hover:bg-red-50 transition-all"
+                          disabled={actionLoading}
+                          className="w-full py-4 bg-white border border-slate-200 text-red-600 rounded-2xl font-black text-sm hover:bg-red-50 transition-all disabled:opacity-50 disabled:hover:bg-white"
                         >
                           Reject Document
                         </button>

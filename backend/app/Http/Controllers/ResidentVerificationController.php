@@ -31,7 +31,7 @@ class ResidentVerificationController extends Controller
 
     $resident->update([
         'is_verified' => true,
-        'rejection_reason' => null, 
+     
     ]);
 
     // 3. Use the user object to get the user_id

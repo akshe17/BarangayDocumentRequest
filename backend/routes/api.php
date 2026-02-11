@@ -12,6 +12,7 @@ use App\Http\Controllers\DocumentRequestController;
 use App\Http\Controllers\AdminDashboardController;
 use App\Http\Controllers\AdminRequestController;
 use App\Http\Controllers\ResidentVerificationController;
+use App\Http\Controllers\InboxController;
 
 
 // routes/api.php
@@ -64,6 +65,12 @@ Route::delete('/documents/{id}', [DocumentController::class, 'destroy']);
     Route::get('/residents-get', [ResidentVerificationController::class, 'index']);
   Route::post('/residents/{id}/verify', [ResidentVerificationController::class, 'approve']);
 Route::post('/residents/{id}/reject', [ResidentVerificationController::class, 'reject']);
+
+//inbix
+
+// Ensure this is inside your auth middleware group
+Route::get('/audit-logs', [InboxController::class, 'index']);
+
 });
 
 

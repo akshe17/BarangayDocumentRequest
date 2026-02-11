@@ -1,129 +1,58 @@
-import React, { useState, useMemo } from "react";
+import React, { useState, useEffect, useMemo } from "react";
+// Import your Axios instance here
+import api from "../axious/api";
 import {
   Activity,
   Terminal,
   Search,
-  Filter,
   Download,
   Calendar,
   User,
-  FileCheck,
   Edit,
   Trash2,
   UserPlus,
   Settings,
   LogIn,
-  LogOut,
   Shield,
   Clock,
   CheckCircle2,
   XCircle,
   AlertCircle,
+  Loader2,
 } from "lucide-react";
 
 const AuditLogs = () => {
+  const [logs, setLogs] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
   const [searchTerm, setSearchTerm] = useState("");
   const [filterType, setFilterType] = useState("all");
   const [dateFilter, setDateFilter] = useState("today");
 
-  const logs = [
-    {
-      id: 1,
-      action: "Approved Business Permit",
-      description: "Business Permit for REQ-004 approved",
-      user: "Admin Mark",
-      userRole: "Administrator",
-      time: "10:24 AM",
-      date: "Jan 29, 2026",
-      type: "approval",
-      icon: <CheckCircle2 size={18} />,
-      color: "emerald",
-    },
-    {
-      id: 2,
-      action: "Updated Document Price",
-      description: "Changed document price from ₱45 to ₱50",
-      user: "Admin Sarah",
-      userRole: "Super Admin",
-      time: "09:15 AM",
-      date: "Jan 29, 2026",
-      type: "update",
-      icon: <Edit size={18} />,
-      color: "blue",
-    },
-    {
-      id: 3,
-      action: "Verified Resident ID",
-      description: "Approved ID verification for Maria Clara",
-      user: "Admin John",
-      userRole: "Moderator",
-      time: "08:45 AM",
-      date: "Jan 29, 2026",
-      type: "verification",
-      icon: <Shield size={18} />,
-      color: "purple",
-    },
-    {
-      id: 4,
-      action: "Rejected Document Request",
-      description: "Rejected Certificate of Indigency - REQ-005",
-      user: "Admin Sarah",
-      userRole: "Super Admin",
-      time: "08:12 AM",
-      date: "Jan 29, 2026",
-      type: "rejection",
-      icon: <XCircle size={18} />,
-      color: "red",
-    },
-    {
-      id: 5,
-      action: "Created New Resident",
-      description: "Added new resident: Juan Luna",
-      user: "Admin Mark",
-      userRole: "Administrator",
-      time: "07:30 AM",
-      date: "Jan 29, 2026",
-      type: "create",
-      icon: <UserPlus size={18} />,
-      color: "indigo",
-    },
-    {
-      id: 6,
-      action: "Deleted Resident Account",
-      description: "Removed resident account: Test User",
-      user: "Admin Sarah",
-      userRole: "Super Admin",
-      time: "05:22 PM",
-      date: "Jan 28, 2026",
-      type: "delete",
-      icon: <Trash2 size={18} />,
-      color: "red",
-    },
-    {
-      id: 7,
-      action: "User Login",
-      description: "Admin Mark logged into the system",
-      user: "Admin Mark",
-      userRole: "Administrator",
-      time: "07:00 AM",
-      date: "Jan 29, 2026",
-      type: "login",
-      icon: <LogIn size={18} />,
-      color: "gray",
-    },
-    {
-      id: 8,
-      action: "System Settings Changed",
-      description: "Updated notification preferences",
-      user: "Admin Sarah",
-      userRole: "Super Admin",
-      time: "04:45 PM",
-      date: "Jan 28, 2026",
-      type: "settings",
-      icon: <Settings size={18} />,
-      color: "amber",
-    },
-  ];
+  // Fetch data using Axios
+  useEffect(() => {
+    const fetchLogs = async () => {
+      try {
+        setLoading(true);
+        // Using api.get instead of fetch
+        const response = await api.get("/audit-logs");
+
+        // Axios automatically parses JSON, data is in response.data
+        setLogs(response.data);
+      } catch (err) {
+        console.error("API Error:", err);
+        // Axios stores error details in err.response
+        setError(
+          err.response?.data?.message ||
+            "Failed to fetch logs. Please check console.",
+        );
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchLogs();
+  }, []);
 
   // Filter logs
   const filteredLogs = useMemo(() => {
@@ -135,21 +64,39 @@ const AuditLogs = () => {
 
       const matchesType = filterType === "all" || log.type === filterType;
 
+      // Note: Ensure API date format matches required filtering logic
       const matchesDate =
         dateFilter === "all" ||
-        (dateFilter === "today" && log.date === "Jan 29, 2026") ||
-        (dateFilter === "yesterday" && log.date === "Jan 28, 2026");
+        (dateFilter === "today" && log.date === "Feb 11, 2026") || // Assuming current date
+        (dateFilter === "yesterday" && log.date === "Feb 10, 2026");
 
       return matchesSearch && matchesType && matchesDate;
     });
   }, [logs, searchTerm, filterType, dateFilter]);
 
   // Stats
-  const stats = {
-    total: logs.length,
-    today: logs.filter((l) => l.date === "Jan 29, 2026").length,
-    approvals: logs.filter((l) => l.type === "approval").length,
-    updates: logs.filter((l) => l.type === "update").length,
+  const stats = useMemo(() => {
+    return {
+      total: logs.length,
+      today: logs.filter((l) => l.date === "Feb 11, 2026").length,
+      approvals: logs.filter((l) => l.type === "approval").length,
+      updates: logs.filter((l) => l.type === "update").length,
+    };
+  }, [logs]);
+
+  // Map log types to icons
+  const getIcon = (type) => {
+    const icons = {
+      approval: <CheckCircle2 size={18} />,
+      update: <Edit size={18} />,
+      verification: <Shield size={18} />,
+      rejection: <XCircle size={18} />,
+      create: <UserPlus size={18} />,
+      delete: <Trash2 size={18} />,
+      login: <LogIn size={18} />,
+      settings: <Settings size={18} />,
+    };
+    return icons[type] || <AlertCircle size={18} />;
   };
 
   const getColorClasses = (color) => {
@@ -197,73 +144,6 @@ const AuditLogs = () => {
         </div>
       </div>
 
-      {/* STATS CARDS */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
-        <div className="bg-white p-5 rounded-xl border border-gray-200 shadow-sm">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide">
-                Total Activities
-              </p>
-              <h3 className="text-2xl font-black text-gray-900 mt-1">
-                {stats.total}
-              </h3>
-            </div>
-            <div className="w-12 h-12 bg-gradient-to-br from-blue-500 to-blue-600 rounded-xl flex items-center justify-center text-white shadow-lg">
-              <Activity size={24} strokeWidth={2.5} />
-            </div>
-          </div>
-        </div>
-
-        <div className="bg-white p-5 rounded-xl border border-gray-200 shadow-sm">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide">
-                Today's Activity
-              </p>
-              <h3 className="text-2xl font-black text-emerald-600 mt-1">
-                {stats.today}
-              </h3>
-            </div>
-            <div className="w-12 h-12 bg-gradient-to-br from-emerald-500 to-green-600 rounded-xl flex items-center justify-center text-white shadow-lg">
-              <Clock size={24} strokeWidth={2.5} />
-            </div>
-          </div>
-        </div>
-
-        <div className="bg-white p-5 rounded-xl border border-gray-200 shadow-sm">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide">
-                Approvals
-              </p>
-              <h3 className="text-2xl font-black text-indigo-600 mt-1">
-                {stats.approvals}
-              </h3>
-            </div>
-            <div className="w-12 h-12 bg-gradient-to-br from-indigo-500 to-indigo-600 rounded-xl flex items-center justify-center text-white shadow-lg">
-              <CheckCircle2 size={24} strokeWidth={2.5} />
-            </div>
-          </div>
-        </div>
-
-        <div className="bg-white p-5 rounded-xl border border-gray-200 shadow-sm">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide">
-                Updates
-              </p>
-              <h3 className="text-2xl font-black text-amber-600 mt-1">
-                {stats.updates}
-              </h3>
-            </div>
-            <div className="w-12 h-12 bg-gradient-to-br from-amber-500 to-orange-500 rounded-xl flex items-center justify-center text-white shadow-lg">
-              <Edit size={24} strokeWidth={2.5} />
-            </div>
-          </div>
-        </div>
-      </div>
-
       {/* FILTERS & SEARCH */}
       <div className="bg-white p-5 rounded-xl border border-gray-200 shadow-sm">
         <div className="flex flex-col md:flex-row justify-between items-center gap-4">
@@ -281,41 +161,22 @@ const AuditLogs = () => {
           </div>
 
           <div className="flex items-center gap-3 w-full md:w-auto">
-            {/* Activity Type Filter */}
             <div className="flex items-center gap-2 bg-gray-50 p-1 rounded-xl border border-gray-200">
-              <button
-                onClick={() => setFilterType("all")}
-                className={`px-3 py-2 rounded-lg text-xs font-bold transition-all ${
-                  filterType === "all"
-                    ? "bg-white text-gray-900 shadow-sm"
-                    : "text-gray-500 hover:text-gray-700"
-                }`}
-              >
-                All
-              </button>
-              <button
-                onClick={() => setFilterType("approval")}
-                className={`px-3 py-2 rounded-lg text-xs font-bold transition-all ${
-                  filterType === "approval"
-                    ? "bg-white text-emerald-600 shadow-sm"
-                    : "text-gray-500 hover:text-gray-700"
-                }`}
-              >
-                Approvals
-              </button>
-              <button
-                onClick={() => setFilterType("update")}
-                className={`px-3 py-2 rounded-lg text-xs font-bold transition-all ${
-                  filterType === "update"
-                    ? "bg-white text-blue-600 shadow-sm"
-                    : "text-gray-500 hover:text-gray-700"
-                }`}
-              >
-                Updates
-              </button>
+              {["all", "approval", "update"].map((type) => (
+                <button
+                  key={type}
+                  onClick={() => setFilterType(type)}
+                  className={`px-3 py-2 rounded-lg text-xs font-bold transition-all ${
+                    filterType === type
+                      ? "bg-white text-gray-900 shadow-sm"
+                      : "text-gray-500 hover:text-gray-700"
+                  }`}
+                >
+                  {type.charAt(0).toUpperCase() + type.slice(1)}
+                </button>
+              ))}
             </div>
 
-            {/* Date Filter */}
             <select
               value={dateFilter}
               onChange={(e) => setDateFilter(e.target.value)}
@@ -325,24 +186,25 @@ const AuditLogs = () => {
               <option value="today">Today</option>
               <option value="yesterday">Yesterday</option>
             </select>
-
-            <button className="p-3 bg-gray-50 border border-gray-200 rounded-xl hover:bg-gray-100 transition-colors">
-              <Download size={18} className="text-gray-600" />
-            </button>
           </div>
         </div>
       </div>
 
       {/* LOGS LIST */}
       <div className="space-y-3">
-        {filteredLogs.length === 0 ? (
+        {loading ? (
+          <div className="text-center py-10 text-gray-500 flex justify-center items-center gap-2">
+            <Loader2 className="animate-spin" /> Loading logs...
+          </div>
+        ) : error ? (
+          <div className="text-center py-10 text-red-500 bg-red-50 rounded-xl border border-red-200">
+            <AlertCircle className="mx-auto mb-2" /> {error}
+          </div>
+        ) : filteredLogs.length === 0 ? (
           <div className="bg-white p-12 rounded-xl border border-gray-200 shadow-sm text-center">
             <Search size={48} className="mx-auto mb-3 text-gray-300" />
             <p className="font-semibold text-sm text-gray-500">
               No activities found
-            </p>
-            <p className="text-xs text-gray-400 mt-1">
-              Try adjusting your search or filters
             </p>
           </div>
         ) : (
@@ -356,42 +218,32 @@ const AuditLogs = () => {
                   {/* Icon & Color Bar */}
                   <div className="flex items-center gap-3">
                     <div
-                      className={`w-1.5 h-14 rounded-full ${getBarColor(
-                        log.color,
-                      )} group-hover:scale-110 transition-transform`}
+                      className={`w-1.5 h-14 rounded-full ${getBarColor(log.color)} group-hover:scale-110 transition-transform`}
                     ></div>
                     <div
-                      className={`w-10 h-10 rounded-xl flex items-center justify-center border ${getColorClasses(
-                        log.color,
-                      )}`}
+                      className={`w-10 h-10 rounded-xl flex items-center justify-center border ${getColorClasses(log.color)}`}
                     >
-                      {log.icon}
+                      {getIcon(log.type)}
                     </div>
                   </div>
 
                   {/* Content */}
                   <div className="flex-1">
-                    <div className="flex items-start justify-between gap-4">
-                      <div>
-                        <h3 className="text-sm font-bold text-gray-900 mb-1">
-                          {log.action}
-                        </h3>
-                        <p className="text-xs text-gray-600 mb-2">
-                          {log.description}
-                        </p>
-                        <div className="flex items-center gap-3 text-xs">
-                          <span className="flex items-center gap-1.5 text-gray-500">
-                            <User size={12} />
-                            <span className="font-semibold text-emerald-600">
-                              {log.user}
-                            </span>
-                            <span className="text-gray-400">·</span>
-                            <span className="text-gray-500">
-                              {log.userRole}
-                            </span>
-                          </span>
-                        </div>
-                      </div>
+                    <h3 className="text-sm font-bold text-gray-900 mb-1">
+                      {log.action}
+                    </h3>
+                    <p className="text-xs text-gray-600 mb-2">
+                      {log.description}
+                    </p>
+                    <div className="flex items-center gap-3 text-xs">
+                      <span className="flex items-center gap-1.5 text-gray-500">
+                        <User size={12} />
+                        <span className="font-semibold text-emerald-600">
+                          {log.user}
+                        </span>
+                        <span className="text-gray-400">·</span>
+                        <span className="text-gray-500">{log.userRole}</span>
+                      </span>
                     </div>
                   </div>
                 </div>
@@ -406,28 +258,12 @@ const AuditLogs = () => {
                     <Calendar size={10} className="text-gray-400" />
                     {log.date}
                   </div>
-                  <span
-                    className={`inline-block mt-2 px-2 py-1 rounded text-[9px] font-bold uppercase ${getColorClasses(
-                      log.color,
-                    )}`}
-                  >
-                    {log.type}
-                  </span>
                 </div>
               </div>
             </div>
           ))
         )}
       </div>
-
-      {/* Load More */}
-      {filteredLogs.length > 0 && (
-        <div className="text-center pt-4">
-          <button className="px-6 py-3 bg-white border-2 border-gray-200 rounded-xl font-bold text-sm text-gray-700 hover:border-emerald-500 hover:text-emerald-600 transition-all">
-            Load More Activities
-          </button>
-        </div>
-      )}
     </div>
   );
 };
