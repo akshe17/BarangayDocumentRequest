@@ -172,4 +172,48 @@ public function getHistory()
         ], 500);
     }
 }
+
+
+public function getDashboardStats()
+{
+    try {
+        $resident = auth()->user()->resident;
+        
+        if (!$resident) {
+            return response()->json(['message' => 'User is not linked to a resident'], 400);
+        }
+
+        // Get all requests for the resident
+        $allRequests = DocumentRequest::where('resident_id', $resident->resident_id)
+            ->with('status')
+            ->get();
+
+        // Calculate Stats
+        $stats = [
+            'total' => $allRequests->count(),
+            'pending' => $allRequests->where('status.status_name', 'pending')->count(),
+            'approved' => $allRequests->where('status.status_name', 'approved')->count(),
+            'completed' => $allRequests->where('status.status_name', 'completed')->count(),
+            'rejected' => $allRequests->where('status.status_name', 'rejected')->count(),
+        ];
+
+        // Get recent requests (last 5)
+        $recentRequests = DocumentRequest::where('resident_id', $resident->resident_id)
+            ->with(['items.document', 'status'])
+            ->orderBy('request_date', 'desc')
+            ->limit(5) // Increased limit to show more
+            ->get();
+
+        return response()->json([
+            'stats' => $stats,
+            'recent_requests' => $recentRequests,
+        ], 200);
+
+    } catch (\Exception $e) {
+        return response()->json([
+            'message' => 'Error fetching dashboard data',
+            'error' => $e->getMessage()
+        ], 500);
+    }
+}
 }
