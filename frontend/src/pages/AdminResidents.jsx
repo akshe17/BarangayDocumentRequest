@@ -1,42 +1,56 @@
 import React, { useState, useEffect, useMemo } from "react";
 import {
   Search,
-  MoreHorizontal,
   X,
   UserPlus,
-  Edit2,
-  Trash2,
-  Key,
-  ShieldAlert,
   Mail,
   Calendar,
   CheckCircle2,
   Clock,
-  Filter,
-  Download,
   FileCheck,
-  AlertCircle,
   XCircle,
   Image as ImageIcon,
   Eye,
-  Check,
+  RefreshCcw,
 } from "lucide-react";
 
 import api from "../axious/api";
+import Toast from "../components/toast";
+// Assuming your Laravel backend runs on port 8000
+const BASE_URL = "http://localhost:8000";
+
 const AdminResidents = () => {
   const [searchTerm, setSearchTerm] = useState("");
   const [activeMenu, setActiveMenu] = useState(null);
   const [filterStatus, setFilterStatus] = useState("all");
-  const [loading, setLoading] = useState(true); // Added loading state
+  const [loading, setLoading] = useState(true);
+
+  // Rejection Workflow State
+  const [isRejecting, setIsRejecting] = useState(false);
+  const [rejectionReasonInput, setRejectionReasonInput] = useState("");
 
   // MODAL STATES
   const [modalType, setModalType] = useState(null);
   const [selectedResident, setSelectedResident] = useState(null);
-
-  // 2. STATE FOR DATA
   const [residents, setResidents] = useState([]);
 
-  // 3. FETCH RESIDENTS ON MOUNT
+  // --- TOAST STATE ---
+  const [toast, setToast] = useState({
+    show: false,
+    message: "",
+    type: "success",
+  });
+
+  const showToast = (message, type = "success") => {
+    setToast({ show: true, message, type });
+    setTimeout(
+      () => setToast({ show: false, message: "", type: "success" }),
+      4000,
+    );
+  };
+  // -------------------
+
+  // FETCH RESIDENTS ON MOUNT
   useEffect(() => {
     fetchResidents();
   }, []);
@@ -44,11 +58,10 @@ const AdminResidents = () => {
   const fetchResidents = async () => {
     try {
       setLoading(true);
-      const response = await api.get("/residents-get"); // Adjust endpoint
+      const response = await api.get("/residents-get");
 
-      // Map API response to component state structure
       const formattedData = response.data.map((r) => ({
-        id: r.resident_id, // Map your primary key
+        id: r.resident_id,
         name: `${r.first_name} ${r.last_name}`,
         email: r.user?.email || "No Email",
         status: r.is_verified
@@ -62,9 +75,14 @@ const AdminResidents = () => {
           year: "numeric",
         }),
         avatar: `${r.first_name[0]}${r.last_name[0]}`,
+
+        // --- IMAGE URL HANDLING ---
         idUrl: r.id_image_path
-          ? `/${r.id_image_path}`
-          : "https://via.placeholder.com/600x400?text=No+ID",
+          ? `${BASE_URL}/storage/${r.id_image_path}`
+          : null,
+        // --------------------------
+
+        // Rejection reason comes from DB
         rejectionReason: r.rejection_reason,
         verifiedDate: r.updated_at
           ? new Date(r.updated_at).toLocaleDateString()
@@ -73,6 +91,7 @@ const AdminResidents = () => {
       setResidents(formattedData);
     } catch (error) {
       console.error("Error fetching residents:", error);
+      showToast("Failed to fetch residents", "error");
     } finally {
       setLoading(false);
     }
@@ -93,57 +112,69 @@ const AdminResidents = () => {
     setModalType(type);
     setSelectedResident(resident);
     setActiveMenu(null);
+    setIsRejecting(false); // Reset rejection state
+    setRejectionReasonInput("");
   };
 
   const closeModal = () => {
     setModalType(null);
     setSelectedResident(null);
+    setIsRejecting(false);
   };
 
-  // 4. API CALL: VERIFY RESIDENT
   const handleVerify = async (residentId) => {
     try {
-      await api.post(`/admin/residents/${residentId}/approve`);
-      // Update local state to reflect change without refetching
+      await api.post(`/residents/${residentId}/verify`);
+
+      setResidents((prev) =>
+        prev.map((r) =>
+          r.id === residentId
+            ? { ...r, status: "Verified", rejectionReason: null }
+            : r,
+        ),
+      );
+
+      showToast("Resident verified successfully", "success");
+      closeModal();
+    } catch (error) {
+      console.error("Error approving resident:", error);
+      showToast("Failed to verify resident", "error");
+    }
+  };
+
+  const handleReject = async (residentId) => {
+    // 1. Check if the input is empty
+    if (!rejectionReasonInput.trim()) {
+      showToast("Please provide a rejection reason.", "warning");
+      return;
+    }
+
+    try {
+      // 2. Send the request
+      await api.post(`/residents/${residentId}/reject`, {
+        rejection_reason: rejectionReasonInput,
+      });
+
+      // 3. Update local UI state
       setResidents((prev) =>
         prev.map((r) =>
           r.id === residentId
             ? {
                 ...r,
-                status: "Verified",
-                rejectionReason: null,
-                verifiedDate: new Date().toLocaleDateString("en-US", {
-                  month: "short",
-                  day: "numeric",
-                  year: "numeric",
-                }),
+                status: "Rejected",
+                // Notice: In the new backend logic, you might not be storing
+                // this permanently in the DB, but updating UI is fine.
+                rejectionReason: rejectionReasonInput,
               }
             : r,
         ),
       );
-      closeModal();
-    } catch (error) {
-      console.error("Error approving resident:", error);
-    }
-  };
 
-  // 5. API CALL: REJECT RESIDENT
-  const handleReject = async (residentId, reason) => {
-    try {
-      await api.post(`/admin/residents/${residentId}/reject`, {
-        rejection_reason: reason,
-      });
-      // Update local state
-      setResidents((prev) =>
-        prev.map((r) =>
-          r.id === residentId
-            ? { ...r, status: "Rejected", rejectionReason: reason }
-            : r,
-        ),
-      );
+      showToast("Resident rejected and notified", "success");
       closeModal();
     } catch (error) {
       console.error("Error rejecting resident:", error);
+      showToast("Failed to reject resident", "error");
     }
   };
 
@@ -155,203 +186,138 @@ const AdminResidents = () => {
   };
 
   return (
-    <div className="space-y-6 p-6 bg-gradient-to-br from-gray-50 to-gray-100 min-h-screen">
+    <div className="min-h-screen bg-[#f8fafc] p-4 md:p-8 text-slate-900">
+      {/* --- TOAST COMPONENT --- */}
+      <Toast
+        show={toast.show}
+        message={toast.message}
+        type={toast.type}
+        onClose={() => setToast({ ...toast, show: false })}
+      />
+      {/* ----------------------- */}
+
       {/* HEADER */}
-      <div className="mb-8">
-        <h1 className="text-3xl font-black text-gray-900 mb-2">
-          Resident Management
-        </h1>
-        <p className="text-gray-500">Manage and verify registered residents</p>
+      <div className="max-w-7xl mx-auto mb-8 flex flex-col md:flex-row md:items-center justify-between gap-4">
+        <div>
+          <h1 className="text-3xl font-extrabold tracking-tight text-slate-900 flex items-center gap-2">
+            Residents <span className="text-emerald-500">Directory</span>
+          </h1>
+          <p className="text-slate-500 font-medium">
+            Verification and account management portal.
+          </p>
+        </div>
+        <div className="flex gap-2">
+          <button
+            onClick={fetchResidents}
+            className="p-3 bg-white border border-slate-200 rounded-xl hover:bg-slate-50 transition-all text-slate-600 shadow-sm"
+          >
+            <RefreshCcw size={18} className={loading ? "animate-spin" : ""} />
+          </button>
+          <button
+            onClick={() => openModal("add")}
+            className="bg-emerald-600 text-white px-5 py-3 rounded-xl font-bold text-sm hover:bg-emerald-700 transition-all flex items-center gap-2 shadow-md shadow-emerald-200"
+          >
+            <UserPlus size={18} /> Add Resident
+          </button>
+        </div>
       </div>
 
       {/* STATS CARDS */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
-        <div className="bg-white p-5 rounded-xl border border-gray-200 shadow-sm">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide">
-                Total Residents
-              </p>
-              <h3 className="text-2xl font-black text-gray-900 mt-1">
-                {stats.total}
-              </h3>
+      <div className="max-w-7xl mx-auto grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
+        {[
+          { label: "Total", value: stats.total, color: "blue", icon: UserPlus },
+          {
+            label: "Verified",
+            value: stats.verified,
+            color: "emerald",
+            icon: CheckCircle2,
+          },
+          {
+            label: "Pending",
+            value: stats.pending,
+            color: "amber",
+            icon: Clock,
+          },
+          {
+            label: "Rejected",
+            value: stats.rejected,
+            color: "red",
+            icon: XCircle,
+          },
+        ].map((stat, i) => (
+          <div
+            key={i}
+            className="bg-white p-5 rounded-2xl border border-slate-100 shadow-sm"
+          >
+            <div
+              className={`w-10 h-10 rounded-xl bg-${stat.color}-50 flex items-center justify-center text-${stat.color}-600 mb-3`}
+            >
+              <stat.icon size={20} />
             </div>
-            <div className="w-12 h-12 bg-blue-500 rounded-xl flex items-center justify-center text-white shadow-lg">
-              <UserPlus size={24} strokeWidth={2.5} />
-            </div>
+            <p className="text-sm font-bold text-slate-500 uppercase tracking-wider">
+              {stat.label}
+            </p>
+            <h3 className="text-2xl font-black text-slate-900">{stat.value}</h3>
           </div>
-        </div>
-
-        <div className="bg-white p-5 rounded-xl border border-gray-200 shadow-sm">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide">
-                Verified
-              </p>
-              <h3 className="text-2xl font-black text-emerald-600 mt-1">
-                {stats.verified}
-              </h3>
-            </div>
-            <div className="w-12 h-12 bg-green-500 rounded-xl flex items-center justify-center text-white shadow-lg">
-              <CheckCircle2 size={24} strokeWidth={2.5} />
-            </div>
-          </div>
-        </div>
-
-        <div
-          className="bg-white p-5 rounded-xl border border-gray-200 shadow-sm cursor-pointer hover:shadow-md transition-shadow"
-          onClick={() => setFilterStatus("pending")}
-        >
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide">
-                Pending Review
-              </p>
-              <h3 className="text-2xl font-black text-amber-600 mt-1">
-                {stats.pending}
-              </h3>
-            </div>
-            <div className="w-12 h-12 bg-orange-500 rounded-xl flex items-center justify-center text-white ">
-              <Clock size={24} strokeWidth={2.5} />
-            </div>
-          </div>
-        </div>
-
-        <div className="bg-white p-5 rounded-xl border border-gray-200 shadow-sm">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide">
-                Rejected
-              </p>
-              <h3 className="text-2xl font-black text-red-600 mt-1">
-                {stats.rejected}
-              </h3>
-            </div>
-            <div className="w-12 h-12 bg-red-500 rounded-xl flex items-center justify-center text-white ">
-              <XCircle size={24} strokeWidth={2.5} />
-            </div>
-          </div>
-        </div>
+        ))}
       </div>
 
       {/* SEARCH & FILTERS */}
-      <div className="bg-white p-5 rounded-xl border border-gray-200 shadow-sm">
-        <div className="flex flex-col md:flex-row justify-between items-center gap-4">
-          <div className="relative w-full md:w-96">
-            <Search
-              className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400"
-              size={18}
-            />
-            <input
-              className="w-full pl-11 pr-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-emerald-500 focus:border-transparent outline-none transition-all text-sm"
-              placeholder="Search by name or email..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-            />
-          </div>
-
-          <div className="flex items-center gap-3 w-full md:w-auto">
-            <div className="flex items-center gap-2 bg-gray-50 p-1 rounded-xl border border-gray-200">
-              <button
-                onClick={() => setFilterStatus("all")}
-                className={`px-4 py-2 rounded-lg text-xs font-bold transition-all ${
-                  filterStatus === "all"
-                    ? "bg-white text-gray-900 shadow-sm"
-                    : "text-gray-500 hover:text-gray-700"
-                }`}
-              >
-                All
-              </button>
-              <button
-                onClick={() => setFilterStatus("verified")}
-                className={`px-4 py-2 rounded-lg text-xs font-bold transition-all ${
-                  filterStatus === "verified"
-                    ? "bg-white text-emerald-600 shadow-sm"
-                    : "text-gray-500 hover:text-gray-700"
-                }`}
-              >
-                Verified
-              </button>
-              <button
-                onClick={() => setFilterStatus("pending")}
-                className={`px-4 py-2 rounded-lg text-xs font-bold transition-all relative ${
-                  filterStatus === "pending"
-                    ? "bg-white text-amber-600 shadow-sm"
-                    : "text-gray-500 hover:text-gray-700"
-                }`}
-              >
-                Pending
-                {stats.pending > 0 && (
-                  <span className="absolute -top-1 -right-1 w-5 h-5 bg-amber-500 text-white text-[10px] font-black rounded-full flex items-center justify-center">
-                    {stats.pending}
-                  </span>
-                )}
-              </button>
-              <button
-                onClick={() => setFilterStatus("rejected")}
-                className={`px-4 py-2 rounded-lg text-xs font-bold transition-all ${
-                  filterStatus === "rejected"
-                    ? "bg-white text-red-600 shadow-sm"
-                    : "text-gray-500 hover:text-gray-700"
-                }`}
-              >
-                Rejected
-              </button>
-            </div>
-
-            <button className="p-3 bg-gray-50 border border-gray-200 rounded-xl hover:bg-gray-100 transition-colors">
-              <Download size={18} className="text-gray-600" />
-            </button>
-
+      <div className="max-w-7xl mx-auto bg-white p-4 rounded-2xl border border-slate-100 shadow-sm mb-6 flex flex-col lg:flex-row gap-4">
+        <div className="relative flex-1">
+          <Search
+            className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400"
+            size={18}
+          />
+          <input
+            className="w-full pl-11 pr-4 py-3 bg-slate-50 border border-slate-100 rounded-xl focus:ring-2 focus:ring-emerald-500 focus:bg-white outline-none transition-all text-sm font-medium"
+            placeholder="Search by name or email..."
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+          />
+        </div>
+        <div className="flex gap-2 overflow-x-auto pb-1">
+          {["all", "verified", "pending", "rejected"].map((s) => (
             <button
-              onClick={() => openModal("add")}
-              className="bg-emerald-500 text-white px-6 py-3 rounded-xl font-bold text-sm hover:shadow-lg hover:scale-105 transition-all flex items-center gap-2 shadow-md whitespace-nowrap"
+              key={s}
+              onClick={() => setFilterStatus(s)}
+              className={`px-4 py-2.5 rounded-xl text-xs font-bold capitalize transition-all whitespace-nowrap ${
+                filterStatus === s
+                  ? "bg-slate-900 text-white shadow-lg"
+                  : "bg-slate-50 text-slate-500 hover:bg-slate-100"
+              }`}
             >
-              <UserPlus size={18} /> Add Resident
+              {s}
             </button>
-          </div>
+          ))}
         </div>
       </div>
 
-      <div className="bg-white rounded-xl border border-gray-200 shadow-sm z-1">
-        <div className="sm:overflow-auto md:overflow-none">
+      {/* TABLE */}
+      <div className="max-w-7xl mx-auto bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden">
+        <div className="overflow-x-auto">
           {loading ? (
-            <div className="text-center p-10 text-gray-500">
-              Loading residents...
+            <div className="text-center p-20 text-slate-400 animate-pulse font-bold">
+              Loading...
             </div>
           ) : (
             <table className="w-full">
-              <thead className="bg-gray-50 border-b border-gray-200">
+              <thead className="bg-slate-50/50 border-b border-slate-100 text-[11px] font-bold text-slate-400 uppercase tracking-[0.1em]">
                 <tr>
-                  <th className="px-6 py-4 text-left text-[10px] font-black text-gray-500 uppercase tracking-widest">
-                    Resident
-                  </th>
-                  <th className="px-6 py-4 text-left text-[10px] font-black text-gray-500 uppercase tracking-widest">
-                    Contact
-                  </th>
-                  <th className="px-6 py-4 text-left text-[10px] font-black text-gray-500 uppercase tracking-widest">
-                    Status
-                  </th>
-                  <th className="px-6 py-4 text-left text-[10px] font-black text-gray-500 uppercase tracking-widest">
-                    Registered
-                  </th>
-                  <th className="px-6 py-4 text-center text-[10px] font-black text-gray-500 uppercase tracking-widest">
-                    Actions
-                  </th>
+                  <th className="px-6 py-4 text-left">Resident</th>
+                  <th className="px-6 py-4 text-left">Contact</th>
+                  <th className="px-6 py-4 text-left">Status</th>
+                  <th className="px-6 py-4 text-left">Registered</th>
+                  <th className="px-6 py-4 text-center">Actions</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-gray-100">
+              <tbody className="divide-y divide-slate-50">
                 {filteredResidents.length === 0 ? (
                   <tr>
-                    <td colSpan="5" className="px-6 py-12 text-center">
-                      <div className="flex flex-col items-center justify-center text-gray-400">
-                        <Search size={48} className="mb-3 opacity-50" />
-                        <p className="font-semibold text-sm">
-                          No residents found
-                        </p>
-                        <p className="text-xs mt-1">
-                          Try adjusting your search or filters
-                        </p>
+                    <td colSpan="5" className="px-6 py-20 text-center">
+                      <div className="flex flex-col items-center opacity-40">
+                        <Search size={48} className="mb-4 text-slate-300" />
+                        <p className="text-lg font-bold">No results found</p>
                       </div>
                     </td>
                   </tr>
@@ -359,122 +325,62 @@ const AdminResidents = () => {
                   filteredResidents.map((r) => (
                     <tr
                       key={r.id}
-                      className="hover:bg-gray-50 transition-colors group"
+                      className="hover:bg-slate-50/50 transition-colors group"
                     >
                       <td className="px-6 py-4">
                         <div className="flex items-center gap-3">
-                          <div className="w-10 h-10 bg-gradient-to-br from-emerald-500 to-green-600 rounded-full flex items-center justify-center text-white font-black text-sm shadow-md">
+                          <div className="w-10 h-10 bg-slate-100 rounded-full flex items-center justify-center font-black text-slate-600 text-xs border border-white shadow-sm group-hover:scale-110 transition-transform">
                             {r.avatar}
                           </div>
-                          <div>
-                            <div className="font-bold text-gray-900 text-sm">
-                              {r.name}
-                            </div>
+                          <div className="font-bold text-slate-900 text-sm tracking-tight">
+                            {r.name}
                           </div>
                         </div>
                       </td>
-                      <td className="px-6 py-4">
-                        <div className="flex items-center gap-2 text-xs text-gray-600">
-                          <Mail size={14} className="text-gray-400" />
-                          {r.email}
-                        </div>
+                      <td className="px-6 py-4 text-sm text-slate-500 font-medium">
+                        {r.email}
                       </td>
                       <td className="px-6 py-4">
                         <span
-                          className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[10px] font-bold uppercase ${
+                          className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider shadow-sm ${
                             r.status === "Verified"
-                              ? "bg-emerald-100 text-emerald-700"
+                              ? "bg-emerald-50 text-emerald-600"
                               : r.status === "Rejected"
-                                ? "bg-red-100 text-red-700"
-                                : "bg-amber-100 text-amber-700"
+                                ? "bg-red-50 text-red-600"
+                                : "bg-amber-50 text-amber-600"
                           }`}
                         >
-                          {r.status === "Verified" ? (
-                            <CheckCircle2 size={12} />
-                          ) : r.status === "Rejected" ? (
-                            <XCircle size={12} />
-                          ) : (
-                            <Clock size={12} />
-                          )}
+                          <span
+                            className={`w-1.5 h-1.5 rounded-full ${
+                              r.status === "Verified"
+                                ? "bg-emerald-500"
+                                : r.status === "Rejected"
+                                  ? "bg-red-500"
+                                  : "bg-amber-500 animate-pulse"
+                            }`}
+                          />
                           {r.status}
                         </span>
                       </td>
-                      <td className="px-6 py-4">
-                        <div className="flex items-center gap-2 text-xs text-gray-600">
-                          <Calendar size={14} className="text-gray-400" />
-                          {r.date}
-                        </div>
+                      <td className="px-6 py-4 text-sm text-slate-400 font-medium">
+                        {r.date}
                       </td>
-                      <td className="px-6 py-4 text-center relative">
-                        {r.status === "Pending" ? (
-                          <button
-                            onClick={() => openModal("verify", r)}
-                            className="bg-emerald-500 hover:bg-emerald-600 text-white px-4 py-2 rounded-lg transition-all flex items-center gap-2 font-semibold text-sm shadow-md hover:shadow-lg mx-auto"
-                          >
-                            <FileCheck size={16} />
-                            Review ID
-                          </button>
-                        ) : (
-                          <button
-                            onClick={() =>
-                              setActiveMenu(activeMenu === r.id ? null : r.id)
-                            }
-                            className="bg-emerald-500 cursor-pointer hover:bg-emerald-600 text-white px-4 py-2 rounded-lg transition-all flex items-center gap-2 font-semibold text-sm shadow-md hover:shadow-lg mx-auto"
-                          >
-                            Actions
-                          </button>
-                        )}
-
-                        {/* ACTION DROPDOWN */}
-                        {activeMenu === r.id && (
-                          <>
-                            <div
-                              className="fixed inset-0 z-40"
-                              onClick={() => setActiveMenu(null)}
-                            />
-                            <div className="absolute -right-10 -top-25 w-52 bg-white rounded-xl shadow-2xl border border-gray-200 z-[100] overflow-auto">
-                              <div className="p-2 space-y-1">
-                                <button
-                                  onClick={() => openModal("verify", r)}
-                                  className="w-full px-4 py-2.5 text-left text-sm font-semibold text-gray-700 hover:bg-emerald-50 hover:text-emerald-600 rounded-lg flex items-center gap-3 transition-colors"
-                                >
-                                  <div className="w-8 h-8 bg-emerald-100 rounded-lg flex items-center justify-center">
-                                    <Eye
-                                      size={16}
-                                      className="text-emerald-600"
-                                    />
-                                  </div>
-                                  <span>View Details</span>
-                                </button>
-                                <button
-                                  onClick={() => openModal("edit", r)}
-                                  className="w-full px-4 py-2.5 text-left text-sm font-semibold text-gray-700 hover:bg-blue-50 hover:text-blue-600 rounded-lg flex items-center gap-3 transition-colors"
-                                >
-                                  <div className="w-8 h-8 bg-blue-100 rounded-lg flex items-center justify-center">
-                                    <Edit2
-                                      size={16}
-                                      className="text-blue-600"
-                                    />
-                                  </div>
-                                  <span>Edit Details</span>
-                                </button>
-                                <hr className="my-2 border-gray-100" />
-                                <button
-                                  onClick={() => openModal("delete", r)}
-                                  className="w-full px-4 py-2.5 text-left text-sm font-semibold text-red-600 hover:bg-red-50 rounded-lg flex items-center gap-3 transition-colors"
-                                >
-                                  <div className="w-8 h-8 bg-red-100 rounded-lg flex items-center justify-center">
-                                    <Trash2
-                                      size={16}
-                                      className="text-red-600"
-                                    />
-                                  </div>
-                                  <span>Delete Resident</span>
-                                </button>
-                              </div>
-                            </div>
-                          </>
-                        )}
+                      <td className="px-6 py-4 text-center">
+                        <button
+                          onClick={() => openModal("verify", r)}
+                          className={`px-4 py-2 rounded-lg font-bold text-xs transition-all flex items-center gap-2 mx-auto ${
+                            r.status === "Pending"
+                              ? "bg-emerald-600 text-white shadow-md shadow-emerald-100 hover:bg-emerald-700"
+                              : "bg-slate-100 text-slate-600 hover:bg-slate-200"
+                          }`}
+                        >
+                          {r.status === "Pending" ? (
+                            <FileCheck size={14} />
+                          ) : (
+                            <Eye size={14} />
+                          )}
+                          {r.status === "Pending" ? "Review" : "Details"}
+                        </button>
                       </td>
                     </tr>
                   ))
@@ -485,154 +391,126 @@ const AdminResidents = () => {
         </div>
       </div>
 
-      {/* MODAL OVERLAY */}
-      {modalType && (
-        <div className="fixed inset-0 bg-black/70 backdrop-blur-sm z-[100] flex items-center justify-center p-4 overflow-y-auto">
+      {/* MODAL */}
+      {modalType === "verify" && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
           <div
-            className={`bg-white rounded-2xl w-full shadow-2xl my-8 ${
-              modalType === "verify" ? "max-w-3xl" : "max-w-md"
-            }`}
-          >
-            {/* MODAL HEADER */}
-            <div className="sticky top-0 z-10 p-5 border-b border-gray-200 flex justify-between items-center bg-white rounded-t-2xl">
-              <h3 className="font-black text-gray-900 text-base flex items-center gap-3">
-                {modalType === "verify" && (
-                  <>
-                    <div className="w-9 h-9 bg-emerald-100 rounded-lg flex items-center justify-center">
-                      <FileCheck size={18} className="text-emerald-600" />
-                    </div>
-                    ID Verification
-                  </>
-                )}
-                {modalType === "add" && (
-                  <>
-                    <div className="w-9 h-9 bg-emerald-100 rounded-lg flex items-center justify-center">
-                      <UserPlus size={18} className="text-emerald-600" />
-                    </div>
-                    Add New Resident
-                  </>
-                )}
-                {modalType === "edit" && (
-                  <>
-                    <div className="w-9 h-9 bg-blue-100 rounded-lg flex items-center justify-center">
-                      <Edit2 size={18} className="text-blue-600" />
-                    </div>
-                    Edit Resident
-                  </>
-                )}
-                {modalType === "delete" && (
-                  <>
-                    <div className="w-9 h-9 bg-red-100 rounded-lg flex items-center justify-center">
-                      <ShieldAlert size={18} className="text-red-600" />
-                    </div>
-                    Confirm Deletion
-                  </>
-                )}
-              </h3>
-              <button
-                onClick={closeModal}
-                className="text-gray-400 hover:text-red-600 hover:bg-red-50 p-2 rounded-lg transition-all"
-              >
-                <X size={20} />
-              </button>
-            </div>
+            className="absolute inset-0 bg-slate-900/60 backdrop-blur-md"
+            onClick={closeModal}
+          />
+          <div className="bg-white rounded-[2rem] w-full max-w-4xl shadow-2xl relative overflow-hidden flex flex-col md:flex-row max-h-[90vh]">
+            {/* Left Side: ID Preview */}
+            <div className="w-full md:w-1/2 bg-slate-100 p-6 flex flex-col border-r border-slate-100">
+              <div className="flex items-center justify-between mb-4">
+                <span className="text-xs font-black uppercase text-slate-400 tracking-widest">
+                  Valid ID Document
+                </span>
+                <ImageIcon size={16} className="text-slate-400" />
+              </div>
 
-            {/* MODAL BODY */}
-            <div className="p-5 max-h-[calc(100vh-200px)] overflow-y-auto">
-              {modalType === "verify" && (
-                <div className="space-y-4">
-                  <div className="bg-gradient-to-r from-emerald-50 to-green-50 p-4 rounded-xl border border-emerald-200">
-                    <div className="flex items-center gap-3">
-                      <div className="w-12 h-12 bg-gradient-to-br from-emerald-500 to-green-600 rounded-full flex items-center justify-center text-white font-black text-base shadow-md">
-                        {selectedResident?.avatar}
-                      </div>
-                      <div>
-                        <h4 className="font-bold text-gray-900 text-base">
-                          {selectedResident?.name}
-                        </h4>
-                        <p className="text-xs text-gray-600 flex items-center gap-1.5 mt-0.5">
-                          <Mail size={12} />
-                          {selectedResident?.email}
-                        </p>
-                      </div>
-                    </div>
-                  </div>
-
-                  <div className="border-2 border-dashed border-gray-300 rounded-xl p-3 bg-gray-50">
-                    <div className="flex items-center gap-2 mb-2">
-                      <ImageIcon size={16} className="text-gray-500" />
-                      <span className="font-bold text-gray-700 text-xs">
-                        Submitted Valid ID
-                      </span>
-                    </div>
-                    <div className="bg-white rounded-lg overflow-hidden shadow-md">
-                      <img
-                        src={selectedResident?.idUrl}
-                        alt="Valid ID"
-                        className="w-full h-64 object-contain"
-                      />
-                    </div>
-                  </div>
-
-                  {selectedResident?.status === "Rejected" &&
-                    selectedResident?.rejectionReason && (
-                      <div className="bg-red-50 border border-red-200 rounded-xl p-3">
-                        <div className="flex items-start gap-2">
-                          <AlertCircle
-                            size={16}
-                            className="text-red-600 mt-0.5 flex-shrink-0"
-                          />
-                          <div>
-                            <p className="font-bold text-red-900 text-xs">
-                              Previously Rejected
-                            </p>
-                            <p className="text-xs text-red-700 mt-1">
-                              {selectedResident.rejectionReason}
-                            </p>
-                          </div>
-                        </div>
-                      </div>
-                    )}
-                </div>
-              )}
-              {/* Add/Edit form inputs would go here */}
-            </div>
-
-            {/* MODAL FOOTER */}
-            <div className="sticky bottom-0 p-5 border-t border-gray-200 bg-white rounded-b-2xl">
-              {modalType === "verify" &&
-              selectedResident?.status !== "Verified" ? (
-                <div className="flex gap-3">
-                  <button
-                    onClick={() => {
-                      const reason = prompt(
-                        "Enter rejection reason (required):",
-                      );
-                      if (reason && reason.trim()) {
-                        handleReject(selectedResident.id, reason);
-                      }
+              {/* --- DISPLAY IMAGE FROM STORAGE --- */}
+              <div className="flex-1 bg-white rounded-2xl border-4 border-white shadow-inner overflow-hidden flex items-center justify-center bg-slate-200">
+                {selectedResident?.idUrl ? (
+                  <img
+                    src={selectedResident.idUrl}
+                    alt="Resident ID"
+                    className="max-w-full max-h-full object-contain hover:scale-105 transition-transform"
+                    onError={(e) => {
+                      e.target.src =
+                        "https://via.placeholder.com/600x400?text=Image+Not+Found";
                     }}
-                    className="flex-1 px-4 py-2.5 rounded-xl font-bold text-red-700 bg-red-100 hover:bg-red-200 transition-all text-sm flex items-center justify-center gap-2"
-                  >
-                    <XCircle size={16} />
-                    Reject
-                  </button>
-                  <button
-                    onClick={() => handleVerify(selectedResident.id)}
-                    className="flex-1 px-4 py-2.5 rounded-xl font-bold text-white bg-gradient-to-r from-emerald-600 to-green-600 hover:from-emerald-700 hover:to-green-700 transition-all text-sm flex items-center justify-center gap-2"
-                  >
-                    <CheckCircle2 size={16} />
-                    Approve
-                  </button>
+                  />
+                ) : (
+                  <div className="text-slate-400 flex flex-col items-center">
+                    <ImageIcon size={48} />
+                    <p className="text-xs font-bold mt-2">NO ID UPLOADED</p>
+                  </div>
+                )}
+              </div>
+              {/* --------------------------------- */}
+            </div>
+
+            {/* Right Side: Details & Actions */}
+            <div className="w-full md:w-1/2 p-8 flex flex-col">
+              <div className="flex justify-between items-start mb-6">
+                <div>
+                  <h2 className="text-2xl font-black text-slate-900">
+                    {selectedResident?.name}
+                  </h2>
+                  <p className="text-slate-500 font-medium">
+                    {selectedResident?.email}
+                  </p>
                 </div>
-              ) : (
                 <button
                   onClick={closeModal}
-                  className="w-full px-4 py-2.5 rounded-xl font-bold text-gray-700 bg-gray-100 hover:bg-gray-200 transition-all text-sm"
+                  className="p-2 hover:bg-slate-100 rounded-full transition-colors"
                 >
-                  Close
+                  <X size={20} />
                 </button>
-              )}
+              </div>
+
+              <div className="space-y-4 flex-1">
+                <div className="p-4 bg-slate-50 rounded-2xl border border-slate-100">
+                  <p className="text-[10px] font-black uppercase text-slate-400 mb-2">
+                    Registration Info
+                  </p>
+                  <div className="flex items-center gap-4 text-sm font-bold text-slate-600">
+                    <Calendar size={16} /> Joined {selectedResident?.date}
+                  </div>
+                </div>
+
+                {isRejecting ? (
+                  <div className="space-y-3 animate-in slide-in-from-top-2">
+                    <p className="text-[10px] font-black uppercase text-red-500">
+                      Specify Rejection Reason
+                    </p>
+                    <textarea
+                      value={rejectionReasonInput}
+                      onChange={(e) => setRejectionReasonInput(e.target.value)}
+                      className="w-full p-4 bg-red-50 border border-red-100 rounded-2xl text-sm focus:ring-2 focus:ring-red-500 outline-none h-32"
+                      placeholder="Example: The ID image is blurry or expired..."
+                    />
+                    <div className="flex gap-2">
+                      <button
+                        onClick={() => setIsRejecting(false)}
+                        className="flex-1 py-3 text-sm font-bold text-slate-500"
+                      >
+                        Cancel
+                      </button>
+                      <button
+                        onClick={() => handleReject(selectedResident.id)}
+                        className="flex-[2] py-3 bg-red-600 text-white rounded-xl text-sm font-bold shadow-lg shadow-red-200"
+                      >
+                        Confirm Reject
+                      </button>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="space-y-3">
+                    <p className="text-sm text-slate-500 font-medium leading-relaxed">
+                      Review the document on the left. Ensure the name on the ID
+                      matches the registered name and that the document is still
+                      valid.
+                    </p>
+                    {selectedResident?.status !== "Verified" && (
+                      <div className="flex flex-col gap-2 pt-4">
+                        <button
+                          onClick={() => handleVerify(selectedResident.id)}
+                          className="w-full py-4 bg-emerald-600 text-white rounded-2xl font-black text-sm shadow-xl shadow-emerald-100 hover:bg-emerald-700 transition-all flex items-center justify-center gap-2"
+                        >
+                          <CheckCircle2 size={18} /> Approve Verification
+                        </button>
+                        <button
+                          onClick={() => setIsRejecting(true)}
+                          className="w-full py-4 bg-white border border-slate-200 text-red-600 rounded-2xl font-black text-sm hover:bg-red-50 transition-all"
+                        >
+                          Reject Document
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
             </div>
           </div>
         </div>

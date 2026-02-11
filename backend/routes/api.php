@@ -62,7 +62,7 @@ Route::delete('/documents/{id}', [DocumentController::class, 'destroy']);
 
     //resident verfication
     Route::get('/residents-get', [ResidentVerificationController::class, 'index']);
-    Route::post('/residents/{id}/verify', [ResidentVerificationController::class, 'approve']);
+  Route::post('/residents/{id}/verify', [ResidentVerificationController::class, 'approve']);
 Route::post('/residents/{id}/reject', [ResidentVerificationController::class, 'reject']);
 });
 
