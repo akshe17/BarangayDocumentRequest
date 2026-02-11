@@ -22,7 +22,10 @@ protected $fillable = [
     'is_active',
     'is_verified'
 ];
-
+   public function requests()
+    {
+        return $this->hasMany(DocumentRequest::class, 'resident_id', 'resident_id');
+    }
 public function user() 
 { 
     return $this->belongsTo(User::class, 'user_id', 'user_id'); 
@@ -30,3 +33,5 @@ public function user()
     public function gender() { return $this->belongsTo(Gender::class, 'gender_id'); } //
     public function civilStatus() { return $this->belongsTo(CivilStatus::class, 'civil_status_id'); } //
 }
+
+ 

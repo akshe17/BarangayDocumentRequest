@@ -164,7 +164,7 @@ const AdminResidents = () => {
                 {stats.total}
               </h3>
             </div>
-            <div className="w-12 h-12 bg-gradient-to-br from-blue-500 to-blue-600 rounded-xl flex items-center justify-center text-white shadow-lg">
+            <div className="w-12 h-12 bg-blue-500 rounded-xl flex items-center justify-center text-white shadow-lg">
               <UserPlus size={24} strokeWidth={2.5} />
             </div>
           </div>
@@ -180,7 +180,7 @@ const AdminResidents = () => {
                 {stats.verified}
               </h3>
             </div>
-            <div className="w-12 h-12 bg-gradient-to-br from-emerald-500 to-green-600 rounded-xl flex items-center justify-center text-white shadow-lg">
+            <div className="w-12 h-12 bg-green-500 rounded-xl flex items-center justify-center text-white shadow-lg">
               <CheckCircle2 size={24} strokeWidth={2.5} />
             </div>
           </div>
@@ -199,7 +199,7 @@ const AdminResidents = () => {
                 {stats.pending}
               </h3>
             </div>
-            <div className="w-12 h-12 bg-gradient-to-br from-amber-500 to-orange-500 rounded-xl flex items-center justify-center text-white shadow-lg">
+            <div className="w-12 h-12 bg-orange-500 rounded-xl flex items-center justify-center text-white ">
               <Clock size={24} strokeWidth={2.5} />
             </div>
           </div>
@@ -215,7 +215,7 @@ const AdminResidents = () => {
                 {stats.rejected}
               </h3>
             </div>
-            <div className="w-12 h-12 bg-gradient-to-br from-red-500 to-red-600 rounded-xl flex items-center justify-center text-white shadow-lg">
+            <div className="w-12 h-12 bg-red-500 rounded-xl flex items-center justify-center text-white ">
               <XCircle size={24} strokeWidth={2.5} />
             </div>
           </div>
@@ -293,7 +293,7 @@ const AdminResidents = () => {
 
             <button
               onClick={() => openModal("add")}
-              className="bg-gradient-to-r from-emerald-600 to-green-600 text-white px-6 py-3 rounded-xl font-bold text-sm hover:shadow-lg hover:scale-105 transition-all flex items-center gap-2 shadow-md whitespace-nowrap"
+              className="bg-emerald-500 text-white px-6 py-3 rounded-xl font-bold text-sm hover:shadow-lg hover:scale-105 transition-all flex items-center gap-2 shadow-md whitespace-nowrap"
             >
               <UserPlus size={18} /> Add Resident
             </button>

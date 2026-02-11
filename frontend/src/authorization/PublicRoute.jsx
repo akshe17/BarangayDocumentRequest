@@ -5,7 +5,6 @@ import { useAuth } from "../context/AuthContext";
 const PublicRoute = () => {
   const { isAuthenticated, loading, isAdmin } = useAuth();
 
-  // 1. MUST BE FIRST: Don't redirect or show the page until checkAuth is done
   if (loading) {
     return (
       <div className="h-screen flex items-center justify-center bg-gray-50">
@@ -14,13 +13,11 @@ const PublicRoute = () => {
     );
   }
 
-  // 2. If authenticated, move them away from Login/Register
   if (isAuthenticated) {
     const destination = isAdmin() ? "/dashboard" : "/resident";
     return <Navigate to={destination} replace />;
   }
 
-  // 3. Otherwise, show Login/Register
   return <Outlet />;
 };
 

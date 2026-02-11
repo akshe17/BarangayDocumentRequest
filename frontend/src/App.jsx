@@ -31,11 +31,9 @@ import ResidentHistory from "./pages/resident/ResidentHistory";
 import ResidentNotification from "./pages/resident/ResidentNotification";
 import ResidentProfile from "./pages/resident/ResidentProfile";
 
-//Clerk pages
 import ClerkDashboard from "./pages/clerk/ClerkDashboard";
 import PaymentVerification from "./pages/clerk/PaymentVerification";
 
-//Zone Leader pages
 import ZoneMap from "./pages/zoneLeader/ZoneMap";
 import ZoneResidentDirectory from "./pages/zoneLeader/ZoneResidentDirectory";
 import ZoneLeaderDashboard from "./pages/zoneLeader/ZoneLeaderDashboard";
@@ -43,7 +41,6 @@ import ZoneLeaderDashboard from "./pages/zoneLeader/ZoneLeaderDashboard";
 const App = () => {
   const { isAuthenticated, isAdmin, loading, user } = useAuth();
 
-  // Block ALL routing until auth is verified
   if (loading) {
     return (
       <div className="h-screen flex items-center justify-center bg-gray-50">
@@ -51,37 +48,29 @@ const App = () => {
       </div>
     );
   }
-
-  // Helper to determine home route based on specific role
   const getHomeRoute = () => {
     if (!isAuthenticated) return "/login";
 
-    // Check specific roles if user object exists
     if (user?.role === 1) return "/dashboard";
     if (user?.role === 4) return "/zone-leader/dashboard";
     if (user?.role === 3) return "/clerk/dashboard";
 
-    // Default for Residents
     return "/resident";
   };
 
   return (
     <BrowserRouter>
       <Routes>
-        {/* 1. ROOT LOGIC */}
         <Route path="/" element={<Navigate to={getHomeRoute()} replace />} />
 
-        {/* 2. GUEST ONLY (Login/Register) */}
         <Route element={<PublicRoute />}>
           <Route path="/login" element={<LoginPage />} />
           <Route path="/register" element={<Register />} />
         </Route>
 
-        {/* 3. UTILITY (Always Public) */}
         <Route path="/download" element={<DownloadApp />} />
         <Route path="/practice" element={<Practice />} />
 
-        {/* 4. ADMIN SECTOR (Role 1) */}
         <Route
           path="/dashboard"
           element={
@@ -98,7 +87,6 @@ const App = () => {
           <Route path="logs" element={<AuditLogs />} />
         </Route>
 
-        {/* 5. RESIDENT SECTOR (Role 2) */}
         <Route
           path="/resident"
           element={
@@ -114,17 +102,14 @@ const App = () => {
           <Route path="profile" element={<ResidentProfile />} />
         </Route>
 
-        {/* 6. CLERK SECTOR (TEST ROUTE - No Protection) */}
         <Route path="/clerk" element={<ClerkLayout />}>
           <Route index element={<Navigate to="dashboard" replace />} />
           <Route path="dashboard" element={<ClerkDashboard />} />
 
-          {/* Shared components with Admin */}
           <Route path="requests" element={<RequestTable />} />
           <Route path="logs" element={<AuditLogs />} />
         </Route>
 
-        {/* 7. ZONE LEADER SECTOR (TEST ROUTE - No Protection) */}
         <Route path="/zone-leader" element={<ZoneLeaderLayout />}>
           <Route index element={<Navigate to="dashboard" replace />} />
           <Route path="dashboard" element={<ZoneLeaderDashboard />} />
@@ -132,7 +117,6 @@ const App = () => {
           <Route path="zone-map" element={<ZoneMap />} />
         </Route>
 
-        {/* 8. SMART CATCH-ALL */}
         <Route path="*" element={<Navigate to={getHomeRoute()} replace />} />
       </Routes>
     </BrowserRouter>

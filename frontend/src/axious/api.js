@@ -9,7 +9,6 @@ const api = axios.create({
   withCredentials: false,
 });
 
-// Add token to all requests
 api.interceptors.request.use(
   (config) => {
     const token = localStorage.getItem("token");
@@ -26,7 +25,6 @@ api.interceptors.request.use(
   },
 );
 
-// Log response errors
 api.interceptors.response.use(
   (response) => response,
   (error) => {

@@ -21,7 +21,6 @@ const ProtectedRoute = ({ children, allowedRoles }) => {
   const hasAccess = allowedRoles.map(Number).includes(userRole);
 
   if (!hasAccess) {
-    // If Admin tries to go to Resident page or vice versa, send them to their own home
     const homePath = isAdmin() ? "/dashboard" : "/resident";
     return <Navigate to={homePath} replace />;
   }

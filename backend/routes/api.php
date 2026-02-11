@@ -10,6 +10,7 @@ use App\Http\Controllers\DocumentController;
 use App\Http\Controllers\DocumentRequestController;
 
 use App\Http\Controllers\AdminDashboardController;
+use App\Http\Controllers\AdminRequestController;
 // routes/api.php
 
 Route::middleware('custom.auth')->get('/user', function (Request $request) {
@@ -40,12 +41,28 @@ Route::delete('/documents/{id}', [DocumentController::class, 'destroy']);
 
     Route::get('/admin/dashboard/overview', [AdminDashboardController::class, 'getOverview']);
 
+      Route::get('/admin/dashboard/overview', [AdminDashboardController::class, 'getOverview']);
+    Route::get('/admin/requests', [AdminRequestController::class, 'index']);
+    Route::patch('/admin/requests/{id}/status', [AdminRequestController::class, 'updateStatus']);
+
+
+    Route::get('/requests/stats', [DocumentRequestController::class, 'statistics']);
+    
+    // Resource routes
+    Route::apiResource('requests', DocumentRequestController::class);
+
+    // Custom actions
+    Route::patch('/requests/{id}/approve', [DocumentRequestController::class, 'approve']);
+    Route::patch('/requests/{id}/reject', [DocumentRequestController::class, 'reject']);
+    Route::patch('/requests/{id}/complete', [DocumentRequestController::class, 'complete']);
+    Route::patch('/requests/{id}/toggle-payment', [DocumentRequestController::class, 'togglePayment']);
+});
+
 
      Route::post('/logout', [AuthController::class, 'logout']);
 
 
 
-});
 
 Route::post('/register', [AuthController::class, 'register']);
 
