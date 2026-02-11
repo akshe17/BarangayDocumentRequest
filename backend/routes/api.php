@@ -11,6 +11,9 @@ use App\Http\Controllers\DocumentRequestController;
 
 use App\Http\Controllers\AdminDashboardController;
 use App\Http\Controllers\AdminRequestController;
+use App\Http\Controllers\ResidentVerificationController;
+
+
 // routes/api.php
 
 Route::middleware('custom.auth')->get('/user', function (Request $request) {
@@ -56,6 +59,11 @@ Route::delete('/documents/{id}', [DocumentController::class, 'destroy']);
     Route::patch('/requests/{id}/reject', [DocumentRequestController::class, 'reject']);
     Route::patch('/requests/{id}/complete', [DocumentRequestController::class, 'complete']);
     Route::patch('/requests/{id}/toggle-payment', [DocumentRequestController::class, 'togglePayment']);
+
+    //resident verfication
+    Route::get('/residents-get', [ResidentVerificationController::class, 'index']);
+    Route::post('/residents/{id}/verify', [ResidentVerificationController::class, 'approve']);
+Route::post('/residents/{id}/reject', [ResidentVerificationController::class, 'reject']);
 });
 
 
