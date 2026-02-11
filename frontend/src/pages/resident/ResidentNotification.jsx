@@ -1,4 +1,6 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
+// 1. Import your API instance (assuming you have axios configured)
+import api from "../../axious/api";
 import {
   Bell,
   CheckCircle2,
@@ -6,51 +8,57 @@ import {
   UserCheck,
   UserPlus,
   Clock,
-  ChevronRight,
   Trash2,
   Check,
+  Loader2,
+  AlertCircle,
 } from "lucide-react";
 
 const ResidentNotifications = () => {
   const [filter, setFilter] = useState("all");
-  const [notifications, setNotifications] = useState([
-    {
-      id: 1,
-      type: "REQUEST_APPROVED",
-      title: "Document Approved",
-      message: "Your Barangay Clearance (REQ-8821) is ready for pickup.",
-      time: "2 mins ago",
-      status: "unread",
-      category: "requests",
-    },
-    {
-      id: 2,
-      type: "ACCOUNT_VERIFIED",
-      title: "Account Verified",
-      message: "Your identity has been confirmed. You now have full access.",
-      time: "1 hour ago",
-      status: "unread",
-      category: "account",
-    },
-    {
-      id: 3,
-      type: "REQUEST_REJECTED",
-      title: "Request Rejected",
-      message: "Business Permit (REQ-5501) rejected. Reason: Missing DTI.",
-      time: "Yesterday",
-      status: "read",
-      category: "requests",
-    },
-  ]);
+  const [notifications, setNotifications] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
 
-  const markAsRead = (id) => {
-    setNotifications(
-      notifications.map((n) => (n.id === id ? { ...n, status: "read" } : n)),
-    );
+  // 2. Fetch data from Laravel backend on component mount
+  useEffect(() => {
+    fetchNotifications();
+  }, []);
+
+  const fetchNotifications = async () => {
+    try {
+      setLoading(true);
+      // Replace with your Laravel API endpoint
+      const response = await api.get("/resident/notifications");
+      setNotifications(response.data);
+    } catch (err) {
+      setError("Failed to fetch notifications. Please try again later.");
+      console.error(err);
+    } finally {
+      setLoading(false);
+    }
   };
 
-  const deleteNotif = (id) => {
-    setNotifications(notifications.filter((n) => n.id !== id));
+  const markAsRead = async (id) => {
+    try {
+      // API call to update status in DB
+      await api.put(`/resident/notifications/${id}/read`);
+      setNotifications(
+        notifications.map((n) => (n.id === id ? { ...n, status: "read" } : n)),
+      );
+    } catch (err) {
+      console.error(err);
+    }
+  };
+
+  const deleteNotif = async (id) => {
+    try {
+      // API call to delete from DB
+      await api.delete(`/resident/notifications/${id}`);
+      setNotifications(notifications.filter((n) => n.id !== id));
+    } catch (err) {
+      console.error(err);
+    }
   };
 
   const filtered =
@@ -58,22 +66,63 @@ const ResidentNotifications = () => {
       ? notifications
       : notifications.filter((n) => n.category === filter);
 
+  // Helper to determine styling based on notification type
+  const getStyles = (type) => {
+    switch (type) {
+      case "REQUEST_APPROVED":
+        return {
+          icon: <CheckCircle2 size={20} />,
+          bg: "bg-emerald-50",
+          text: "text-emerald-600",
+          border: "border-emerald-100",
+        };
+      case "REQUEST_REJECTED":
+        return {
+          icon: <XCircle size={20} />,
+          bg: "bg-red-50",
+          text: "text-red-600",
+          border: "border-red-100",
+        };
+      case "ACCOUNT_VERIFIED":
+        return {
+          icon: <UserCheck size={20} />,
+          bg: "bg-blue-50",
+          text: "text-blue-600",
+          border: "border-blue-100",
+        };
+      case "ACCOUNT_UNVERIFIED":
+        return {
+          icon: <UserPlus size={20} />,
+          bg: "bg-amber-50",
+          text: "text-amber-600",
+          border: "border-amber-100",
+        };
+      default:
+        return {
+          icon: <Clock size={20} />,
+          bg: "bg-gray-50",
+          text: "text-gray-400",
+          border: "border-gray-100",
+        };
+    }
+  };
+
   return (
-    <div className="max-w-3xl mx-auto px-4 py-6 animate-in fade-in slide-in-from-bottom-2 duration-500">
+    <div className="max-w-3xl mx-auto px-4 py-8">
       {/* HEADER */}
-      <div className="flex items-center justify-between mb-8">
+      <div className="flex items-center justify-between mb-8 pb-6 border-b border-gray-100">
         <div>
-          <h1 className="text-2xl font-semibold text-gray-900 tracking-tight">
-            Activity
+          <h1 className="text-3xl font-bold text-gray-950 tracking-tighter">
+            Activity Hub
           </h1>
-          <p className="text-sm text-gray-500">
-            Updates on your account and requests.
+          <p className="text-sm text-gray-500 mt-1">
+            Real-time updates on your account and requests.
           </p>
         </div>
-        <div className="relative">
-          <Bell size={24} className="text-gray-300" />
+        <div className="relative p-3 bg-gray-50 rounded-full border border-gray-100">
+          <Bell size={24} className="text-gray-400" />
           {notifications.some((n) => n.status === "unread") && (
-            <span className="absolute -top-1 -right-1 w-3 h-3 bg-emerald-500 border-2 border-white rounded-full"></span>
+            <span className="absolute top-2 right-2 w-3 h-3 bg-emerald-500 border-2 border-white rounded-full"></span>
           )}
         </div>
       </div>
@@ -84,10 +133,10 @@ const ResidentNotifications = () => {
           <button
             key={type}
             onClick={() => setFilter(type)}
-            className={`px-5 py-2 rounded-full text-xs font-semibold capitalize transition-all duration-300 ${
+            className={`px-6 py-2.5 rounded-full text-sm font-semibold capitalize transition-all duration-300 ${
               filter === type
                 ? "bg-gray-900 text-white shadow-lg"
-                : "bg-white text-gray-400 border border-gray-100 hover:border-gray-300"
+                : "bg-white text-gray-600 border border-gray-200 hover:border-gray-300 hover:bg-gray-50"
             }`}
           >
             {type}
@@ -97,113 +146,93 @@ const ResidentNotifications = () => {
 
       {/* NOTIFICATION LIST */}
       <div className="space-y-4">
-        {filtered.length > 0 ? (
+        {loading ? (
+          <div className="text-center py-16 text-gray-500 flex justify-center items-center gap-2">
+            <Loader2 className="animate-spin" size={20} /> Loading your
+            notifications...
+          </div>
+        ) : error ? (
+          <div className="text-center py-10 text-red-600 bg-red-50 rounded-2xl border border-red-100 flex flex-col items-center">
+            <AlertCircle className="mb-2" size={30} /> {error}
+          </div>
+        ) : filtered.length > 0 ? (
           filtered.map((notif) => (
             <div
               key={notif.id}
-              className={`group relative overflow-hidden bg-white rounded-2xl border transition-all duration-300 hover:-translate-y-1 hover:shadow-xl ${
+              className={`group relative bg-white rounded-2xl border transition-all duration-300 ${
                 notif.status === "unread"
-                  ? "border-emerald-100 shadow-sm shadow-emerald-50"
-                  : "border-gray-100 opacity-90"
-              }`}
+                  ? "border-emerald-100 shadow-sm"
+                  : "border-gray-100 opacity-90 hover:opacity-100"
+              } hover:shadow-lg hover:-translate-y-0.5`}
             >
               <div className="p-5 flex items-start gap-4">
                 {/* DYNAMIC ICON */}
                 <div
-                  className={`p-3 rounded-xl transition-transform duration-500 group-hover:scale-110 ${getStyles(notif.type).bg} ${getStyles(notif.type).text}`}
+                  className={`p-3.5 rounded-xl transition-transform duration-500 group-hover:scale-105 ${getStyles(notif.type).bg} ${getStyles(notif.type).text} ${getStyles(notif.type).border} border`}
                 >
                   {getStyles(notif.type).icon}
                 </div>
 
                 {/* TEXT CONTENT */}
-                <div className="flex-1" onClick={() => markAsRead(notif.id)}>
-                  <div className="flex justify-between items-start">
+                <div className="flex-1">
+                  <div className="flex justify-between items-start gap-2">
                     <h3
-                      className={`text-[15px] font-semibold ${notif.status === "unread" ? "text-gray-900" : "text-gray-600"}`}
+                      className={`text-[15px] font-semibold ${notif.status === "unread" ? "text-gray-950" : "text-gray-700"}`}
                     >
                       {notif.title}
                     </h3>
-                    <span className="text-[10px] font-medium text-gray-400">
+                    <span className="text-[11px] font-medium text-gray-400 whitespace-nowrap">
                       {notif.time}
                     </span>
                   </div>
-                  <p className="text-sm text-gray-500 mt-1 font-medium leading-relaxed italic group-hover:not-italic transition-all">
+                  <p className="text-sm text-gray-600 mt-1.5 font-medium leading-relaxed">
                     {notif.message}
                   </p>
                 </div>
 
                 {/* INTERACTIVE ACTIONS */}
-                <div className="flex flex-col gap-2 self-center opacity-0 group-hover:opacity-100 transition-opacity">
-                  <button
-                    onClick={() => markAsRead(notif.id)}
-                    className="p-2 hover:bg-emerald-50 text-emerald-600 rounded-lg transition-colors"
-                    title="Mark as read"
-                  >
-                    <Check size={16} />
-                  </button>
+                <div className="flex gap-1.5 self-center opacity-0 group-hover:opacity-100 transition-opacity">
+                  {notif.status === "unread" && (
+                    <button
+                      onClick={() => markAsRead(notif.id)}
+                      className="p-2.5 hover:bg-emerald-50 text-emerald-600 rounded-xl transition-colors"
+                      title="Mark as read"
+                    >
+                      <Check size={17} />
+                    </button>
+                  )}
                   <button
                     onClick={() => deleteNotif(notif.id)}
-                    className="p-2 hover:bg-red-50 text-red-500 rounded-lg transition-colors"
+                    className="p-2.5 hover:bg-red-50 text-red-500 rounded-xl transition-colors"
                     title="Delete"
                   >
-                    <Trash2 size={16} />
+                    <Trash2 size={17} />
                   </button>
                 </div>
 
+                {/* UNREAD INDICATOR */}
                 {notif.status === "unread" && (
-                  <div className="absolute top-5 right-5 w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+                  <div className="absolute top-5 right-5 w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse" />
                 )}
               </div>
             </div>
           ))
         ) : (
-          <div className="py-24 text-center">
-            <div className="w-16 h-16 bg-gray-50 rounded-full flex items-center justify-center mx-auto mb-4 border border-gray-100">
-              <Bell size={24} className="text-gray-200" />
+          <div className="py-24 text-center bg-white rounded-3xl border border-gray-100">
+            <div className="w-20 h-20 bg-gray-50 rounded-full flex items-center justify-center mx-auto mb-5 border border-gray-100">
+              <Bell size={32} className="text-gray-300" />
             </div>
-            <p className="text-sm font-medium text-gray-400">
-              Nothing to see here.
+            <h3 className="text-lg font-semibold text-gray-900">
+              All caught up!
+            </h3>
+            <p className="text-sm text-gray-500 mt-1 max-w-xs mx-auto">
+              There are no new notifications in this category right now.
             </p>
           </div>
         )}
       </div>
     </div>
   );
-};
-
-const getStyles = (type) => {
-  switch (type) {
-    case "REQUEST_APPROVED":
-      return {
-        icon: <CheckCircle2 size={20} />,
-        bg: "bg-emerald-50",
-        text: "text-emerald-600",
-      };
-    case "REQUEST_REJECTED":
-      return {
-        icon: <XCircle size={20} />,
-        bg: "bg-red-50",
-        text: "text-red-600",
-      };
-    case "ACCOUNT_VERIFIED":
-      return {
-        icon: <UserCheck size={20} />,
-        bg: "bg-blue-50",
-        text: "text-blue-600",
-      };
-    case "ACCOUNT_UNVERIFIED":
-      return {
-        icon: <UserPlus size={20} />,
-        bg: "bg-amber-50",
-        text: "text-amber-600",
-      };
-    default:
-      return {
-        icon: <Clock size={20} />,
-        bg: "bg-gray-50",
-        text: "text-gray-400",
-      };
-  }
 };
 
 export default ResidentNotifications;

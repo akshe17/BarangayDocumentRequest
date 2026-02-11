@@ -13,7 +13,7 @@ use App\Http\Controllers\AdminDashboardController;
 use App\Http\Controllers\AdminRequestController;
 use App\Http\Controllers\ResidentVerificationController;
 use App\Http\Controllers\InboxController;
-
+use App\Http\Controllers\ResidentNotificationController;
 
 // routes/api.php
 
@@ -70,6 +70,10 @@ Route::post('/residents/{id}/reject', [ResidentVerificationController::class, 'r
 
 // Ensure this is inside your auth middleware group
 Route::get('/audit-logs', [InboxController::class, 'index']);
+
+//resident notifications
+Route::get('/resident/notifications', [ResidentNotificationController::class, 'index']);
+        Route::put('/resident/notifications/{id}/read', [ResidentNotificationController::class, 'markAsRead']);
 
 });
 
