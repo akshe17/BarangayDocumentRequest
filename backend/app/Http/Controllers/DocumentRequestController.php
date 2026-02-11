@@ -8,6 +8,7 @@ use App\Models\Document;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Validator;
+use Illuminate\Support\Facades\Auth;
 
 class DocumentRequestController extends Controller
 {
@@ -139,4 +140,36 @@ class DocumentRequestController extends Controller
             'rejected' => $rejected,
         ]);
     }
+
+
+public function getHistory()
+{
+    try {
+        $resident = auth()->user()->resident;
+        
+        if (!$resident) {
+            return response()->json(['message' => 'User is not linked to a resident'], 400);
+        }
+
+        $requests = DocumentRequest::where('resident_id', $resident->resident_id)
+            ->with([
+                'items.document', // Load document details for each item
+                'status'          // Load status details
+            ])
+            ->orderBy('request_date', 'desc')
+            ->get();
+
+        // Debug: Log the data to see what's being returned
+        \Log::info('Request History:', ['data' => $requests->toArray()]);
+
+        return response()->json($requests, 200);
+        
+    } catch (\Exception $e) {
+        \Log::error('Error fetching history:', ['error' => $e->getMessage()]);
+        return response()->json([
+            'message' => 'Error fetching history',
+            'error' => $e->getMessage()
+        ], 500);
+    }
+}
 }
