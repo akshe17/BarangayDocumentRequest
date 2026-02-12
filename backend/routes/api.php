@@ -46,12 +46,34 @@ Route::delete('/documents/{id}', [DocumentController::class, 'destroy']);
     Route::get('/admin/dashboard/overview', [AdminDashboardController::class, 'getOverview']);
 
       Route::get('/admin/dashboard/overview', [AdminDashboardController::class, 'getOverview']);
-    Route::get('/admin/requests', [AdminRequestController::class, 'index']);
-    Route::patch('/admin/requests/{id}/status', [AdminRequestController::class, 'updateStatus']);
+
+      //Admin request controller
+      
+// Get all document requests (with optional filtering and search)
+Route::get('/document-requests', [DocumentRequestController::class, 'index']);
+
+// Get statistics for dashboard
+Route::get('/admin/document-requests/stats', [AdminRequestController::class, 'getStats']);
+
+// Get a specific document request
+Route::get('/document-requests/{id}', [DocumentRequestController::class, 'show']);
+
+// Calculate total for a document request
+Route::get('/admin/document-requests', [AdminRequestController::class, 'index']);
+Route::get('/admin/document-requests/{id}/calculate-total', [AdminRequestController::class, 'calculateTotal']);
 
 
-    Route::get('/requests/stats', [DocumentRequestController::class, 'statistics']);
-    
+Route::put('/admin/document-requests/{id}/approve', [AdminRequestController::class, 'approve']);
+
+
+Route::put('/admin/document-requests/{id}/reject', [AdminRequestController::class, 'reject']);
+
+Route::put('/admin/document-requests/{id}/complete', [AdminRequestController::class, 'complete']);
+
+
+Route::put('/admin/document-requests/{id}/toggle-payment', [AdminRequestController::class, 'togglePaymentStatus']);
+
+
     // Resource routes
     Route::apiResource('requests', DocumentRequestController::class);
 

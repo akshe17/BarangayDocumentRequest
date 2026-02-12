@@ -2,174 +2,397 @@
 
 namespace App\Http\Controllers;
 
-use Illuminate\Http\Request;
 use App\Models\DocumentRequest;
-use App\Models\RequestStatus;
+use App\Models\RequestItem;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Validator;
 
 class AdminRequestController extends Controller
 {
-    // Get all requests with stats
-    public function index()
+    /**
+     * Display a listing of all document requests with relationships
+     * GET /api/document-requests
+     */
+    public function index(Request $request)
     {
         try {
-            $requests = DocumentRequest::with([
+            $query = DocumentRequest::with([
+                'resident.user',
+                'resident.gender',
+                'resident.civilStatus',
                 'items.document',
-                'status',
-                'resident.user'
-            ])
-            ->orderBy('request_date', 'desc')
-            ->get();
+                'status'
+            ]);
 
-            // Calculate stats - FIXED: Use status_id instead of status_name
-            $stats = [
-                'total' => $requests->count(),
-                'pending' => $requests->where('status_id', 1)->count(),
-                'approved' => $requests->where('status_id', 2)->count(),
-                'completed' => $requests->where('status_id', 3)->count(),
-                'rejected' => $requests->where('status_id', 4)->count(),
-            ];
+            // Filter by status if provided
+            if ($request->has('status') && $request->status !== 'all') {
+                $query->whereHas('status', function ($q) use ($request) {
+                    $q->where('status_name', ucfirst($request->status));
+                });
+            }
 
-            // Format requests for frontend
+            // Search functionality
+            if ($request->has('search') && $request->search !== '') {
+                $searchTerm = $request->search;
+                $query->where(function ($q) use ($searchTerm) {
+                    $q->whereHas('resident', function ($residentQuery) use ($searchTerm) {
+                        $residentQuery->where('first_name', 'LIKE', "%{$searchTerm}%")
+                            ->orWhere('last_name', 'LIKE', "%{$searchTerm}%");
+                    })
+                    ->orWhereHas('items.document', function ($docQuery) use ($searchTerm) {
+                        $docQuery->where('document_name', 'LIKE', "%{$searchTerm}%");
+                    })
+                    ->orWhere('request_id', 'LIKE', "%{$searchTerm}%");
+                });
+            }
+
+            // Order by most recent first
+            $requests = $query->orderBy('request_date', 'desc')->get();
+
+            // Format the response
             $formattedRequests = $requests->map(function ($request) {
-                $items = $request->items ?? [];
-                $totalFee = $items->reduce(function ($carry, $item) {
-                    return $carry + (($item->document->fee ?? 0) * $item->quantity);
-                }, 0);
+                $resident = $request->resident;
+                $fullName = "{$resident->first_name} {$resident->last_name}";
+                $initials = strtoupper(substr($resident->first_name, 0, 1) . substr($resident->last_name, 0, 1));
 
                 return [
-                    'id' => $request->request_id,
-                    'request_id' => 'REQ-' . str_pad($request->request_id, 3, '0', STR_PAD_LEFT),
-                    'resident' => $request->resident ? 
-                        $request->resident->first_name . ' ' . $request->resident->last_name : 
-                        'Unknown',
-                    'email' => $request->resident->user->email ?? 'N/A',
-                    'avatar' => $this->getInitials(
-                        $request->resident->first_name ?? 'U',
-                        $request->resident->last_name ?? 'N'
-                    ),
-                    'documents' => $items->map(function ($item) {
-                        return $item->document->document_name ?? 'Unknown Document';
+                    'id' => "REQ-" . str_pad($request->request_id, 3, '0', STR_PAD_LEFT),
+                    'request_id' => $request->request_id,
+                    'resident' => $fullName,
+                    'email' => $resident->user->email ?? 'N/A',
+                    'documents' => $request->items->map(function ($item) {
+                        return $item->document->document_name;
                     })->toArray(),
-                    'total_amount' => $totalFee,
-                    'status' => $request->status->status_name ?? 'Unknown',
-                    'status_id' => $request->status_id,
-                    'purpose' => $request->purpose,
-                    'date' => $this->getTimeAgo($request->request_date),
-                    'date_created' => $request->request_date->format('M d, Y'),
-                    'payment_status' => 'Unpaid', // Add payment tracking to your DB if needed
-                    'rejection_reason' => $request->rejection_reason ?? null,
+                    'date' => $request->request_date->diffForHumans(),
+                    'dateCreated' => $request->request_date->format('M d, Y'),
+                    'status' => $request->status->status_name ?? 'Pending',
+                    'purpose' => $request->purpose ?? 'No purpose provided',
+                    'avatar' => $initials,
+                    'paymentStatus' => $request->payment_status === 'paid' ? 'Paid' : 'Unpaid',
+                    'rejectionReason' => $request->rejection_reason,
+                    'pickup_date' => $request->pickup_date ? $request->pickup_date->format('M d, Y') : null,
                 ];
             });
 
             return response()->json([
-                'stats' => $stats,
-                'requests' => $formattedRequests,
+                'success' => true,
+                'data' => $formattedRequests,
+                'message' => 'Document requests retrieved successfully'
             ], 200);
 
         } catch (\Exception $e) {
-            \Log::error('Admin Requests Error:', [
-                'error' => $e->getMessage(),
-                'line' => $e->getLine()
-            ]);
-            
             return response()->json([
-                'message' => 'Error fetching requests',
+                'success' => false,
+                'message' => 'Error retrieving document requests',
                 'error' => $e->getMessage()
             ], 500);
         }
     }
 
-    // Update request status
-    public function updateStatus(Request $request, $id)
+    /**
+     * Display the specified document request
+     * GET /api/document-requests/{id}
+     */
+    public function show($id)
     {
         try {
-            $validated = $request->validate([
-                'status_id' => 'required|integer|in:1,2,3,4',
-                'rejection_reason' => 'nullable|string|max:500'
-            ]);
+            $request = DocumentRequest::with([
+                'resident.user',
+                'resident.gender',
+                'resident.civilStatus',
+                'items.document',
+                'status'
+            ])->findOrFail($id);
 
-            $documentRequest = DocumentRequest::findOrFail($id);
-            
-            // Validate status transitions
-            $currentStatusId = $documentRequest->status_id;
-            $newStatusId = $validated['status_id'];
-            
-            // Business rules:
-            // - Pending (1) can go to Approved (2) or Rejected (4)
-            // - Approved (2) can go to Completed (3) only
-            // - Completed (3) and Rejected (4) are final states
-            
-            if ($currentStatusId == 3 || $currentStatusId == 4) {
-                return response()->json([
-                    'message' => 'Cannot update a completed or rejected request'
-                ], 400);
-            }
-            
-            if ($currentStatusId == 1) {
-                // Pending can only go to Approved or Rejected
-                if (!in_array($newStatusId, [2, 4])) {
-                    return response()->json([
-                        'message' => 'Invalid status transition from Pending'
-                    ], 400);
-                }
-            }
-            
-            if ($currentStatusId == 2) {
-                // Approved can only go to Completed
-                if ($newStatusId != 3) {
-                    return response()->json([
-                        'message' => 'Approved requests can only be marked as completed'
-                    ], 400);
-                }
-            }
+            $resident = $request->resident;
+            $fullName = "{$resident->first_name} {$resident->last_name}";
+            $initials = strtoupper(substr($resident->first_name, 0, 1) . substr($resident->last_name, 0, 1));
 
-            $documentRequest->status_id = $newStatusId;
-            
-            // If rejected, save rejection reason
-            if ($newStatusId == 4 && isset($validated['rejection_reason'])) {
-                $documentRequest->rejection_reason = $validated['rejection_reason'];
-            } else {
-                // Clear rejection reason if not rejecting
-                $documentRequest->rejection_reason = null;
-            }
-            
-            $documentRequest->save();
+            $formattedRequest = [
+                'id' => "REQ-" . str_pad($request->request_id, 3, '0', STR_PAD_LEFT),
+                'request_id' => $request->request_id,
+                'resident' => $fullName,
+                'email' => $resident->user->email ?? 'N/A',
+                'documents' => $request->items->map(function ($item) {
+                    return [
+                        'name' => $item->document->document_name,
+                        'quantity' => $item->quantity,
+                        'fee' => $item->document->fee
+                    ];
+                })->toArray(),
+                'date' => $request->request_date->diffForHumans(),
+                'dateCreated' => $request->request_date->format('M d, Y'),
+                'status' => $request->status->status_name ?? 'Pending',
+                'purpose' => $request->purpose ?? 'No purpose provided',
+                'avatar' => $initials,
+                'paymentStatus' => $request->payment_status === 'paid' ? 'Paid' : 'Unpaid',
+                'rejectionReason' => $request->rejection_reason,
+                'pickup_date' => $request->pickup_date ? $request->pickup_date->format('M d, Y') : null,
+                'resident_details' => [
+                    'house_no' => $resident->house_no,
+                    'zone' => $resident->zone,
+                    'birthdate' => $resident->birthdate,
+                    'gender' => $resident->gender->gender_name ?? null,
+                    'civil_status' => $resident->civilStatus->status_name ?? null,
+                ]
+            ];
 
             return response()->json([
-                'message' => 'Status updated successfully',
-                'request' => $documentRequest->load(['status', 'items.document', 'resident.user'])
+                'success' => true,
+                'data' => $formattedRequest,
+                'message' => 'Document request retrieved successfully'
             ], 200);
 
         } catch (\Exception $e) {
-            \Log::error('Update Status Error:', [
-                'error' => $e->getMessage(),
-                'request_id' => $id
-            ]);
-            
             return response()->json([
-                'message' => 'Error updating status',
+                'success' => false,
+                'message' => 'Error retrieving document request',
+                'error' => $e->getMessage()
+            ], 404);
+        }
+    }
+
+    /**
+     * Update the status of a document request to "Approved"
+     * PUT /api/document-requests/{id}/approve
+     */
+    public function approve($id)
+    {
+        try {
+            $request = DocumentRequest::findOrFail($id);
+
+            // Get the "Approved" status ID (assuming status_id 2 is Approved)
+            // You should adjust this based on your actual status table
+            $approvedStatusId = DB::table('request_statuses')
+                ->where('status_name', 'Approved')
+                ->value('status_id');
+
+            if (!$approvedStatusId) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Approved status not found in database'
+                ], 400);
+            }
+
+            $request->update([
+                'status_id' => $approvedStatusId,
+                'rejection_reason' => null // Clear rejection reason if any
+            ]);
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Document request approved successfully',
+                'data' => $request->fresh(['status', 'resident', 'items.document'])
+            ], 200);
+
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Error approving document request',
                 'error' => $e->getMessage()
             ], 500);
         }
     }
 
-    // Helper function to get initials
-    private function getInitials($firstName, $lastName)
+    /**
+     * Update the status of a document request to "Rejected"
+     * PUT /api/document-requests/{id}/reject
+     */
+    public function reject(Request $request, $id)
     {
-        return strtoupper(substr($firstName, 0, 1) . substr($lastName, 0, 1));
+        try {
+            $validator = Validator::make($request->all(), [
+                'rejection_reason' => 'required|string|max:500'
+            ]);
+
+            if ($validator->fails()) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Validation error',
+                    'errors' => $validator->errors()
+                ], 422);
+            }
+
+            $documentRequest = DocumentRequest::findOrFail($id);
+
+            // Get the "Rejected" status ID
+            $rejectedStatusId = DB::table('request_statuses')
+                ->where('status_name', 'Rejected')
+                ->value('status_id');
+
+            if (!$rejectedStatusId) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Rejected status not found in database'
+                ], 400);
+            }
+
+            $documentRequest->update([
+                'status_id' => $rejectedStatusId,
+                'rejection_reason' => $request->rejection_reason
+            ]);
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Document request rejected successfully',
+                'data' => $documentRequest->fresh(['status', 'resident', 'items.document'])
+            ], 200);
+
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Error rejecting document request',
+                'error' => $e->getMessage()
+            ], 500);
+        }
     }
 
-    // Helper function to get time ago
-    private function getTimeAgo($date)
+    /**
+     * Update the status of a document request to "Completed"
+     * PUT /api/document-requests/{id}/complete
+     */
+    public function complete($id)
     {
-        $now = now();
-        $diff = $now->diffInMinutes($date);
+        try {
+            $request = DocumentRequest::findOrFail($id);
 
-        if ($diff < 1) return 'Just now';
-        if ($diff < 60) return $diff . ' min' . ($diff > 1 ? 's' : '') . ' ago';
-        if ($diff < 1440) return floor($diff / 60) . ' hour' . (floor($diff / 60) > 1 ? 's' : '') . ' ago';
-        if ($diff < 10080) return floor($diff / 1440) . ' day' . (floor($diff / 1440) > 1 ? 's' : '') . ' ago';
-        return $date->format('M d, Y');
+            // Get the "Completed" status ID
+            $completedStatusId = DB::table('request_statuses')
+                ->where('status_name', 'Completed')
+                ->value('status_id');
+
+            if (!$completedStatusId) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Completed status not found in database'
+                ], 400);
+            }
+
+            $request->update([
+                'status_id' => $completedStatusId
+            ]);
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Document request marked as completed successfully',
+                'data' => $request->fresh(['status', 'resident', 'items.document'])
+            ], 200);
+
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Error completing document request',
+                'error' => $e->getMessage()
+            ], 500);
+        }
+    }
+
+    /**
+     * Toggle payment status
+     * PUT /api/document-requests/{id}/toggle-payment
+     */
+    public function togglePaymentStatus($id)
+    {
+        try {
+            $request = DocumentRequest::findOrFail($id);
+
+            $newPaymentStatus = $request->payment_status === 'paid' ? 'unpaid' : 'paid';
+            
+            $request->update([
+                'payment_status' => $newPaymentStatus
+            ]);
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Payment status updated successfully',
+                'data' => [
+                    'request_id' => $request->request_id,
+                    'payment_status' => $newPaymentStatus
+                ]
+            ], 200);
+
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Error updating payment status',
+                'error' => $e->getMessage()
+            ], 500);
+        }
+    }
+
+    /**
+     * Get statistics for dashboard
+     * GET /api/document-requests/stats
+     */
+    public function getStats()
+    {
+        try {
+            $total = DocumentRequest::count();
+            
+            $pending = DocumentRequest::whereHas('status', function ($q) {
+                $q->where('status_name', 'pending');
+            })->count();
+            
+            $approved = DocumentRequest::whereHas('status', function ($q) {
+                $q->where('status_name', 'approved');
+            })->count();
+            
+            $completed = DocumentRequest::whereHas('status', function ($q) {
+                $q->where('status_name', 'completed');
+            })->count();
+            
+            $rejected = DocumentRequest::whereHas('status', function ($q) {
+                $q->where('status_name', 'rejected');
+            })->count();
+
+            return response()->json([
+                'success' => true,
+                'data' => [
+                    'total' => $total,
+                    'pending' => $pending,
+                    'approved' => $approved,
+                    'completed' => $completed,
+                    'rejected' => $rejected
+                ]
+            ], 200);
+
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Error retrieving statistics',
+                'error' => $e->getMessage()
+            ], 500);
+        }
+    }
+    /**
+     * Calculate total fee for a document request
+     * GET /api/document-requests/{id}/calculate-total
+     */
+    public function calculateTotal($id)
+    {
+        try {
+            $request = DocumentRequest::with('items.document')->findOrFail($id);
+            
+            $total = $request->items->sum(function ($item) {
+                return $item->document->fee * $item->quantity;
+            });
+
+            return response()->json([
+                'success' => true,
+                'data' => [
+                    'request_id' => $request->request_id,
+                    'total' => $total,
+                    'formatted_total' => '₱' . number_format($total, 2)
+                ]
+            ], 200);
+
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Error calculating total',
+                'error' => $e->getMessage()
+            ], 500);
+        }
     }
 }

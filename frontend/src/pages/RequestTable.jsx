@@ -1,92 +1,203 @@
-import React, { useState, useMemo } from "react";
+import React, { useState, useEffect } from "react";
 import StatsCards from "../components/Request/StatsCard";
 import SearchFilters from "../components/Request/SearchFilters";
 import RequestsTable from "../components/Request/RequestsTable";
 import ViewModal from "../components/Request/ViewModal";
+import api from "../axious/api";
+
 const RequestTable = () => {
+  const [requests, setRequests] = useState([]);
+  const [filteredRequests, setFilteredRequests] = useState([]);
+  const [stats, setStats] = useState({
+    total: 0,
+    pending: 0,
+    approved: 0,
+    completed: 0,
+    rejected: 0,
+  });
   const [searchTerm, setSearchTerm] = useState("");
   const [filterStatus, setFilterStatus] = useState("all");
   const [selectedRequest, setSelectedRequest] = useState(null);
   const [showViewModal, setShowViewModal] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
 
   const DOCUMENT_PRICE = 50; // Price per document in pesos
 
-  const [requests, setRequests] = useState([
-    {
-      id: "REQ-001",
-      resident: "Juan Luna",
-      email: "juan@example.com",
-      documents: [
-        "Certificate of Indigency",
-        "Barangay Clearance",
-        "Certificate of Residency",
-      ],
-      date: "2 mins ago",
-      dateCreated: "Jan 29, 2026",
-      status: "Pending",
-      purpose: "Medical assistance and employment requirements",
-      avatar: "JL",
-      paymentStatus: "Unpaid",
-    },
-    {
-      id: "REQ-002",
-      resident: "Andres Bonifacio",
-      email: "andres@example.com",
-      documents: ["Barangay Clearance"],
-      date: "1 hour ago",
-      dateCreated: "Jan 29, 2026",
-      status: "Approved",
-      purpose: "Employment requirement",
-      avatar: "AB",
-      paymentStatus: "Unpaid",
-    },
-    {
-      id: "REQ-003",
-      resident: "Maria Clara",
-      email: "maria@example.com",
-      documents: ["Certificate of Residency", "Barangay ID"],
-      date: "3 hours ago",
-      dateCreated: "Jan 29, 2026",
-      status: "Completed",
-      purpose: "School enrollment",
-      avatar: "MC",
-      paymentStatus: "Paid",
-    },
-    {
-      id: "REQ-004",
-      resident: "Jose Rizal",
-      email: "jose@example.com",
-      documents: ["Business Permit", "Barangay Clearance"],
-      date: "5 hours ago",
-      dateCreated: "Jan 28, 2026",
-      status: "Pending",
-      purpose: "New business application",
-      avatar: "JR",
-      paymentStatus: "Unpaid",
-    },
-    {
-      id: "REQ-005",
-      resident: "Gabriela Silang",
-      email: "gabriela@example.com",
-      documents: ["Barangay ID"],
-      date: "1 day ago",
-      dateCreated: "Jan 28, 2026",
-      status: "Rejected",
-      purpose: "Government transaction",
-      rejectionReason: "Incomplete requirements",
-      avatar: "GS",
-      paymentStatus: "Unpaid",
-    },
-  ]);
+  // ========================================
+  // API FUNCTIONS
+  // ========================================
 
-  // Calculate total payment for a request
-  const calculateTotal = (documents) => {
-    return documents.length * DOCUMENT_PRICE;
+  /**
+   * Fetch all document requests
+   */
+  const fetchDocumentRequests = async (status = "all") => {
+    try {
+      const params = {};
+      if (status !== "all") params.status = status;
+
+      const response = await api.get("/admin/document-requests", { params });
+      return response.data;
+    } catch (error) {
+      console.error("Error fetching document requests:", error);
+      throw error;
+    }
   };
 
-  // Filter and search logic
-  const filteredRequests = useMemo(() => {
-    return requests.filter((req) => {
+  /**
+   * Fetch statistics
+   */
+  const fetchStats = async () => {
+    try {
+      console.log("Fetching stats from: /admin/document-requests/stats");
+      const response = await api.get("/admin/document-requests/stats");
+      console.log("Stats response:", response);
+      return response.data;
+    } catch (error) {
+      console.error("Error fetching stats:", error);
+      console.error("Error details:", {
+        message: error.message,
+        response: error.response?.data,
+        status: error.response?.status,
+        url: error.config?.url,
+        baseURL: error.config?.baseURL,
+        fullURL: error.config?.baseURL + error.config?.url,
+      });
+      throw error;
+    }
+  };
+
+  /**
+   * Approve a document request
+   */
+  const approveRequest = async (id) => {
+    try {
+      const response = await api.put(`/document-requests/${id}/approve`);
+      return response.data;
+    } catch (error) {
+      console.error("Error approving request:", error);
+      throw error;
+    }
+  };
+
+  /**
+   * Reject a document request
+   */
+  const rejectRequest = async (id, rejectionReason) => {
+    try {
+      const response = await api.put(`/document-requests/${id}/reject`, {
+        rejection_reason: rejectionReason,
+      });
+      return response.data;
+    } catch (error) {
+      console.error("Error rejecting request:", error);
+      throw error;
+    }
+  };
+
+  /**
+   * Complete a document request
+   */
+  const completeRequest = async (id) => {
+    try {
+      const response = await api.put(`/document-requests/${id}/complete`);
+      return response.data;
+    } catch (error) {
+      console.error("Error completing request:", error);
+      throw error;
+    }
+  };
+
+  /**
+   * Toggle payment status
+   */
+  const togglePaymentStatusAPI = async (id) => {
+    try {
+      const response = await api.put(`/document-requests/${id}/toggle-payment`);
+      return response.data;
+    } catch (error) {
+      console.error("Error toggling payment status:", error);
+      throw error;
+    }
+  };
+
+  /**
+   * Extract numeric ID from "REQ-001" format
+   */
+  const extractNumericId = (id) => {
+    return parseInt(id.replace("REQ-", ""));
+  };
+
+  // ========================================
+  // COMPONENT LOGIC
+  // ========================================
+
+  // Fetch requests on component mount
+  useEffect(() => {
+    loadRequests();
+    loadStats();
+  }, []);
+
+  // Fetch requests when filter status changes
+  useEffect(() => {
+    loadRequests();
+  }, [filterStatus]);
+
+  // Client-side search filtering
+  useEffect(() => {
+    filterRequestsLocally();
+  }, [searchTerm, requests]);
+
+  /**
+   * Load all document requests from the API
+   */
+  const loadRequests = async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      const data = await fetchDocumentRequests(filterStatus);
+
+      if (data.success) {
+        setRequests(data.data);
+        setFilteredRequests(data.data);
+      } else {
+        setError(data.message || "Failed to fetch requests");
+      }
+    } catch (error) {
+      setError(
+        error.response?.data?.message ||
+          "Error connecting to server. Please try again.",
+      );
+      console.error("Error loading requests:", error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  /**
+   * Load statistics for dashboard cards
+   */
+  const loadStats = async () => {
+    try {
+      const data = await fetchStats();
+      if (data.success) {
+        setStats(data.data);
+      }
+    } catch (error) {
+      console.error("Error loading stats:", error);
+    }
+  };
+
+  /**
+   * Client-side filtering for search
+   */
+  const filterRequestsLocally = () => {
+    if (!searchTerm.trim()) {
+      setFilteredRequests(requests);
+      return;
+    }
+
+    const filtered = requests.filter((req) => {
       const matchesSearch =
         req.resident.toLowerCase().includes(searchTerm.toLowerCase()) ||
         req.documents.some((doc) =>
@@ -94,69 +205,187 @@ const RequestTable = () => {
         ) ||
         req.id.toLowerCase().includes(searchTerm.toLowerCase());
 
-      const matchesFilter =
-        filterStatus === "all" ||
-        req.status.toLowerCase().replace(" ", "") ===
-          filterStatus.toLowerCase();
-
-      return matchesSearch && matchesFilter;
+      return matchesSearch;
     });
-  }, [searchTerm, filterStatus, requests]);
 
-  // Handle actions
-  const handleApprove = (id) => {
-    setRequests((prev) =>
-      prev.map((req) => (req.id === id ? { ...req, status: "Approved" } : req)),
-    );
+    setFilteredRequests(filtered);
   };
 
-  const handleReject = (id) => {
-    const reason = prompt("Enter rejection reason:");
-    if (reason && reason.trim()) {
-      setRequests((prev) =>
-        prev.map((req) =>
-          req.id === id
-            ? { ...req, status: "Rejected", rejectionReason: reason }
-            : req,
-        ),
+  /**
+   * Calculate total payment for a request
+   */
+  const calculateTotal = (documents) => {
+    return documents.length * DOCUMENT_PRICE;
+  };
+
+  /**
+   * Handle approve request
+   */
+  const handleApprove = async (id) => {
+    try {
+      const numericId = extractNumericId(id);
+      const data = await approveRequest(numericId);
+
+      if (data.success) {
+        await loadRequests();
+        await loadStats();
+        alert("✅ Request approved successfully!");
+      } else {
+        alert(`❌ Failed to approve request: ${data.message}`);
+      }
+    } catch (error) {
+      console.error("Error approving request:", error);
+      alert(
+        `❌ ${error.response?.data?.message || "Failed to approve request. Please try again."}`,
       );
     }
   };
 
-  const handleComplete = (id) => {
-    setRequests((prev) =>
-      prev.map((req) =>
-        req.id === id ? { ...req, status: "Completed" } : req,
-      ),
-    );
+  /**
+   * Handle reject request
+   */
+  const handleReject = async (id) => {
+    const reason = prompt("Enter rejection reason:");
+
+    if (!reason || !reason.trim()) {
+      return; // User cancelled or entered empty reason
+    }
+
+    try {
+      const numericId = extractNumericId(id);
+      const data = await rejectRequest(numericId, reason);
+
+      if (data.success) {
+        await loadRequests();
+        await loadStats();
+        alert("✅ Request rejected successfully!");
+      } else {
+        alert(`❌ Failed to reject request: ${data.message}`);
+      }
+    } catch (error) {
+      console.error("Error rejecting request:", error);
+      alert(
+        `❌ ${error.response?.data?.message || "Failed to reject request. Please try again."}`,
+      );
+    }
   };
 
+  /**
+   * Handle complete request
+   */
+  const handleComplete = async (id) => {
+    try {
+      const numericId = extractNumericId(id);
+      const data = await completeRequest(numericId);
+
+      if (data.success) {
+        await loadRequests();
+        await loadStats();
+        alert("✅ Request marked as completed!");
+      } else {
+        alert(`❌ Failed to complete request: ${data.message}`);
+      }
+    } catch (error) {
+      console.error("Error completing request:", error);
+      alert(
+        `❌ ${error.response?.data?.message || "Failed to complete request. Please try again."}`,
+      );
+    }
+  };
+
+  /**
+   * Handle view request details
+   */
   const handleView = (request) => {
     setSelectedRequest(request);
     setShowViewModal(true);
   };
 
-  const togglePaymentStatus = (id) => {
-    setRequests((prev) =>
-      prev.map((req) =>
-        req.id === id
-          ? {
-              ...req,
-              paymentStatus: req.paymentStatus === "Paid" ? "Unpaid" : "Paid",
-            }
-          : req,
-      ),
-    );
+  /**
+   * Toggle payment status between Paid/Unpaid
+   */
+  const togglePaymentStatus = async (id) => {
+    try {
+      const numericId = extractNumericId(id);
+      const data = await togglePaymentStatusAPI(numericId);
+
+      if (data.success) {
+        // Update local state optimistically
+        const updatePaymentStatus = (req) =>
+          req.id === id
+            ? {
+                ...req,
+                paymentStatus: req.paymentStatus === "Paid" ? "Unpaid" : "Paid",
+              }
+            : req;
+
+        setRequests((prev) => prev.map(updatePaymentStatus));
+        setFilteredRequests((prev) => prev.map(updatePaymentStatus));
+
+        // Update selected request if it's open in modal
+        if (selectedRequest && selectedRequest.id === id) {
+          setSelectedRequest({
+            ...selectedRequest,
+            paymentStatus:
+              selectedRequest.paymentStatus === "Paid" ? "Unpaid" : "Paid",
+          });
+        }
+      } else {
+        alert(`❌ Failed to update payment status: ${data.message}`);
+      }
+    } catch (error) {
+      console.error("Error toggling payment status:", error);
+      alert(
+        `❌ ${error.response?.data?.message || "Failed to update payment status. Please try again."}`,
+      );
+    }
   };
 
-  // Stats
-  const stats = {
-    total: requests.length,
-    pending: requests.filter((r) => r.status === "Pending").length,
-    approved: requests.filter((r) => r.status === "Approved").length,
-    completed: requests.filter((r) => r.status === "Completed").length,
-    rejected: requests.filter((r) => r.status === "Rejected").length,
+  /**
+   * Refresh all data
+   */
+  const refreshData = () => {
+    loadRequests();
+    loadStats();
   };
+
+  // ========================================
+  // RENDER
+  // ========================================
+
+  // Loading state
+  if (loading && requests.length === 0) {
+    return (
+      <div className="flex items-center justify-center min-h-screen bg-gradient-to-br from-gray-50 to-gray-100">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-16 w-16 border-b-4 border-emerald-500 mx-auto"></div>
+          <p className="mt-4 text-gray-600 font-semibold">
+            Loading requests...
+          </p>
+        </div>
+      </div>
+    );
+  }
+
+  // Error state
+  if (error && requests.length === 0) {
+    return (
+      <div className="flex items-center justify-center min-h-screen bg-gradient-to-br from-gray-50 to-gray-100">
+        <div className="text-center max-w-md">
+          <div className="bg-red-100 text-red-600 p-6 rounded-lg mb-4">
+            <p className="font-bold text-lg mb-2">⚠️ Error Loading Data</p>
+            <p className="text-sm">{error}</p>
+          </div>
+          <button
+            onClick={loadRequests}
+            className="px-6 py-3 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 transition-colors font-semibold shadow-lg"
+          >
+            🔄 Retry
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6 p-6 bg-gradient-to-br from-gray-50 to-gray-100 min-h-screen">
@@ -168,6 +397,15 @@ const RequestTable = () => {
         <p className="text-gray-500">
           Review and manage resident document requests
         </p>
+
+        {/* Refresh button */}
+        <button
+          onClick={refreshData}
+          disabled={loading}
+          className="mt-4 px-4 py-2 bg-white border border-gray-200 rounded-lg text-sm font-semibold text-gray-700 hover:bg-gray-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed shadow-sm"
+        >
+          {loading ? "⏳ Refreshing..." : "🔄 Refresh Data"}
+        </button>
       </div>
 
       {/* STATS CARDS */}
@@ -185,14 +423,23 @@ const RequestTable = () => {
         />
 
         {/* TABLE */}
-        <RequestsTable
-          filteredRequests={filteredRequests}
-          calculateTotal={calculateTotal}
-          handleApprove={handleApprove}
-          handleReject={handleReject}
-          handleComplete={handleComplete}
-          handleView={handleView}
-        />
+        {loading ? (
+          <div className="flex items-center justify-center py-12">
+            <div className="text-center">
+              <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-emerald-500 mx-auto"></div>
+              <p className="mt-4 text-gray-600">Loading...</p>
+            </div>
+          </div>
+        ) : (
+          <RequestsTable
+            filteredRequests={filteredRequests}
+            calculateTotal={calculateTotal}
+            handleApprove={handleApprove}
+            handleReject={handleReject}
+            handleComplete={handleComplete}
+            handleView={handleView}
+          />
+        )}
       </div>
 
       {/* VIEW MODAL */}
