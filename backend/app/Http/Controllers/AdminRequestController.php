@@ -14,7 +14,7 @@ class AdminRequestController extends Controller
      * Display a listing of all document requests with relationships
      * GET /api/document-requests
      */
-    public function index(Request $request)
+  public function index(Request $request)
     {
         try {
             $query = DocumentRequest::with([
@@ -24,8 +24,8 @@ class AdminRequestController extends Controller
                 'items.document',
                 'status'
             ])->whereHas('resident', function ($q) {
-            $q->where('is_verified', 1);
-        });
+                $q->where('is_verified', 1);
+            });
 
             // Filter by status if provided
             if ($request->has('status') && $request->status !== 'all') {
@@ -71,7 +71,8 @@ class AdminRequestController extends Controller
                     'status' => $request->status->status_name ?? 'Pending',
                     'purpose' => $request->purpose ?? 'No purpose provided',
                     'avatar' => $initials,
-                    'paymentStatus' => $request->payment_status === 'paid' ? 'Paid' : 'Unpaid',
+                    // FIX: Check for integer 1
+                    'paymentStatus' => $request->payment_status == 1 ? 'Paid' : 'Unpaid',
                     'rejectionReason' => $request->rejection_reason,
                     'pickup_date' => $request->pickup_date ? $request->pickup_date->format('M d, Y') : null,
                 ];
@@ -128,7 +129,8 @@ class AdminRequestController extends Controller
                 'status' => $request->status->status_name ?? 'Pending',
                 'purpose' => $request->purpose ?? 'No purpose provided',
                 'avatar' => $initials,
-                'paymentStatus' => $request->payment_status === 'paid' ? 'Paid' : 'Unpaid',
+                // FIX: Check for integer 1
+                'paymentStatus' => $request->payment_status == 1 ? 'Paid' : 'Unpaid',
                 'rejectionReason' => $request->rejection_reason,
                 'pickup_date' => $request->pickup_date ? $request->pickup_date->format('M d, Y') : null,
                 'resident_details' => [
@@ -272,7 +274,8 @@ class AdminRequestController extends Controller
             }
 
             $request->update([
-                'status_id' => $completedStatusId
+               'status_id' => $completedStatusId,
+            'payment_status' => 1 // Mark as paid
             ]);
 
             return response()->json([
@@ -294,12 +297,13 @@ class AdminRequestController extends Controller
      * Toggle payment status
      * PUT /api/document-requests/{id}/toggle-payment
      */
-    public function togglePaymentStatus($id)
+   public function togglePaymentStatus($id)
     {
         try {
             $request = DocumentRequest::findOrFail($id);
 
-            $newPaymentStatus = $request->payment_status === 'paid' ? 'unpaid' : 'paid';
+            // FIX: Toggle integer 1 to 0 or vice versa
+            $newPaymentStatus = $request->payment_status == 1 ? 0 : 1;
             
             $request->update([
                 'payment_status' => $newPaymentStatus
@@ -322,51 +326,56 @@ class AdminRequestController extends Controller
             ], 500);
         }
     }
-
     /**
      * Get statistics for dashboard
      * GET /api/document-requests/stats
      */
-    public function getStats()
-    {
-        try {
-            $total = DocumentRequest::count();
-            
-            $pending = DocumentRequest::whereHas('status', function ($q) {
-                $q->where('status_name', 'pending');
-            })->count();
-            
-            $approved = DocumentRequest::whereHas('status', function ($q) {
-                $q->where('status_name', 'approved');
-            })->count();
-            
-            $completed = DocumentRequest::whereHas('status', function ($q) {
-                $q->where('status_name', 'completed');
-            })->count();
-            
-            $rejected = DocumentRequest::whereHas('status', function ($q) {
-                $q->where('status_name', 'rejected');
-            })->count();
+  public function getStats()
+{
+    try {
+        // Define the base query with the verification filter
+        $baseQuery = DocumentRequest::whereHas('resident', function ($q) {
+            $q->where('is_verified', 1);
+        });
 
-            return response()->json([
-                'success' => true,
-                'data' => [
-                    'total' => $total,
-                    'pending' => $pending,
-                    'approved' => $approved,
-                    'completed' => $completed,
-                    'rejected' => $rejected
-                ]
-            ], 200);
+        // Use the base query for all calculations
+        $total = $baseQuery->count();
+        
+        $pending = (clone $baseQuery)->whereHas('status', function ($q) {
+            $q->where('status_name', 'pending');
+        })->count();
+        
+        $approved = (clone $baseQuery)->whereHas('status', function ($q) {
+            $q->where('status_name', 'approved');
+        })->count();
+        
+        $completed = (clone $baseQuery)->whereHas('status', function ($q) {
+            $q->where('status_name', 'completed');
+        })->count();
+        
+        $rejected = (clone $baseQuery)->whereHas('status', function ($q) {
+            $q->where('status_name', 'rejected');
+        })->count();
 
-        } catch (\Exception $e) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Error retrieving statistics',
-                'error' => $e->getMessage()
-            ], 500);
-        }
+        return response()->json([
+            'success' => true,
+            'data' => [
+                'total' => $total,
+                'pending' => $pending,
+                'approved' => $approved,
+                'completed' => $completed,
+                'rejected' => $rejected
+            ]
+        ], 200);
+
+    } catch (\Exception $e) {
+        return response()->json([
+            'success' => false,
+            'message' => 'Error retrieving statistics',
+            'error' => $e->getMessage()
+        ], 500);
     }
+}
     /**
      * Calculate total fee for a document request
      * GET /api/document-requests/{id}/calculate-total

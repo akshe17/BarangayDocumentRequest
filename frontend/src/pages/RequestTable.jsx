@@ -3,6 +3,7 @@ import StatsCards from "../components/Request/StatsCard";
 import SearchFilters from "../components/Request/SearchFilters";
 import RequestsTable from "../components/Request/RequestsTable";
 import ViewModal from "../components/Request/ViewModal";
+import Toast from "../components/toast";
 import api from "../axious/api";
 
 const RequestTable = () => {
@@ -22,7 +23,32 @@ const RequestTable = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
+  // Toast state
+  const [toast, setToast] = useState({
+    show: false,
+    message: "",
+    type: "success",
+  });
+
+  // Loading states for individual actions
+  const [actionLoading, setActionLoading] = useState({});
+
   const DOCUMENT_PRICE = 50; // Price per document in pesos
+
+  // ========================================
+  // TOAST HELPER FUNCTIONS
+  // ========================================
+
+  const showToast = (message, type = "success") => {
+    setToast({ show: true, message, type });
+    setTimeout(() => {
+      setToast({ show: false, message: "", type: "success" });
+    }, 4000); // Auto-hide after 4 seconds
+  };
+
+  const hideToast = () => {
+    setToast({ show: false, message: "", type: "success" });
+  };
 
   // ========================================
   // API FUNCTIONS
@@ -36,10 +62,18 @@ const RequestTable = () => {
       const params = {};
       if (status !== "all") params.status = status;
 
+      console.log("Fetching requests from: /admin/document-requests", params);
       const response = await api.get("/admin/document-requests", { params });
+      console.log("Requests response:", response);
       return response.data;
     } catch (error) {
       console.error("Error fetching document requests:", error);
+      console.error("Request error details:", {
+        message: error.message,
+        response: error.response?.data,
+        status: error.response?.status,
+        url: error.config?.url,
+      });
       throw error;
     }
   };
@@ -113,7 +147,9 @@ const RequestTable = () => {
    */
   const togglePaymentStatusAPI = async (id) => {
     try {
-      const response = await api.put(`/document-requests/${id}/toggle-payment`);
+      const response = await api.put(
+        `/admin/document-requests/${id}/toggle-payment`,
+      );
       return response.data;
     } catch (error) {
       console.error("Error toggling payment status:", error);
@@ -162,12 +198,14 @@ const RequestTable = () => {
         setFilteredRequests(data.data);
       } else {
         setError(data.message || "Failed to fetch requests");
+        showToast(data.message || "Failed to fetch requests", "error");
       }
     } catch (error) {
-      setError(
+      const errorMsg =
         error.response?.data?.message ||
-          "Error connecting to server. Please try again.",
-      );
+        "Error connecting to server. Please try again.";
+      setError(errorMsg);
+      showToast(errorMsg, "error");
       console.error("Error loading requests:", error);
     } finally {
       setLoading(false);
@@ -222,6 +260,9 @@ const RequestTable = () => {
    * Handle approve request
    */
   const handleApprove = async (id) => {
+    // Set loading state for this specific button
+    setActionLoading((prev) => ({ ...prev, [`approve-${id}`]: true }));
+
     try {
       const numericId = extractNumericId(id);
       const data = await approveRequest(numericId);
@@ -229,15 +270,19 @@ const RequestTable = () => {
       if (data.success) {
         await loadRequests();
         await loadStats();
-        alert("✅ Request approved successfully!");
+        showToast("✅ Request approved successfully!", "success");
       } else {
-        alert(`❌ Failed to approve request: ${data.message}`);
+        showToast(`Failed to approve request: ${data.message}`, "error");
       }
     } catch (error) {
       console.error("Error approving request:", error);
-      alert(
-        `❌ ${error.response?.data?.message || "Failed to approve request. Please try again."}`,
+      showToast(
+        error.response?.data?.message ||
+          "Failed to approve request. Please try again.",
+        "error",
       );
+    } finally {
+      setActionLoading((prev) => ({ ...prev, [`approve-${id}`]: false }));
     }
   };
 
@@ -248,8 +293,12 @@ const RequestTable = () => {
     const reason = prompt("Enter rejection reason:");
 
     if (!reason || !reason.trim()) {
-      return; // User cancelled or entered empty reason
+      showToast("Rejection cancelled - no reason provided", "info");
+      return;
     }
+
+    // Set loading state for this specific button
+    setActionLoading((prev) => ({ ...prev, [`reject-${id}`]: true }));
 
     try {
       const numericId = extractNumericId(id);
@@ -258,15 +307,19 @@ const RequestTable = () => {
       if (data.success) {
         await loadRequests();
         await loadStats();
-        alert("✅ Request rejected successfully!");
+        showToast("✅ Request rejected successfully!", "success");
       } else {
-        alert(`❌ Failed to reject request: ${data.message}`);
+        showToast(`Failed to reject request: ${data.message}`, "error");
       }
     } catch (error) {
       console.error("Error rejecting request:", error);
-      alert(
-        `❌ ${error.response?.data?.message || "Failed to reject request. Please try again."}`,
+      showToast(
+        error.response?.data?.message ||
+          "Failed to reject request. Please try again.",
+        "error",
       );
+    } finally {
+      setActionLoading((prev) => ({ ...prev, [`reject-${id}`]: false }));
     }
   };
 
@@ -274,6 +327,9 @@ const RequestTable = () => {
    * Handle complete request
    */
   const handleComplete = async (id) => {
+    // Set loading state for this specific button
+    setActionLoading((prev) => ({ ...prev, [`complete-${id}`]: true }));
+
     try {
       const numericId = extractNumericId(id);
       const data = await completeRequest(numericId);
@@ -281,15 +337,19 @@ const RequestTable = () => {
       if (data.success) {
         await loadRequests();
         await loadStats();
-        alert("✅ Request marked as completed!");
+        showToast("✅ Request marked as completed!", "success");
       } else {
-        alert(`❌ Failed to complete request: ${data.message}`);
+        showToast(`Failed to complete request: ${data.message}`, "error");
       }
     } catch (error) {
       console.error("Error completing request:", error);
-      alert(
-        `❌ ${error.response?.data?.message || "Failed to complete request. Please try again."}`,
+      showToast(
+        error.response?.data?.message ||
+          "Failed to complete request. Please try again.",
+        "error",
       );
+    } finally {
+      setActionLoading((prev) => ({ ...prev, [`complete-${id}`]: false }));
     }
   };
 
@@ -305,6 +365,9 @@ const RequestTable = () => {
    * Toggle payment status between Paid/Unpaid
    */
   const togglePaymentStatus = async (id) => {
+    // Set loading state for this specific button
+    setActionLoading((prev) => ({ ...prev, [`payment-${id}`]: true }));
+
     try {
       const numericId = extractNumericId(id);
       const data = await togglePaymentStatusAPI(numericId);
@@ -315,7 +378,11 @@ const RequestTable = () => {
           req.id === id
             ? {
                 ...req,
-                paymentStatus: req.paymentStatus === "Paid" ? "Unpaid" : "Paid",
+                // FIX: Check for integer 1 sent by backend
+                paymentStatus:
+                  data.data.payment_status === 1 ? "Paid" : "Unpaid",
+                // Store raw value for toggling logic
+                payment_status: data.data.payment_status,
               }
             : req;
 
@@ -326,18 +393,26 @@ const RequestTable = () => {
         if (selectedRequest && selectedRequest.id === id) {
           setSelectedRequest({
             ...selectedRequest,
-            paymentStatus:
-              selectedRequest.paymentStatus === "Paid" ? "Unpaid" : "Paid",
+            paymentStatus: data.data.payment_status === 1 ? "Paid" : "Unpaid",
+            payment_status: data.data.payment_status,
           });
         }
+
+        const newStatusText =
+          data.data.payment_status === 1 ? "Paid" : "Unpaid";
+        showToast(`Payment status updated to ${newStatusText}`, "success");
       } else {
-        alert(`❌ Failed to update payment status: ${data.message}`);
+        showToast(`Failed to update payment status: ${data.message}`, "error");
       }
     } catch (error) {
       console.error("Error toggling payment status:", error);
-      alert(
-        `❌ ${error.response?.data?.message || "Failed to update payment status. Please try again."}`,
+      showToast(
+        error.response?.data?.message ||
+          "Failed to update payment status. Please try again.",
+        "error",
       );
+    } finally {
+      setActionLoading((prev) => ({ ...prev, [`payment-${id}`]: false }));
     }
   };
 
@@ -347,6 +422,7 @@ const RequestTable = () => {
   const refreshData = () => {
     loadRequests();
     loadStats();
+    showToast("Data refreshed successfully!", "success");
   };
 
   // ========================================
@@ -389,6 +465,14 @@ const RequestTable = () => {
 
   return (
     <div className="space-y-6 p-6 bg-gradient-to-br from-gray-50 to-gray-100 min-h-screen">
+      {/* TOAST NOTIFICATION */}
+      <Toast
+        show={toast.show}
+        message={toast.message}
+        type={toast.type}
+        onClose={hideToast}
+      />
+
       {/* HEADER */}
       <div className="mb-8">
         <h1 className="text-3xl font-black text-gray-900 mb-2">
@@ -438,6 +522,7 @@ const RequestTable = () => {
             handleReject={handleReject}
             handleComplete={handleComplete}
             handleView={handleView}
+            actionLoading={actionLoading}
           />
         )}
       </div>
@@ -453,6 +538,7 @@ const RequestTable = () => {
           togglePaymentStatus={togglePaymentStatus}
           calculateTotal={calculateTotal}
           DOCUMENT_PRICE={DOCUMENT_PRICE}
+          actionLoading={actionLoading}
         />
       )}
     </div>

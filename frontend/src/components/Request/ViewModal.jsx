@@ -10,6 +10,7 @@ import {
   AlertCircle,
   Wallet,
   Check,
+  Loader2,
 } from "lucide-react";
 
 const ViewModal = ({
@@ -21,9 +22,17 @@ const ViewModal = ({
   togglePaymentStatus,
   calculateTotal,
   DOCUMENT_PRICE,
+  actionLoading = {},
 }) => {
+  const isApprovingLoading = actionLoading[`approve-${selectedRequest.id}`];
+  const isRejectingLoading = actionLoading[`reject-${selectedRequest.id}`];
+  const isCompletingLoading = actionLoading[`complete-${selectedRequest.id}`];
+  const isPaymentLoading = actionLoading[`payment-${selectedRequest.id}`];
+  const isAnyActionLoading =
+    isApprovingLoading || isRejectingLoading || isCompletingLoading;
+
   const getStatusColor = (status) => {
-    switch (status) {
+    switch (status.toLowerCase()) {
       case "pending":
         return "bg-amber-100 text-amber-700 border-amber-200";
       case "approved":
@@ -38,7 +47,7 @@ const ViewModal = ({
   };
 
   const getStatusIcon = (status) => {
-    switch (status) {
+    switch (status.toLowerCase()) {
       case "pending":
         return <Clock size={12} />;
       case "approved":
@@ -65,7 +74,8 @@ const ViewModal = ({
           </h3>
           <button
             onClick={() => setShowViewModal(false)}
-            className="text-gray-400 hover:text-red-600 hover:bg-red-50 p-2 rounded-lg transition-all"
+            disabled={isAnyActionLoading}
+            className="text-gray-400 hover:text-red-600 hover:bg-red-50 p-2 rounded-lg transition-all disabled:opacity-50 disabled:cursor-not-allowed"
           >
             <X size={20} />
           </button>
@@ -197,15 +207,25 @@ const ViewModal = ({
               </span>
               <button
                 onClick={() => togglePaymentStatus(selectedRequest.id)}
-                className={`px-4 py-2 rounded-lg text-xs font-bold transition-all ${
+                disabled={isPaymentLoading}
+                className={`px-4 py-2 rounded-lg text-xs font-bold transition-all flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed ${
                   selectedRequest.paymentStatus === "Paid"
                     ? "bg-emerald-100 text-emerald-700 hover:bg-emerald-200"
                     : "bg-red-100 text-red-700 hover:bg-red-200"
                 }`}
               >
-                {selectedRequest.paymentStatus === "Paid"
-                  ? "✓ Paid"
-                  : "✗ Unpaid"}
+                {isPaymentLoading ? (
+                  <>
+                    <Loader2 size={14} className="animate-spin" />
+                    Updating...
+                  </>
+                ) : (
+                  <>
+                    {selectedRequest.paymentStatus === "Paid"
+                      ? "✓ Paid"
+                      : "✗ Unpaid"}
+                  </>
+                )}
               </button>
             </div>
           </div>
@@ -233,7 +253,7 @@ const ViewModal = ({
           </div>
 
           {/* Rejection Reason */}
-          {selectedRequest.status === "Rejected" &&
+          {selectedRequest.status.toLowerCase() === "rejected" &&
             selectedRequest.rejectionReason && (
               <div className="bg-red-50 border border-red-200 rounded-xl p-4">
                 <div className="flex items-start gap-2">
@@ -257,47 +277,78 @@ const ViewModal = ({
         {/* MODAL FOOTER */}
         <div className="sticky bottom-0 p-5 border-t border-gray-200 bg-white rounded-b-2xl">
           <div className="flex gap-3">
-            {selectedRequest.status === "Pending" && (
+            {selectedRequest.status.toLowerCase() === "pending" && (
               <>
                 <button
                   onClick={() => {
                     handleReject(selectedRequest.id);
                     setShowViewModal(false);
                   }}
-                  className="flex-1 px-4 py-2.5 rounded-xl font-bold text-white bg-gradient-to-r from-red-600 to-red-700 hover:from-red-700 hover:to-red-800 transition-all text-sm shadow-lg hover:scale-105 flex items-center justify-center gap-2"
+                  disabled={isAnyActionLoading}
+                  className="flex-1 px-4 py-2.5 rounded-xl font-bold text-white bg-gradient-to-r from-red-600 to-red-700 hover:from-red-700 hover:to-red-800 transition-all text-sm shadow-lg hover:scale-105 flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100"
                 >
-                  <X size={16} />
-                  Reject
+                  {isRejectingLoading ? (
+                    <>
+                      <Loader2 size={16} className="animate-spin" />
+                      Rejecting...
+                    </>
+                  ) : (
+                    <>
+                      <X size={16} />
+                      Reject
+                    </>
+                  )}
                 </button>
                 <button
                   onClick={() => {
                     handleApprove(selectedRequest.id);
                     setShowViewModal(false);
                   }}
-                  className="flex-1 px-4 py-2.5 rounded-xl font-bold text-white bg-gradient-to-r from-emerald-600 to-green-600 hover:from-emerald-700 hover:to-green-700 transition-all text-sm shadow-lg hover:scale-105 flex items-center justify-center gap-2"
+                  disabled={isAnyActionLoading}
+                  className="flex-1 px-4 py-2.5 rounded-xl font-bold text-white bg-gradient-to-r from-emerald-600 to-green-600 hover:from-emerald-700 hover:to-green-700 transition-all text-sm shadow-lg hover:scale-105 flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100"
                 >
-                  <Check size={16} />
-                  Approve
+                  {isApprovingLoading ? (
+                    <>
+                      <Loader2 size={16} className="animate-spin" />
+                      Approving...
+                    </>
+                  ) : (
+                    <>
+                      <Check size={16} />
+                      Approve
+                    </>
+                  )}
                 </button>
               </>
             )}
-            {selectedRequest.status === "Approved" && (
+            {selectedRequest.status.toLowerCase() === "approved" && (
               <button
                 onClick={() => {
                   handleComplete(selectedRequest.id);
                   setShowViewModal(false);
                 }}
-                className="w-full px-4 py-2.5 rounded-xl font-bold text-white bg-gradient-to-r from-emerald-600 to-green-600 hover:from-emerald-700 hover:to-green-700 transition-all text-sm shadow-lg hover:scale-105 flex items-center justify-center gap-2"
+                disabled={isCompletingLoading}
+                className="w-full px-4 py-2.5 rounded-xl font-bold text-white bg-gradient-to-r from-emerald-600 to-green-600 hover:from-emerald-700 hover:to-green-700 transition-all text-sm shadow-lg hover:scale-105 flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100"
               >
-                <CheckCircle2 size={16} />
-                Mark as Completed
+                {isCompletingLoading ? (
+                  <>
+                    <Loader2 size={16} className="animate-spin" />
+                    Completing...
+                  </>
+                ) : (
+                  <>
+                    <CheckCircle2 size={16} />
+                    Mark as Completed
+                  </>
+                )}
               </button>
             )}
-            {(selectedRequest.status === "Completed" ||
-              selectedRequest.status === "Rejected") && (
+            {(selectedRequest.status.toLowerCase() === "completed" ||
+              selectedRequest.status.toLowerCase() === "rejected") && (
               <button
                 onClick={() => setShowViewModal(false)}
-                className="w-full px-4 py-2.5 rounded-xl font-bold text-gray-700 bg-gray-100 hover:bg-gray-200 transition-all text-sm"
+                disabled={isAnyActionLoading}
+                className="w-full px-4 py-2.5 rounded-xl font-bold text-gray-700 bg-gray-100 hover:bg-gray-200 transition-all text-sm disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 Close
               </button>
