@@ -170,7 +170,7 @@ const RequestsTable = ({
                 </td>
                 <td className="px-6 py-4">
                   <div className="flex justify-center gap-2">
-                    {req.status === "Pending" && (
+                    {req.status === "pending" && (
                       <>
                         <button
                           onClick={() => handleApprove(req.id)}
@@ -188,7 +188,7 @@ const RequestsTable = ({
                         </button>
                       </>
                     )}
-                    {req.status === "Approved" && (
+                    {req.status === "approved" && (
                       <button
                         onClick={() => handleComplete(req.id)}
                         className="p-2.5 bg-emerald-100 text-emerald-600 rounded-lg hover:bg-emerald-500 hover:text-white transition-all shadow-sm hover:shadow-md"

@@ -23,7 +23,9 @@ class AdminRequestController extends Controller
                 'resident.civilStatus',
                 'items.document',
                 'status'
-            ]);
+            ])->whereHas('resident', function ($q) {
+            $q->where('is_verified', 1);
+        });
 
             // Filter by status if provided
             if ($request->has('status') && $request->status !== 'all') {

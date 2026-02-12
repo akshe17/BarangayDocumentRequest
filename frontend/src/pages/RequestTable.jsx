@@ -72,7 +72,7 @@ const RequestTable = () => {
    */
   const approveRequest = async (id) => {
     try {
-      const response = await api.put(`/document-requests/${id}/approve`);
+      const response = await api.put(`/admin/document-requests/${id}/approve`);
       return response.data;
     } catch (error) {
       console.error("Error approving request:", error);
@@ -85,7 +85,7 @@ const RequestTable = () => {
    */
   const rejectRequest = async (id, rejectionReason) => {
     try {
-      const response = await api.put(`/document-requests/${id}/reject`, {
+      const response = await api.put(`/admin/document-requests/${id}/reject`, {
         rejection_reason: rejectionReason,
       });
       return response.data;
@@ -100,7 +100,7 @@ const RequestTable = () => {
    */
   const completeRequest = async (id) => {
     try {
-      const response = await api.put(`/document-requests/${id}/complete`);
+      const response = await api.put(`/admin/document-requests/${id}/complete`);
       return response.data;
     } catch (error) {
       console.error("Error completing request:", error);
