@@ -144,7 +144,7 @@ const NewRequest = () => {
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-10">
         {/* DOCUMENT SELECTION AREA */}
         <div className="lg:col-span-2 space-y-4">
-          <label className="text-xs font-black text-gray-400 uppercase tracking-[0.2em] mb-2 block ml-1">
+          <label className="text-xs font-black text-gray-900 uppercase tracking-[0.2em] mb-2 block ml-1">
             Available Documents
           </label>
 
@@ -177,7 +177,7 @@ const NewRequest = () => {
                   className={`group p-6 rounded-2xl border-2 transition-all cursor-pointer flex items-center gap-6 ${
                     isSelected
                       ? "bg-emerald-600 border-emerald-600 shadow-xl shadow-emerald-100 scale-[1.01]"
-                      : "bg-white border-gray-200 hover:border-emerald-400 hover:shadow-md"
+                      : "bg-white border-gray-300 hover:border-emerald-400 hover:shadow-md"
                   }`}
                 >
                   {/* CHECKBOX */}
@@ -185,7 +185,7 @@ const NewRequest = () => {
                     className={`w-8 h-8 rounded-full flex items-center justify-center transition-all shrink-0 ${
                       isSelected
                         ? "bg-white text-emerald-600"
-                        : "bg-gray-100 text-gray-300 border border-gray-200"
+                        : "bg-gray-200 text-gray-500 border border-gray-200"
                     }`}
                   >
                     {isSelected ? (
@@ -237,7 +237,7 @@ const NewRequest = () => {
 
           {/* PURPOSE INPUT */}
           <div className="mt-10">
-            <label className="text-xs font-black text-gray-400 uppercase tracking-[0.2em] mb-3 block ml-1">
+            <label className="text-xs font-black text-gray-900 uppercase tracking-[0.2em] mb-3 block ml-1">
               Purpose of Request
             </label>
             <textarea
@@ -252,8 +252,8 @@ const NewRequest = () => {
 
         {/* SIDEBAR SUMMARY */}
         <div className="lg:col-span-1">
-          <div className="bg-white border-2 border-gray-100 rounded-[2.5rem] p-8 sticky top-24 shadow-2xl shadow-gray-200/50">
-            <h2 className="text-xs font-black text-gray-900 uppercase tracking-widest mb-8 border-b border-gray-100 pb-5">
+          <div className="bg-white  rounded-[2.5rem] p-8 sticky top-24 ">
+            <h2 className="text-sm font-black text-gray-900 uppercase tracking-widest mb-8 border-b border-gray-100 pb-5">
               Request Summary
             </h2>
 
@@ -284,7 +284,7 @@ const NewRequest = () => {
 
             <div className="pt-6 border-t-2 border-gray-50">
               <div className="flex justify-between items-center mb-8">
-                <span className="text-xs font-black text-gray-400 uppercase">
+                <span className="text-xs font-black text-gray-600 uppercase">
                   Grand Total
                 </span>
                 <span className="text-3xl font-black text-emerald-600 tracking-tighter">
@@ -301,7 +301,14 @@ const NewRequest = () => {
                   isSubmitting ||
                   isLoading
                 }
-                className="w-full bg-gray-900 text-white py-5 rounded-2xl font-black text-xs uppercase tracking-widest flex items-center justify-center gap-3 hover:bg-emerald-600 disabled:bg-gray-100 disabled:text-gray-400 transition-all shadow-xl active:scale-95"
+                className={` ${
+                  selectedDocs.length === 0 ||
+                  !purpose ||
+                  isSubmitting ||
+                  isLoading
+                    ? "cursor-not-allowed"
+                    : "cursor-pointer"
+                } w-full bg-gray-900 text-white py-5 rounded-2xl font-black text-xs uppercase tracking-widest flex items-center justify-center gap-3 hover:bg-emerald-600 disabled:bg-gray-300 disabled:text-gray-600 transition-all active:scale-95`}
               >
                 {isSubmitting ? (
                   <>

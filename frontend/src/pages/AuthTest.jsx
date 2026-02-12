@@ -12,10 +12,10 @@ const AuthTest = () => {
 
       <div className="space-y-2 font-mono text-sm">
         <p>
-          <strong>Loading:</strong> {loading ? "⏳ True" : "✅ False"}
+          <strong>Loading:</strong> {loading ? " True" : "✅ False"}
         </p>
         <p>
-          <strong>Authenticated:</strong> {isAuthenticated ? "✅ Yes" : "❌ No"}
+          <strong>Authenticated:</strong> {isAuthenticated ? " Yes" : "No"}
         </p>
 
         <hr className="border-emerald-200" />

@@ -23,13 +23,12 @@ class AuthController extends Controller
         return response()->json(['message' => 'Invalid credentials'], 401);
     }
 
-    // Fetch the actual model instance to ensure custom PK methods are available
+    
     $user = User::where('email', $request->email)->first();
     
-    // Clean existing tokens to avoid the 'tokenable_id' conflict from orphaned sessions
+  
     $user->tokens()->delete(); 
 
-    // This calls the getKey() method we added to your User model
     $token = $user->createToken($request->password)->plainTextToken;
     if((int) $user->role_id === 2){
         $user = $user->load('resident');
@@ -44,7 +43,7 @@ class AuthController extends Controller
 
     public function register(Request $request)
     {
-        // 1. Validate with custom error messages
+  
         try {
             $validated = $request->validate([
                 'email' => 'required|email|unique:users,email',
@@ -78,19 +77,18 @@ class AuthController extends Controller
 
         try {
             return DB::transaction(function () use ($request) {
-                // 2. Handle File Upload
+          
                 $path = $request->file('id_image')->store('verification_ids', 'public');
 
-                // 3. Create User FIRST
                 $user = User::create([
                     'email' => $request->email,
                     'password' => Hash::make($request->password),
                     'role_id' => 2,
                 ]);
 
-                // 4. Create Resident with user_id
+            
                 $resident = Resident::create([
-                    'user_id' => $user->user_id,  // Link to user immediately
+                    'user_id' => $user->user_id, 
                     'first_name' => $request->fname,
                     'last_name' => $request->lname,
                     'birthdate' => $request->birthdate,
@@ -103,10 +101,8 @@ class AuthController extends Controller
                     'is_verified' => false,
                 ]);
 
-                // 5. Generate token
                 $token = $user->createToken('auth_token')->plainTextToken;
 
-                // 6. Load resident relationship
                 $user->load('resident');
 
                 return response()->json([
@@ -124,14 +120,13 @@ class AuthController extends Controller
     }
 public function logout(Request $request)
 {
-    // 1. Get the plain text token from the header
+   
     $tokenString = $request->bearerToken();
 
     if ($tokenString) {
-        // 2. Find the token in the database
+      
         $token = PersonalAccessToken::findToken($tokenString);
 
-        // 3. Delete it if it exists
         if ($token) {
             $token->delete();
         }

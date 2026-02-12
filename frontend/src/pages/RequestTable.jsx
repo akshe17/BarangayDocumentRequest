@@ -17,7 +17,7 @@ const RequestTable = () => {
     rejected: 0,
   });
   const [searchTerm, setSearchTerm] = useState("");
-  const [filterStatus, setFilterStatus] = useState("all");
+  const [filterStatus, setFilterStatus] = useState("pending");
   const [selectedRequest, setSelectedRequest] = useState(null);
   const [showViewModal, setShowViewModal] = useState(false);
   const [loading, setLoading] = useState(true);
@@ -33,7 +33,7 @@ const RequestTable = () => {
   // Loading states for individual actions
   const [actionLoading, setActionLoading] = useState({});
 
-  const DOCUMENT_PRICE = 50; // Price per document in pesos
+  const DOCUMENT_PRICE = 10; // Price per document in pesos
 
   // ========================================
   // TOAST HELPER FUNCTIONS

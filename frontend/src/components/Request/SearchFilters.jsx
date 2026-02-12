@@ -9,11 +9,11 @@ const SearchFilters = ({
   stats,
 }) => {
   const filterButtons = [
-    { label: "All", value: "all" },
     { label: "Pending", value: "pending", badge: stats.pending },
     { label: "Approved", value: "approved" },
     { label: "Completed", value: "completed" },
     { label: "Rejected", value: "rejected" },
+    { label: "All", value: "all" },
   ];
 
   const getButtonClass = (value) => {
@@ -33,7 +33,7 @@ const SearchFilters = ({
   };
 
   return (
-    <div className="p-5 border-b border-gray-200 flex flex-col md:flex-row justify-between items-center gap-4 bg-gradient-to-r from-gray-50 to-white">
+    <div className="p-5 border-b border-gray-200 flex flex-col md:flex-row justify-between items-center gap-4  to-white">
       <div className="relative w-full md:w-96">
         <Search
           className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400"

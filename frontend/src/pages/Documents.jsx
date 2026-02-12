@@ -318,7 +318,7 @@ const Documents = () => {
           </div>
           <button
             onClick={() => openModal("add")}
-            className="bg-gradient-to-r from-emerald-600 to-green-600 text-white px-6 py-3 rounded-xl font-bold text-sm hover:shadow-lg hover:scale-105 transition-all flex items-center gap-2 shadow-md whitespace-nowrap"
+            className="bg-gradient-to-r from-emerald-600 to-green-600 text-white px-6 py-3 rounded-xl font-bold text-sm hover:shadow-lg transition-all flex items-center gap-2 shadow-md whitespace-nowrap"
           >
             <Plus size={18} /> Add Document
           </button>
@@ -560,7 +560,7 @@ const Documents = () => {
                 {modalType !== "warning" && (
                   <button
                     onClick={modalType === "delete" ? handleDelete : handleSave}
-                    className={`flex-1 px-4 py-2.5 rounded-xl font-bold text-white transition-all text-sm shadow-lg hover:scale-105 flex items-center justify-center gap-2 ${modalType === "delete" ? "bg-gradient-to-r from-red-600 to-red-700" : "bg-gradient-to-r from-emerald-600 to-green-600"}`}
+                    className={`flex-1 px-4 py-2.5 rounded-xl font-bold text-white transition-all text-sm shadow-lg flex items-center justify-center gap-2 ${modalType === "delete" ? "bg-gradient-to-r from-red-600 to-red-700" : "bg-gradient-to-r from-emerald-600 to-green-600"}`}
                   >
                     {modalType === "delete" ? (
                       <>

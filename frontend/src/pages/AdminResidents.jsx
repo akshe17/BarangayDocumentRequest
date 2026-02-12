@@ -23,7 +23,7 @@ const BASE_URL = "http://localhost:8000";
 const AdminResidents = () => {
   const [searchTerm, setSearchTerm] = useState("");
   const [activeMenu, setActiveMenu] = useState(null);
-  const [filterStatus, setFilterStatus] = useState("all");
+  const [filterStatus, setFilterStatus] = useState("pending");
   const [loading, setLoading] = useState(true);
 
   // --- ACTION LOADING STATE ---
@@ -289,7 +289,7 @@ const AdminResidents = () => {
           />
         </div>
         <div className="flex gap-2 overflow-x-auto pb-1">
-          {["all", "verified", "pending", "rejected"].map((s) => (
+          {["pending", "verified", "rejected", "all"].map((s) => (
             <button
               key={s}
               onClick={() => setFilterStatus(s)}
@@ -341,7 +341,7 @@ const AdminResidents = () => {
                     >
                       <td className="px-6 py-4">
                         <div className="flex items-center gap-3">
-                          <div className="w-10 h-10 bg-slate-100 rounded-full flex items-center justify-center font-black text-slate-600 text-xs border border-white shadow-sm group-hover:scale-110 transition-transform">
+                          <div className="w-10 h-10 bg-slate-100 rounded-full flex items-center justify-center font-black text-slate-600 text-xs border border-white shadow-sm transition-transform">
                             {r.avatar}
                           </div>
                           <div className="font-bold text-slate-900 text-sm tracking-tight">
@@ -426,7 +426,7 @@ const AdminResidents = () => {
                   <img
                     src={selectedResident.idUrl}
                     alt="Resident ID"
-                    className="max-w-full max-h-full object-contain hover:scale-105 transition-transform"
+                    className="max-w-full max-h-full object-contain transition-transform"
                     onError={(e) => {
                       e.target.src =
                         "https://via.placeholder.com/600x400?text=Image+Not+Found";
