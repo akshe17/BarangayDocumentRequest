@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useMemo } from "react";
 import api from "../axious/api";
+import Toast from "../components/toast"; // --- ADDED: Import Toast component ---
 import {
   Search,
   Plus,
@@ -25,6 +26,13 @@ const Documents = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState(null);
 
+  // --- ADDED: Toast state ---
+  const [toast, setToast] = useState({
+    show: false,
+    message: "",
+    type: "success",
+  });
+
   const [formData, setFormData] = useState({
     name: "",
     fee: "",
@@ -37,16 +45,24 @@ const Documents = () => {
     fetchDocuments();
   }, []);
 
+  // --- ADDED: Toast helper function ---
+  const showToast = (message, type = "success") => {
+    setToast({ show: true, message, type });
+    setTimeout(() => {
+      setToast({ show: false, message: "", type: "success" });
+    }, 3000);
+  };
+
   const fetchDocuments = async () => {
     setIsLoading(true);
     try {
       const response = await api.get("/documents");
-      // Assuming response.data is an array of documents
       setDocuments(response.data);
       setError(null);
     } catch (err) {
       console.error("Error fetching documents:", err);
       setError("Failed to fetch documents.");
+      showToast("Failed to fetch documents.", "error"); // --- ADDED ---
     } finally {
       setIsLoading(false);
     }
@@ -111,13 +127,9 @@ const Documents = () => {
   };
 
   const handleSave = async () => {
-    // --- FIX: Use document_id for logging ---
-    console.log("Selected Document ID:", selectedDocument?.document_id);
-    console.log("Save initiated:", modalType);
-
     // Validation
     if (!formData.name.trim() || formData.fee === "") {
-      alert("Please fill in Document Name and Fee");
+      showToast("Please fill in Document Name and Fee", "error"); // --- UPDATED ---
       return;
     }
 
@@ -131,20 +143,18 @@ const Documents = () => {
       if (modalType === "add") {
         const response = await api.post("/documents", docData);
         setDocuments([...documents, response.data]);
+        showToast("Document added successfully!"); // --- ADDED ---
       } else if (modalType === "edit") {
-        // --- FIX: Check for document_id ---
         if (!selectedDocument || !selectedDocument.document_id) {
-          alert("Error: Document ID not found.");
+          showToast("Error: Document ID not found.", "error"); // --- UPDATED ---
           return;
         }
 
-        // --- FIX: Use document_id in URL ---
         const response = await api.put(
           `/documents/${selectedDocument.document_id}`,
           docData,
         );
 
-        // --- FIX: Update state using document_id ---
         setDocuments(
           documents.map((doc) =>
             doc.document_id === selectedDocument.document_id
@@ -152,20 +162,21 @@ const Documents = () => {
               : doc,
           ),
         );
+        showToast("Document updated successfully!"); // --- ADDED ---
       }
       closeModal();
     } catch (err) {
       console.error("Error saving document:", err);
-      alert(
+      showToast(
         `Failed to save document: ${err.response?.data?.message || err.message}`,
-      );
+        "error",
+      ); // --- UPDATED ---
     }
   };
 
   const handleDelete = async () => {
-    // --- FIX: Use document_id for check ---
     if (!selectedDocument || !selectedDocument.document_id) {
-      alert("Error: Document ID not found.");
+      showToast("Error: Document ID not found.", "error"); // --- UPDATED ---
       return;
     }
 
@@ -175,24 +186,31 @@ const Documents = () => {
     }
 
     try {
-      // --- FIX: Use document_id in URL ---
       await api.delete(`/documents/${selectedDocument.document_id}`);
 
-      // --- FIX: Filter using document_id ---
       setDocuments(
         documents.filter(
           (doc) => doc.document_id !== selectedDocument.document_id,
         ),
       );
+      showToast("Document deleted successfully!"); // --- ADDED ---
       closeModal();
     } catch (err) {
       console.error("Error deleting document:", err);
-      alert("Failed to delete document.");
+      showToast("Failed to delete document.", "error"); // --- UPDATED ---
     }
   };
 
   return (
     <div className="space-y-6 p-6 bg-gradient-to-br from-gray-50 to-gray-100 min-h-screen">
+      {/* --- ADDED: Toast component implementation --- */}
+      <Toast
+        show={toast.show}
+        message={toast.message}
+        type={toast.type}
+        onClose={() => setToast({ ...toast, show: false })}
+      />
+
       {/* HEADER */}
       <div className="mb-8">
         <h1 className="text-3xl font-black text-gray-900 mb-2">
@@ -324,7 +342,7 @@ const Documents = () => {
         ) : (
           filteredDocuments.map((doc) => (
             <div
-              key={doc.document_id} // --- FIX: Use document_id ---
+              key={doc.document_id}
               className="bg-white rounded-xl border border-gray-200 shadow-sm hover:shadow-md transition-all overflow-hidden group"
             >
               <div className="p-5 border-b border-gray-100 bg-gradient-to-r from-gray-50 to-white">
