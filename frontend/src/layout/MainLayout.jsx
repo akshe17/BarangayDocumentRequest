@@ -30,6 +30,11 @@ const MainLayout = () => {
       icon: <LayoutDashboard size={20} />,
     },
     {
+      path: "/dashboard/users",
+      label: "User Management",
+      icon: <Users size={20} />,
+    },
+    {
       path: "/dashboard/residents",
       label: "Residents",
       icon: <Users size={20} />,

@@ -18,10 +18,12 @@ import Practice from "./pages/Practice";
 
 // Admin Pages (Also Shared with Clerk)
 import Overview from "./pages/Overview";
+import UserManagement from "./pages/admin/UserManagement";
 import RequestTable from "./pages/RequestTable";
 import AdminResidents from "./pages/AdminResidents";
 import Documents from "./pages/Documents";
 import AuditLogs from "./pages/AuditLogs";
+
 import AuthTest from "./pages/AuthTest";
 
 // Resident Pages
@@ -82,6 +84,7 @@ const App = () => {
           <Route index element={<Overview />} />
           <Route path="test" element={<AuthTest />} />
           <Route path="requests" element={<RequestTable />} />
+          <Route path="users" element={<UserManagement />} />
           <Route path="residents" element={<AdminResidents />} />
           <Route path="documents" element={<Documents />} />
           <Route path="logs" element={<AuditLogs />} />
