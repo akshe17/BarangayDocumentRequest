@@ -7,9 +7,11 @@ use Illuminate\Database\Eloquent\Model;
 class DocumentRequest extends Model
 {
     protected $primaryKey = 'request_id';
+ 
     protected $fillable = [
         'resident_id', 
         'status_id', 
+        'last_updated_by', // Added
         'purpose', 
         'request_date', 
         'pickup_date',
@@ -35,5 +37,10 @@ class DocumentRequest extends Model
     public function resident()
     {
         return $this->belongsTo(Resident::class, 'resident_id', 'resident_id');
+    }
+
+    public function lastUpdatedBy()
+    {
+        return $this->belongsTo(User::class, 'last_updated_by', 'user_id');
     }
 }

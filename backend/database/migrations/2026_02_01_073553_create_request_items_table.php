@@ -16,6 +16,7 @@ return new class extends Migration
     $table->foreignId('request_id')->constrained('document_requests', 'request_id')->onDelete('cascade');
     $table->foreignId('document_id')->constrained('document_types', 'document_id');
     $table->integer('quantity');
+      $table->timestamps();
 });
     }
 
