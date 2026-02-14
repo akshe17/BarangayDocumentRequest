@@ -18,11 +18,9 @@ return new class extends Migration
             $table->foreignId('gender_id')->constrained('genders', 'gender_id');
             $table->foreignId('civil_status_id')->constrained('civil_statuses', 'civil_status_id');
             
-            // UPDATED: 'zone_id' is NOT nullable. Every resident must have a zone.
-            $table->foreignId('zone_id')->constrained('zones', 'zone_id')->onDelete('restrict');
+
+            // --- REMOVED NAMES FROM HERE ---
             
-            $table->string('first_name', 50);
-            $table->string('last_name', 50);
             $table->date('birthdate');
             $table->string('house_no', 50);
 

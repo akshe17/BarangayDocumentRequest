@@ -14,7 +14,7 @@ use App\Http\Controllers\AdminRequestController;
 use App\Http\Controllers\ResidentVerificationController;
 use App\Http\Controllers\InboxController;
 use App\Http\Controllers\ResidentNotificationController;
-
+use App\Http\Controllers\AdminUserController;
 // routes/api.php
 
 Route::middleware('custom.auth')->get('/user', function (Request $request) {
@@ -42,7 +42,12 @@ Route::delete('/documents/{id}', [DocumentController::class, 'destroy']);
   Route::post('/request-document', [DocumentRequestController::class, 'store']);
   Route::get('/request-document/history', [DocumentRequestController::class, 'getHistory']);
   Route::get('/resident/dashboard', [DocumentRequestController::class, 'getDashboardStats']);
-
+//ADMIN
+Route::get('/admin/users', [AdminUserController::class, 'index']);
+    Route::post('/admin/users', [AdminUserController::class, 'store']);
+    Route::put('/admin/users/{id}', [AdminUserController::class, 'update']);
+    Route::delete('/admin/users/{id}', [AdminUserController::class, 'destroy']);
+    Route::put('/admin/users/{id}/change-password', [AdminUserController::class, 'changePassword']);
     Route::get('/admin/dashboard/overview', [AdminDashboardController::class, 'getOverview']);
 
       Route::get('/admin/dashboard/overview', [AdminDashboardController::class, 'getOverview']);

@@ -29,6 +29,8 @@ class BaseDataSeeder extends Seeder
         if (!$adminExists) {
             DB::table('users')->insert([
                 'role_id' => $roleId,
+                'first_name' => 'Vladimer',
+                'last_name' => 'Tuyor',
                 'email' => 'admin@gmail.com',
                 'password' => Hash::make('12341234'), // Change this password!
                 'created_at' => Carbon::now(),

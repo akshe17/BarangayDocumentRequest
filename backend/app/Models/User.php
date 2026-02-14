@@ -8,7 +8,7 @@ use Illuminate\Notifications\Notifiable;
 use Laravel\Sanctum\HasApiTokens;
 use App\Models\Resident;
 use App\Models\Role;
-use App\Models\Zone; // Added import
+use App\Models\Zone;
 
 class User extends Authenticatable
 {
@@ -23,7 +23,11 @@ class User extends Authenticatable
         'email',
         'password',
         'role_id',
-        'zone_id', // --- ADDED THIS LINE ---
+        'zone_id',
+        // --- ADDED THESE LINES ---
+        'first_name',
+        'last_name',
+        // -------------------------
     ];
 
     protected $hidden = [
@@ -39,7 +43,7 @@ class User extends Authenticatable
 
     public function resident()
     {
-        return $this->hasOne(Resident::class, 'user_id');
+        return $this->hasOne(Resident::class, 'user_id', 'user_id');
     }
     
     public function role()
@@ -47,12 +51,10 @@ class User extends Authenticatable
         return $this->belongsTo(Role::class, 'role_id', 'role_id');
     }
 
-    // --- ADDED THIS RELATIONSHIP ---
     public function zone()
     {
         return $this->belongsTo(Zone::class, 'zone_id', 'zone_id');
     }
-    // -------------------------------
 
     protected function casts(): array
     {

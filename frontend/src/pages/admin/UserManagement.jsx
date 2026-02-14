@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import {
   Search,
   UserPlus,
@@ -9,49 +9,28 @@ import {
   AlertTriangle,
   X,
 } from "lucide-react";
+// 1. IMPORT YOUR API CONFIG
+import api from "../../axious/api";
 import AddUserModal from "../../components/admin/AddUserModal";
 import EditUserModal from "../../components/admin/EditUserModal";
 import DeleteUserModal from "../../components/admin/DeleteUserModal";
 import ChangePasswordModal from "../../components/admin/ChangePasswordModal";
 
-const initialUsers = [
-  {
-    id: 1,
-    name: "Admin User",
-    email: "admin@brgy.gov",
-    role: "Admin",
-    status: "Active",
-  },
-  {
-    id: 2,
-    name: "Clerk User",
-    email: "clerk@brgy.gov",
-    role: "Clerk",
-    status: "Active",
-  },
-];
-
 const UserManagement = () => {
-  const [users, setUsers] = useState(initialUsers);
+  // 2. Start with an empty list
+  const [users, setUsers] = useState([]);
+  const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState("All");
   const [searchQuery, setSearchQuery] = useState("");
+  const [currentUser, setCurrentUser] = useState(null);
 
-  // Separate modal states for each action
+  // Modal states
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
   const [isPasswordModalOpen, setIsPasswordModalOpen] = useState(false);
 
-  const [currentUser, setCurrentUser] = useState(null);
-
-  const roles = [
-    "All",
-    "Admin",
-    "Clerk",
-    "Zone Leader",
-    "Captain",
-    "Residents",
-  ];
+  const roles = ["All", "Admin", "Clerk", "Zone Leader", "Captain"];
 
   const roleColors = {
     Admin: "bg-purple-100 text-purple-700 border-purple-200",
@@ -60,43 +39,92 @@ const UserManagement = () => {
     Captain: "bg-emerald-100 text-emerald-700 border-emerald-200",
   };
 
-  // Modal handlers
-  const handleAddUser = (formData) => {
-    console.log("Adding user:", formData);
-    // API call here
-    setIsAddModalOpen(false);
+  // 3. Fetch users on load
+  useEffect(() => {
+    fetchUsers();
+  }, []);
+
+  const fetchUsers = async () => {
+    try {
+      setLoading(true);
+      const response = await api.get("/admin/users");
+      // Map API response to match frontend expected structure
+      const mappedUsers = response.data.map((user) => ({
+        id: user.user_id,
+        name: user.name, // Ensure your backend sends this
+        email: user.email,
+        role: user.role.role_name,
+        status: "Active", // Or based on user data
+      }));
+      setUsers(mappedUsers);
+    } catch (error) {
+      console.error("Error fetching users:", error);
+    } finally {
+      setLoading(false);
+    }
   };
 
-  const handleEditUser = (formData) => {
-    console.log("Editing user:", currentUser.id, formData);
-    // API call here
-    setIsEditModalOpen(false);
+  // 4. CRUD handlers using API
+  const handleAddUser = async (formData) => {
+    try {
+      await api.post("/admin/users", formData);
+      setIsAddModalOpen(false);
+      fetchUsers(); // Refresh list
+    } catch (error) {
+      console.error("Error adding user:", error);
+    }
   };
 
-  const handleDeleteUser = () => {
-    console.log("Deleting user:", currentUser.id);
-    // API call here
-    setIsDeleteModalOpen(false);
+  const handleEditUser = async (formData) => {
+    try {
+      await api.put(`/admin/users/${currentUser.id}`, formData);
+      setIsEditModalOpen(false);
+      fetchUsers();
+    } catch (error) {
+      console.error("Error updating user:", error);
+    }
   };
 
-  const handleChangePassword = (formData) => {
-    console.log("Changing password for user:", currentUser.id);
-    // API call here
-    setIsPasswordModalOpen(false);
+  const handleDeleteUser = async () => {
+    try {
+      await api.delete(`/admin/users/${currentUser.id}`);
+      setIsDeleteModalOpen(false);
+      fetchUsers();
+    } catch (error) {
+      console.error("Error deleting user:", error);
+    }
   };
 
-  // Filter users
+  const handleChangePassword = async (formData) => {
+    try {
+      await api.put(`/admin/users/${currentUser.id}/change-password`, formData);
+      setIsPasswordModalOpen(false);
+    } catch (error) {
+      console.error("Error changing password:", error);
+    }
+  };
+
+  // --- Filtering & Searching Logic ---
+  // --- Filtering & Searching Logic ---
   const filteredUsers = users.filter((user) => {
+    // If user object is undefined, skip it
+    if (!user) return false;
+
     const matchesRole = filter === "All" || user.role === filter;
+
+    // SAFE CHECK: Ensure name and email exist before calling toLowerCase()
+    const name = user.name || "";
+    const email = user.email || "";
+
     const matchesSearch =
-      user.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      user.email.toLowerCase().includes(searchQuery.toLowerCase());
+      name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      email.toLowerCase().includes(searchQuery.toLowerCase());
+
     return matchesRole && matchesSearch;
   });
-
   return (
     <div className="p-4 sm:p-6 max-w-7xl mx-auto">
-      {/* HEADER */}
+      {/* ... (Header UI remains same) ... */}
       <div className="flex flex-col md:flex-row md:items-end justify-between gap-4 sm:gap-6 mb-6 sm:mb-8">
         <div>
           <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 tracking-tight mb-2">
@@ -119,7 +147,7 @@ const UserManagement = () => {
         </button>
       </div>
 
-      {/* SEARCH AND FILTER */}
+      {/* ... (Search & Filter UI remains same) ... */}
       <div className="bg-white p-3 sm:p-4 rounded-2xl border border-gray-200 shadow-sm mb-4 sm:mb-6">
         <div className="flex flex-col md:flex-row gap-3 sm:gap-4 justify-between">
           {/* Search Input */}
@@ -164,118 +192,118 @@ const UserManagement = () => {
         </div>
       </div>
 
-      {/* TABLE */}
+      {/* --- TABLE --- */}
       <div className="bg-white rounded-2xl border border-gray-200 shadow-md overflow-hidden">
-        <div className="overflow-x-auto">
-          <table className="w-full text-sm">
-            <thead className="bg-gradient-to-r from-gray-50 to-gray-100 text-gray-700 text-left border-b-2 border-gray-200">
-              <tr>
-                <th className="p-3 sm:p-5 font-bold uppercase text-xs tracking-wider">
-                  Name
-                </th>
-                <th className="p-3 sm:p-5 font-bold uppercase text-xs tracking-wider hidden sm:table-cell">
-                  Email
-                </th>
-                <th className="p-3 sm:p-5 font-bold uppercase text-xs tracking-wider">
-                  Role
-                </th>
-                <th className="p-3 sm:p-5 font-bold uppercase text-xs tracking-wider hidden md:table-cell">
-                  Status
-                </th>
-                <th className="p-3 sm:p-5 font-bold uppercase text-xs tracking-wider text-right">
-                  Actions
-                </th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-gray-100">
-              {filteredUsers.map((user, index) => (
-                <tr
-                  key={user.id}
-                  className="hover:bg-gradient-to-r hover:from-emerald-50/30 hover:to-transparent transition-all duration-200 group"
-                  style={{ animationDelay: `${index * 50}ms` }}
-                >
-                  <td className="p-3 sm:p-5">
-                    <div className="flex items-center gap-2 sm:gap-3">
-                      <div className="w-8 h-8 sm:w-10 sm:h-10 flex-shrink-0 rounded-full bg-gradient-to-br from-emerald-400 to-emerald-600 text-white flex items-center justify-center font-bold text-xs sm:text-sm shadow-md group-hover:scale-110 transition-transform">
-                        {user.name.charAt(0)}
-                      </div>
-                      <div className="min-w-0">
-                        <span className="font-semibold text-gray-900 block truncate">
-                          {user.name}
-                        </span>
-                        <span className="text-xs text-gray-500 sm:hidden block truncate">
-                          {user.email}
-                        </span>
-                      </div>
-                    </div>
-                  </td>
-                  <td className="p-3 sm:p-5 text-gray-600 font-medium hidden sm:table-cell">
-                    {user.email}
-                  </td>
-                  <td className="p-3 sm:p-5">
-                    <span
-                      className={`inline-flex items-center gap-1 sm:gap-2 ${roleColors[user.role] || "bg-gray-100 text-gray-700"} px-2 sm:px-3 py-1 sm:py-1.5 rounded-full text-xs font-bold border`}
-                    >
-                      <ShieldCheck size={12} className="hidden sm:inline" />
-                      {user.role}
-                    </span>
-                  </td>
-                  <td className="p-3 sm:p-5 hidden md:table-cell">
-                    <span
-                      className={`inline-flex items-center gap-1.5 px-2 sm:px-3 py-1 sm:py-1.5 rounded-full text-xs font-bold uppercase tracking-wider ${
-                        user.status === "Active"
-                          ? "bg-emerald-100 text-emerald-700 border border-emerald-200"
-                          : "bg-amber-100 text-amber-700 border border-amber-200"
-                      }`}
-                    >
-                      <span
-                        className={`w-1.5 h-1.5 rounded-full ${user.status === "Active" ? "bg-emerald-500" : "bg-amber-500"} animate-pulse`}
-                      ></span>
-                      {user.status}
-                    </span>
-                  </td>
-                  <td className="p-3 sm:p-5">
-                    <div className="flex gap-1 sm:gap-1.5 justify-end">
-                      <button
-                        onClick={() => {
-                          setCurrentUser(user);
-                          setIsEditModalOpen(true);
-                        }}
-                        className="p-1.5 sm:p-2.5 text-gray-400 hover:text-emerald-600 rounded-lg hover:bg-emerald-50 transition-all duration-200 hover:scale-110"
-                        title="Edit user"
-                      >
-                        <Edit2 size={16} />
-                      </button>
-                      <button
-                        onClick={() => {
-                          setCurrentUser(user);
-                          setIsPasswordModalOpen(true);
-                        }}
-                        className="p-1.5 sm:p-2.5 text-gray-400 hover:text-blue-600 rounded-lg hover:bg-blue-50 transition-all duration-200 hover:scale-110"
-                        title="Change password"
-                      >
-                        <KeyRound size={16} />
-                      </button>
-                      <button
-                        onClick={() => {
-                          setCurrentUser(user);
-                          setIsDeleteModalOpen(true);
-                        }}
-                        className="p-1.5 sm:p-2.5 text-gray-400 hover:text-red-600 rounded-lg hover:bg-red-50 transition-all duration-200 hover:scale-110"
-                        title="Delete user"
-                      >
-                        <Trash2 size={16} />
-                      </button>
-                    </div>
-                  </td>
+        {loading ? (
+          <div className="text-center py-20">Loading users...</div>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead className="bg-gradient-to-r from-gray-50 to-gray-100 text-gray-700 text-left border-b-2 border-gray-200">
+                <tr>
+                  <th className="p-3 sm:p-5 font-bold uppercase text-xs tracking-wider">
+                    Name
+                  </th>
+                  <th className="p-3 sm:p-5 font-bold uppercase text-xs tracking-wider hidden sm:table-cell">
+                    Email
+                  </th>
+                  <th className="p-3 sm:p-5 font-bold uppercase text-xs tracking-wider">
+                    Role
+                  </th>
+                  <th className="p-3 sm:p-5 font-bold uppercase text-xs tracking-wider hidden md:table-cell">
+                    Status
+                  </th>
+                  <th className="p-3 sm:p-5 font-bold uppercase text-xs tracking-wider text-right">
+                    Actions
+                  </th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+              </thead>
+              <tbody className="divide-y divide-gray-100">
+                {filteredUsers.map((user) => (
+                  <tr
+                    key={user.id}
+                    className="hover:bg-gradient-to-r hover:from-emerald-50/30 hover:to-transparent transition-all duration-200 group"
+                  >
+                    <td className="p-3 sm:p-5">
+                      <div className="flex items-center gap-2 sm:gap-3">
+                        <div className="... flex items-center justify-center ...">
+                          {user.name ? user.name.charAt(0) : "?"}
+                        </div>
+                        <div className="min-w-0">
+                          <span className="font-semibold text-gray-900 block truncate">
+                            {user.name}
+                          </span>
+                          <span className="text-xs text-gray-500 sm:hidden block truncate">
+                            {user.email}
+                          </span>
+                        </div>
+                      </div>
+                    </td>
+                    <td className="p-3 sm:p-5 text-gray-600 font-medium hidden sm:table-cell">
+                      {user.email}
+                    </td>
+                    <td className="p-3 sm:p-5">
+                      <span
+                        className={`inline-flex items-center gap-1 sm:gap-2 ${roleColors[user.role] || "bg-gray-100 text-gray-700"} px-2 sm:px-3 py-1 sm:py-1.5 rounded-full text-xs font-bold border`}
+                      >
+                        <ShieldCheck size={12} className="hidden sm:inline" />
+                        {user.role}
+                      </span>
+                    </td>
+                    <td className="p-3 sm:p-5 hidden md:table-cell">
+                      <span
+                        className={`inline-flex items-center gap-1.5 px-2 sm:px-3 py-1 sm:py-1.5 rounded-full text-xs font-bold uppercase tracking-wider ${
+                          user.status === "Active"
+                            ? "bg-emerald-100 text-emerald-700 border border-emerald-200"
+                            : "bg-amber-100 text-amber-700 border border-amber-200"
+                        }`}
+                      >
+                        <span
+                          className={`w-1.5 h-1.5 rounded-full ${user.status === "Active" ? "bg-emerald-500" : "bg-amber-500"} animate-pulse`}
+                        ></span>
+                        {user.status}
+                      </span>
+                    </td>
+                    <td className="p-3 sm:p-5">
+                      <div className="flex gap-1 sm:gap-1.5 justify-end">
+                        <button
+                          onClick={() => {
+                            setCurrentUser(user);
+                            setIsEditModalOpen(true);
+                          }}
+                          className="p-1.5 sm:p-2.5 text-gray-400 hover:text-emerald-600 rounded-lg hover:bg-emerald-50 transition-all duration-200 hover:scale-110"
+                        >
+                          <Edit2 size={16} />
+                        </button>
+                        <button
+                          onClick={() => {
+                            setCurrentUser(user);
+                            setIsPasswordModalOpen(true);
+                          }}
+                          className="p-1.5 sm:p-2.5 text-gray-400 hover:text-blue-600 rounded-lg hover:bg-blue-50 transition-all duration-200 hover:scale-110"
+                        >
+                          <KeyRound size={16} />
+                        </button>
+                        <button
+                          onClick={() => {
+                            setCurrentUser(user);
+                            setIsDeleteModalOpen(true);
+                          }}
+                          className="p-1.5 sm:p-2.5 text-gray-400 hover:text-red-600 rounded-lg hover:bg-red-50 transition-all duration-200 hover:scale-110"
+                        >
+                          <Trash2 size={16} />
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
 
-        {/* Empty State */}
-        {filteredUsers.length === 0 && (
+        {/* --- Empty State --- */}
+        {!loading && filteredUsers.length === 0 && (
           <div className="text-center py-16 sm:py-20 px-4">
             <div className="w-12 h-12 sm:w-16 sm:h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
               <AlertTriangle
@@ -289,13 +317,13 @@ const UserManagement = () => {
             <p className="text-xs sm:text-sm text-gray-500 max-w-sm mx-auto">
               {searchQuery
                 ? `No results match "${searchQuery}". Try a different search term.`
-                : "Try adjusting your filters to see more results."}
+                : "Try adjusting your filters or add a new user."}
             </p>
           </div>
         )}
       </div>
 
-      {/* MODALS - 4 Separate Components */}
+      {/* --- MODALS --- */}
       <AddUserModal
         isOpen={isAddModalOpen}
         onClose={() => setIsAddModalOpen(false)}
