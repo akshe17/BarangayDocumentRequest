@@ -13,14 +13,17 @@ import {
 } from "lucide-react";
 // 1. Import the custom hook from context
 import { useZones } from "../../context/ZoneContext";
+
 const AddUserModal = ({ isOpen, onClose, onSubmit }) => {
   // 2. Consume the context data
   const { zones, loadingZones } = useZones();
 
+  // 1. Updated state to handle first name and last name separately
   const [formData, setFormData] = useState({
-    name: "",
+    first_name: "",
+    last_name: "",
     email: "",
-    role: "Clerk",
+    role_name: "Clerk",
     zone_id: "",
     password: "",
     confirmPassword: "",
@@ -30,7 +33,7 @@ const AddUserModal = ({ isOpen, onClose, onSubmit }) => {
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [passwordStrength, setPasswordStrength] = useState(0);
 
-  const roles = ["Admin", "Clerk", "Zone Leader", "Captain"];
+  const roles = ["Admin", "Clerk", "Zone Leader", "Barangay Captain"];
 
   // Handle ESC key and scroll lock
   useEffect(() => {
@@ -41,9 +44,10 @@ const AddUserModal = ({ isOpen, onClose, onSubmit }) => {
     if (isOpen) {
       document.addEventListener("keydown", handleEscape);
       document.body.style.overflow = "hidden";
-      // Reset form on open
+      // Reset form on open with updated state structure
       setFormData({
-        name: "",
+        first_name: "",
+        last_name: "",
         email: "",
         role: "Clerk",
         zone_id: "",
@@ -97,16 +101,33 @@ const AddUserModal = ({ isOpen, onClose, onSubmit }) => {
     return "Strong";
   };
 
+  // --- Inside AddUserModal.jsx ---
+
   const handleSubmit = (e) => {
     e.preventDefault();
     if (formData.password !== formData.confirmPassword) {
       alert("Passwords do not match!");
       return;
     }
-    onSubmit(formData);
+
+    // Format data specifically for the PHP Backend
+    const backendData = {
+      first_name: formData.first_name, // Based on updated modal state
+      last_name: formData.last_name, // Based on updated modal state
+      email: formData.email,
+      password: formData.password,
+      password_confirmation: formData.confirmPassword,
+      role_name: formData.role, // PHP expects 'role_name'
+      zone_id: formData.zone_id,
+    };
+
+    onSubmit(backendData);
   };
 
   if (!isOpen) return null;
+
+  // Utility to create consistent styling for labels
+  const labelClass = "block text-sm font-medium text-gray-700 mb-1";
 
   return (
     <div className="fixed inset-0 z-[100] overflow-y-auto">
@@ -154,118 +175,183 @@ const AddUserModal = ({ isOpen, onClose, onSubmit }) => {
               </div>
 
               <form onSubmit={handleSubmit} className="space-y-5">
-                <div className="relative">
-                  <User
-                    className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400"
-                    size={18}
-                  />
-                  <input
-                    type="text"
-                    placeholder="Full Name"
-                    value={formData.name}
-                    onChange={(e) =>
-                      setFormData({ ...formData, name: e.target.value })
-                    }
-                    className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-xl text-sm focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 transition-all"
-                    required
-                  />
+                {/* 2. Updated Name Fields: First and Last Name */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div>
+                    <label htmlFor="firstName" className={labelClass}>
+                      First Name
+                    </label>
+                    <div className="relative">
+                      <User
+                        className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400"
+                        size={18}
+                      />
+                      <input
+                        id="firstName"
+                        type="text"
+                        placeholder="John"
+                        value={formData.first_name}
+                        onChange={(e) =>
+                          setFormData({
+                            ...formData,
+                            first_name: e.target.value,
+                          })
+                        }
+                        className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-xl text-sm focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 transition-all"
+                        required
+                      />
+                    </div>
+                  </div>
+                  <div>
+                    <label htmlFor="lastName" className={labelClass}>
+                      Last Name
+                    </label>
+                    <div className="relative">
+                      <User
+                        className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400"
+                        size={18}
+                      />
+                      <input
+                        id="lastName"
+                        type="text"
+                        placeholder="Doe"
+                        value={formData.last_name}
+                        onChange={(e) =>
+                          setFormData({
+                            ...formData,
+                            last_name: e.target.value,
+                          })
+                        }
+                        className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-xl text-sm focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 transition-all"
+                        required
+                      />
+                    </div>
+                  </div>
                 </div>
 
-                <div className="relative">
-                  <Mail
-                    className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400"
-                    size={18}
-                  />
-                  <input
-                    type="email"
-                    placeholder="Email Address"
-                    value={formData.email}
-                    onChange={(e) =>
-                      setFormData({ ...formData, email: e.target.value })
-                    }
-                    className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-xl text-sm focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 transition-all"
-                    required
-                  />
+                {/* Email Field */}
+                <div>
+                  <label htmlFor="email" className={labelClass}>
+                    Email Address
+                  </label>
+                  <div className="relative">
+                    <Mail
+                      className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400"
+                      size={18}
+                    />
+                    <input
+                      id="email"
+                      type="email"
+                      placeholder="john@example.com"
+                      value={formData.email}
+                      onChange={(e) =>
+                        setFormData({ ...formData, email: e.target.value })
+                      }
+                      className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-xl text-sm focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 transition-all"
+                      required
+                    />
+                  </div>
                 </div>
 
-                <div className="relative">
-                  <Shield
-                    className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400"
-                    size={18}
-                  />
-                  <select
-                    value={formData.role}
-                    onChange={(e) =>
-                      setFormData({ ...formData, role: e.target.value })
-                    }
-                    className="w-full pl-10 pr-10 py-3 border border-gray-300 rounded-xl text-sm bg-white focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 transition-all appearance-none cursor-pointer"
-                    required
-                  >
-                    {roles.map((role) => (
-                      <option key={role} value={role}>
-                        {role}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-
-                {/* 3. Conditional Zone Selection using Context Data */}
-                {formData.role === "Zone Leader" && (
-                  <div className="relative animate-fade-in">
-                    <MapPin
+                {/* Role Field */}
+                <div>
+                  <label htmlFor="role" className={labelClass}>
+                    Role
+                  </label>
+                  <div className="relative">
+                    <Shield
                       className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400"
                       size={18}
                     />
                     <select
-                      value={formData.zone_id}
+                      id="role"
+                      value={formData.role}
                       onChange={(e) =>
-                        setFormData({ ...formData, zone_id: e.target.value })
+                        setFormData({ ...formData, role: e.target.value })
                       }
-                      className="w-full pl-10 pr-10 py-3 border border-gray-300 rounded-xl text-sm bg-white focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 transition-all appearance-none cursor-pointer disabled:bg-gray-100"
+                      className="w-full pl-10 pr-10 py-3 border border-gray-300 rounded-xl text-sm bg-white focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 transition-all appearance-none cursor-pointer"
                       required
-                      disabled={loadingZones}
                     >
-                      <option value="" disabled>
-                        {loadingZones ? "Loading zones..." : "Select Zone"}
-                      </option>
-                      {zones.map((zone) => (
-                        <option key={zone.zone_id} value={zone.zone_id}>
-                          {zone.zone_name}
+                      {roles.map((role) => (
+                        <option key={role} value={role}>
+                          {role}
                         </option>
                       ))}
                     </select>
-                    {loadingZones && (
-                      <Loader2
-                        className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 animate-spin"
+                  </div>
+                </div>
+
+                {/* Conditional Zone Selection */}
+                {formData.role === "Zone Leader" && (
+                  <div className="animate-fade-in">
+                    <label htmlFor="zone" className={labelClass}>
+                      Assign Zone
+                    </label>
+                    <div className="relative">
+                      <MapPin
+                        className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400"
                         size={18}
                       />
-                    )}
+                      <select
+                        id="zone"
+                        value={formData.zone_id}
+                        onChange={(e) =>
+                          setFormData({ ...formData, zone_id: e.target.value })
+                        }
+                        className="w-full pl-10 pr-10 py-3 border border-gray-300 rounded-xl text-sm bg-white focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 transition-all appearance-none cursor-pointer disabled:bg-gray-100"
+                        required
+                        disabled={loadingZones}
+                      >
+                        <option value="" disabled>
+                          {loadingZones ? "Loading zones..." : "Select Zone"}
+                        </option>
+                        {zones.map((zone) => (
+                          <option key={zone.zone_id} value={zone.zone_id}>
+                            {zone.zone_name}
+                          </option>
+                        ))}
+                      </select>
+                      {loadingZones && (
+                        <Loader2
+                          className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 animate-spin"
+                          size={18}
+                        />
+                      )}
+                    </div>
                   </div>
                 )}
 
-                <div className="relative">
-                  <Lock
-                    className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400"
-                    size={18}
-                  />
-                  <input
-                    type={showPassword ? "text" : "password"}
-                    placeholder="Password (min. 8 characters)"
-                    value={formData.password}
-                    onChange={handlePasswordChange}
-                    className="w-full pl-10 pr-12 py-3 border border-gray-300 rounded-xl text-sm focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 transition-all"
-                    required
-                    minLength="8"
-                  />
-                  <button
-                    type="button"
-                    onClick={() => setShowPassword(!showPassword)}
-                    className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
-                  >
-                    {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
-                  </button>
+                {/* Password Field */}
+                <div>
+                  <label htmlFor="password" className={labelClass}>
+                    Password
+                  </label>
+                  <div className="relative">
+                    <Lock
+                      className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400"
+                      size={18}
+                    />
+                    <input
+                      id="password"
+                      type={showPassword ? "text" : "password"}
+                      placeholder="Min. 8 characters"
+                      value={formData.password}
+                      onChange={handlePasswordChange}
+                      className="w-full pl-10 pr-12 py-3 border border-gray-300 rounded-xl text-sm focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 transition-all"
+                      required
+                      minLength="8"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowPassword(!showPassword)}
+                      className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                    >
+                      {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                    </button>
+                  </div>
                 </div>
 
+                {/* Password Strength Indicator */}
                 {formData.password && (
                   <div className="space-y-2 animate-fade-in">
                     <div className="flex justify-between items-center text-xs">
@@ -287,38 +373,48 @@ const AddUserModal = ({ isOpen, onClose, onSubmit }) => {
                   </div>
                 )}
 
-                <div className="relative">
-                  <Lock
-                    className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400"
-                    size={18}
-                  />
-                  <input
-                    type={showConfirmPassword ? "text" : "password"}
-                    placeholder="Confirm Password"
-                    value={formData.confirmPassword}
-                    onChange={(e) =>
-                      setFormData({
-                        ...formData,
-                        confirmPassword: e.target.value,
-                      })
-                    }
-                    className="w-full pl-10 pr-12 py-3 border border-gray-300 rounded-xl text-sm focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 transition-all"
-                    required
-                    minLength="8"
-                  />
-                  <button
-                    type="button"
-                    onClick={() => setShowConfirmPassword(!showConfirmPassword)}
-                    className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
-                  >
-                    {showConfirmPassword ? (
-                      <EyeOff size={18} />
-                    ) : (
-                      <Eye size={18} />
-                    )}
-                  </button>
+                {/* Confirm Password Field */}
+                <div>
+                  <label htmlFor="confirmPassword" className={labelClass}>
+                    Confirm Password
+                  </label>
+                  <div className="relative">
+                    <Lock
+                      className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400"
+                      size={18}
+                    />
+                    <input
+                      id="confirmPassword"
+                      type={showConfirmPassword ? "text" : "password"}
+                      placeholder="Re-enter password"
+                      value={formData.confirmPassword}
+                      onChange={(e) =>
+                        setFormData({
+                          ...formData,
+                          confirmPassword: e.target.value,
+                        })
+                      }
+                      className="w-full pl-10 pr-12 py-3 border border-gray-300 rounded-xl text-sm focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 transition-all"
+                      required
+                      minLength="8"
+                    />
+                    <button
+                      type="button"
+                      onClick={() =>
+                        setShowConfirmPassword(!showConfirmPassword)
+                      }
+                      className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                    >
+                      {showConfirmPassword ? (
+                        <EyeOff size={18} />
+                      ) : (
+                        <Eye size={18} />
+                      )}
+                    </button>
+                  </div>
                 </div>
 
+                {/* Action Buttons */}
                 <div className="flex flex-col-reverse sm:flex-row justify-end gap-3 mt-8 pt-5 border-t border-gray-200">
                   <button
                     type="button"

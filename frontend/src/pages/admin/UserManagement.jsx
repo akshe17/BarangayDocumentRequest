@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import {
   Search,
   UserPlus,
@@ -15,9 +15,11 @@ import AddUserModal from "../../components/admin/AddUserModal";
 import EditUserModal from "../../components/admin/EditUserModal";
 import DeleteUserModal from "../../components/admin/DeleteUserModal";
 import ChangePasswordModal from "../../components/admin/ChangePasswordModal";
+// 2. Import the Toast Component
+import Toast from "../../components/toast";
 
 const UserManagement = () => {
-  // 2. Start with an empty list
+  // 3. Start with an empty list
   const [users, setUsers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState("All");
@@ -30,6 +32,13 @@ const UserManagement = () => {
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
   const [isPasswordModalOpen, setIsPasswordModalOpen] = useState(false);
 
+  // 4. Toast State
+  const [toast, setToast] = useState({
+    show: false,
+    message: "",
+    type: "success",
+  });
+
   const roles = ["All", "Admin", "Clerk", "Zone Leader", "Captain"];
 
   const roleColors = {
@@ -39,7 +48,14 @@ const UserManagement = () => {
     Captain: "bg-emerald-100 text-emerald-700 border-emerald-200",
   };
 
-  // 3. Fetch users on load
+  // 5. Toast Utility Function
+  const showToast = useCallback((message, type = "success") => {
+    setToast({ show: true, message, type });
+    // Automatically hide after 4 seconds
+    setTimeout(() => setToast((prev) => ({ ...prev, show: false })), 4000);
+  }, []);
+
+  // 6. Fetch users on load
   useEffect(() => {
     fetchUsers();
   }, []);
@@ -49,60 +65,83 @@ const UserManagement = () => {
       setLoading(true);
       const response = await api.get("/admin/users");
 
-      // MAPPED DATA UPDATED FOR NEW SCHEMA
+      // MAPPED DATA UPDATED FOR NEW SCHEMA AND ZONE INFORMATION
       const mappedUsers = response.data.map((user) => ({
         id: user.user_id,
         first_name: user.first_name,
         last_name: user.last_name,
         email: user.email,
-        role: user.role.role_name,
-        status: "Active", // Or based on user data
+        // Normalize role name
+        role: user.role.role_name
+          .split(" ")
+          .map(
+            (word) =>
+              word.charAt(0).toUpperCase() + word.slice(1).toLowerCase(),
+          )
+          .join(" "),
+        // Extract zone name string for display
+        zone: user.zone ? user.zone.zone_name : null,
       }));
       setUsers(mappedUsers);
     } catch (error) {
       console.error("Error fetching users:", error);
+      showToast("Failed to fetch users.", "error");
     } finally {
       setLoading(false);
     }
   };
 
-  // 4. CRUD handlers using API
+  // 7. CRUD handlers
   const handleAddUser = async (formData) => {
     try {
       await api.post("/admin/users", formData);
+      showToast("User added successfully!", "success");
       setIsAddModalOpen(false);
       fetchUsers(); // Refresh list
     } catch (error) {
       console.error("Error adding user:", error);
+      const errorMessage =
+        error.response?.data?.message || "Failed to add user.";
+      showToast(errorMessage, "error");
     }
   };
 
   const handleEditUser = async (formData) => {
     try {
       await api.put(`/admin/users/${currentUser.id}`, formData);
+      showToast("User updated successfully!", "success");
       setIsEditModalOpen(false);
       fetchUsers();
     } catch (error) {
       console.error("Error updating user:", error);
+      const errorMessage =
+        error.response?.data?.message || "Failed to update user.";
+      showToast(errorMessage, "error");
     }
   };
 
   const handleDeleteUser = async () => {
     try {
       await api.delete(`/admin/users/${currentUser.id}`);
+      showToast("User deleted successfully!", "success");
       setIsDeleteModalOpen(false);
       fetchUsers();
     } catch (error) {
       console.error("Error deleting user:", error);
+      showToast("Failed to delete user.", "error");
     }
   };
 
   const handleChangePassword = async (formData) => {
     try {
       await api.put(`/admin/users/${currentUser.id}/change-password`, formData);
+      showToast("Password updated successfully!", "success");
       setIsPasswordModalOpen(false);
     } catch (error) {
       console.error("Error changing password:", error);
+      const errorMessage =
+        error.response?.data?.message || "Failed to update password.";
+      showToast(errorMessage, "error");
     }
   };
 
@@ -112,7 +151,6 @@ const UserManagement = () => {
 
     const matchesRole = filter === "All" || user.role === filter;
 
-    // SAFE CHECK: Ensure names and email exist
     const firstName = user.first_name || "";
     const lastName = user.last_name || "";
     const email = user.email || "";
@@ -128,6 +166,14 @@ const UserManagement = () => {
 
   return (
     <div className="p-4 sm:p-6 max-w-7xl mx-auto">
+      {/* 8. Render Toast Component */}
+      <Toast
+        show={toast.show}
+        message={toast.message}
+        type={toast.type}
+        onClose={() => setToast((prev) => ({ ...prev, show: false }))}
+      />
+
       {/* Header UI */}
       <div className="flex flex-col md:flex-row md:items-end justify-between gap-4 sm:gap-6 mb-6 sm:mb-8">
         <div>
@@ -210,10 +256,7 @@ const UserManagement = () => {
                     Email
                   </th>
                   <th className="p-3 sm:p-5 font-bold uppercase text-xs tracking-wider">
-                    Role
-                  </th>
-                  <th className="p-3 sm:p-5 font-bold uppercase text-xs tracking-wider hidden md:table-cell">
-                    Status
+                    Role / Zone
                   </th>
                   <th className="p-3 sm:p-5 font-bold uppercase text-xs tracking-wider text-right">
                     Actions
@@ -228,7 +271,6 @@ const UserManagement = () => {
                   >
                     <td className="p-3 sm:p-5">
                       <div className="flex items-center gap-2 sm:gap-3">
-                        {/* Avatar updated to use first_name */}
                         <div className="w-8 h-8 sm:w-10 sm:h-10 flex-shrink-0 rounded-full bg-gradient-to-br from-emerald-400 to-emerald-600 text-white flex items-center justify-center font-bold text-xs sm:text-sm shadow-md group-hover:scale-110 transition-transform">
                           {user.first_name ? user.first_name.charAt(0) : "?"}
                         </div>
@@ -246,26 +288,26 @@ const UserManagement = () => {
                       {user.email}
                     </td>
                     <td className="p-3 sm:p-5">
-                      <span
-                        className={`inline-flex items-center gap-1 sm:gap-2 ${roleColors[user.role] || "bg-gray-100 text-gray-700"} px-2 sm:px-3 py-1 sm:py-1.5 rounded-full text-xs font-bold border`}
-                      >
-                        <ShieldCheck size={12} className="hidden sm:inline" />
-                        {user.role}
-                      </span>
-                    </td>
-                    <td className="p-3 sm:p-5 hidden md:table-cell">
-                      <span
-                        className={`inline-flex items-center gap-1.5 px-2 sm:px-3 py-1 sm:py-1.5 rounded-full text-xs font-bold uppercase tracking-wider ${
-                          user.status === "Active"
-                            ? "bg-emerald-100 text-emerald-700 border border-emerald-200"
-                            : "bg-amber-100 text-amber-700 border border-amber-200"
-                        }`}
-                      >
+                      <div className="flex flex-col gap-1">
                         <span
-                          className={`w-1.5 h-1.5 rounded-full ${user.status === "Active" ? "bg-emerald-500" : "bg-amber-500"} animate-pulse`}
-                        ></span>
-                        {user.status}
-                      </span>
+                          className={`inline-flex items-center justify-center text-center gap-1 sm:gap-2 ${roleColors[user.role] || "bg-gray-100 text-gray-700"} px-2 sm:px-3 py-1 sm:py-1.5 rounded-full text-xs font-bold border w-fit`}
+                        >
+                          <ShieldCheck size={12} className="hidden sm:inline" />
+
+                          {/* Wrap role text */}
+                          <span className="truncate">{user.role}</span>
+
+                          {user.role === "Zone Leader" && user.zone && (
+                            <span className="text-xs text-amber-700 flex items-center gap-1 pl-1 whitespace-nowrap">
+                              <span className="text-xs text-yellow-600">
+                                {" "}
+                                /{" "}
+                              </span>
+                              {user.zone}
+                            </span>
+                          )}
+                        </span>
+                      </div>
                     </td>
                     <td className="p-3 sm:p-5">
                       <div className="flex gap-1 sm:gap-1.5 justify-end">
