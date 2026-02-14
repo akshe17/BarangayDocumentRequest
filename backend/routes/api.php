@@ -4,6 +4,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\AuthController; // Ensure this is imported
 use App\Http\Controllers\GenderController;
+use App\Http\Controllers\ZoneController;
 use App\Http\Controllers\CivilStatusController;
 use App\Http\Controllers\ResidentController;
 use App\Http\Controllers\DocumentController;
@@ -26,6 +27,7 @@ Route::middleware('custom.auth')->get('/user', function (Request $request) {
      
 });
 Route::middleware(['custom.auth'])->group(function () {
+    Route::get('/zones', [ZoneController::class, 'index']);
     // Profile Management Routes
     Route::post('/resident/profile/update', [ResidentController::class, 'updateProfile']);
     Route::post('/resident/profile/change-password', [ResidentController::class, 'changePassword']);

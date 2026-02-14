@@ -48,10 +48,12 @@ const UserManagement = () => {
     try {
       setLoading(true);
       const response = await api.get("/admin/users");
-      // Map API response to match frontend expected structure
+
+      // MAPPED DATA UPDATED FOR NEW SCHEMA
       const mappedUsers = response.data.map((user) => ({
         id: user.user_id,
-        name: user.name, // Ensure your backend sends this
+        first_name: user.first_name,
+        last_name: user.last_name,
         email: user.email,
         role: user.role.role_name,
         status: "Active", // Or based on user data
@@ -105,26 +107,28 @@ const UserManagement = () => {
   };
 
   // --- Filtering & Searching Logic ---
-  // --- Filtering & Searching Logic ---
   const filteredUsers = users.filter((user) => {
-    // If user object is undefined, skip it
     if (!user) return false;
 
     const matchesRole = filter === "All" || user.role === filter;
 
-    // SAFE CHECK: Ensure name and email exist before calling toLowerCase()
-    const name = user.name || "";
+    // SAFE CHECK: Ensure names and email exist
+    const firstName = user.first_name || "";
+    const lastName = user.last_name || "";
     const email = user.email || "";
+    const fullName = `${firstName} ${lastName}`.toLowerCase();
+    const searchLower = searchQuery.toLowerCase();
 
     const matchesSearch =
-      name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      email.toLowerCase().includes(searchQuery.toLowerCase());
+      fullName.includes(searchLower) ||
+      email.toLowerCase().includes(searchLower);
 
     return matchesRole && matchesSearch;
   });
+
   return (
     <div className="p-4 sm:p-6 max-w-7xl mx-auto">
-      {/* ... (Header UI remains same) ... */}
+      {/* Header UI */}
       <div className="flex flex-col md:flex-row md:items-end justify-between gap-4 sm:gap-6 mb-6 sm:mb-8">
         <div>
           <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 tracking-tight mb-2">
@@ -147,10 +151,9 @@ const UserManagement = () => {
         </button>
       </div>
 
-      {/* ... (Search & Filter UI remains same) ... */}
+      {/* Search & Filter UI */}
       <div className="bg-white p-3 sm:p-4 rounded-2xl border border-gray-200 shadow-sm mb-4 sm:mb-6">
         <div className="flex flex-col md:flex-row gap-3 sm:gap-4 justify-between">
-          {/* Search Input */}
           <div className="relative w-full md:w-80 group">
             <Search
               className="absolute left-3 sm:left-4 top-1/2 -translate-y-1/2 text-gray-400 group-focus-within:text-emerald-600 transition-colors"
@@ -173,7 +176,6 @@ const UserManagement = () => {
             )}
           </div>
 
-          {/* Role Filter Pills */}
           <div className="flex bg-gray-50 p-1.5 rounded-xl border border-gray-200 gap-1 overflow-x-auto">
             {roles.map((role) => (
               <button
@@ -226,12 +228,13 @@ const UserManagement = () => {
                   >
                     <td className="p-3 sm:p-5">
                       <div className="flex items-center gap-2 sm:gap-3">
-                        <div className="... flex items-center justify-center ...">
-                          {user.name ? user.name.charAt(0) : "?"}
+                        {/* Avatar updated to use first_name */}
+                        <div className="w-8 h-8 sm:w-10 sm:h-10 flex-shrink-0 rounded-full bg-gradient-to-br from-emerald-400 to-emerald-600 text-white flex items-center justify-center font-bold text-xs sm:text-sm shadow-md group-hover:scale-110 transition-transform">
+                          {user.first_name ? user.first_name.charAt(0) : "?"}
                         </div>
                         <div className="min-w-0">
                           <span className="font-semibold text-gray-900 block truncate">
-                            {user.name}
+                            {user.first_name} {user.last_name}
                           </span>
                           <span className="text-xs text-gray-500 sm:hidden block truncate">
                             {user.email}
