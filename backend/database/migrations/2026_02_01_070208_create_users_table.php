@@ -12,13 +12,19 @@ return new class extends Migration
     public function up(): void
     {
       Schema::create('users', function (Blueprint $table) {
-    $table->id('user_id');
-    // FK: Points to roles table
-    $table->foreignId('role_id')->constrained('roles', 'role_id')->onDelete('cascade');
-    $table->string('email', 100)->unique();
-    $table->string('password', 255);
-    $table->timestamps();
-});
+        $table->id('user_id');
+        // FK: Points to roles table
+        $table->foreignId('role_id')->constrained('roles', 'role_id')->onDelete('cascade');
+        
+        // --- ADDED THIS LINE ---
+        // FK: Points to zones table, nullable for non-zone leaders
+        $table->foreignId('zone_id')->nullable()->constrained('zones', 'zone_id')->onDelete('set null');
+        // -----------------------
+        
+        $table->string('email', 100)->unique();
+        $table->string('password', 255);
+        $table->timestamps();
+    });
     }
 
     /**
