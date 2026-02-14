@@ -1,5 +1,5 @@
 import React from "react";
-import { Mail, Clock, ShieldCheck } from "lucide-react";
+import { Mail, Clock, ShieldCheck, CheckCircle2 } from "lucide-react";
 import logo from "../../assets/logo.png";
 import { Link } from "react-router-dom";
 
@@ -59,26 +59,34 @@ const PendingVerification = ({ email }) => {
             </div>
           </div>
 
-          {/* Information Box */}
-          <div className="bg-blue-50 border-l-4 border-blue-500 rounded-r-xl p-4 mb-6">
-            <h3 className="text-blue-900 font-bold text-sm mb-2 flex items-center gap-2">
-              <ShieldCheck size={16} />
-              What happens next?
-            </h3>
-            <ul className="text-blue-800 text-xs space-y-2">
-              <li className="flex items-start gap-2">
-                <span className="text-blue-500 mt-0.5">•</span>
-                <span>Our team will review your registration details</span>
-              </li>
-              <li className="flex items-start gap-2">
-                <span className="text-blue-500 mt-0.5">•</span>
-                <span>You'll receive an email notification once verified</span>
-              </li>
-              <li className="flex items-start gap-2">
-                <span className="text-blue-500 mt-0.5">•</span>
-                <span>Verification typically takes 24-48 hours</span>
-              </li>
-            </ul>
+          {/* Timeline */}
+          <div className="bg-gray-50 rounded-xl p-4 mb-6">
+            <div className="flex items-center justify-between text-xs sm:text-sm">
+              <div className="flex flex-col items-center flex-1">
+                <div className="w-8 h-8 bg-emerald-500 rounded-full flex items-center justify-center mb-2">
+                  <CheckCircle2 className="w-5 h-5 text-white" />
+                </div>
+                <span className="text-gray-700 font-medium">Registered</span>
+              </div>
+
+              <div className="flex-1 h-0.5 bg-gray-300 mx-2"></div>
+
+              <div className="flex flex-col items-center flex-1">
+                <div className="w-8 h-8 bg-amber-400 rounded-full flex items-center justify-center mb-2 animate-pulse">
+                  <Clock className="w-5 h-5 text-white" />
+                </div>
+                <span className="text-gray-700 font-medium">Reviewing</span>
+              </div>
+
+              <div className="flex-1 h-0.5 bg-gray-300 mx-2"></div>
+
+              <div className="flex flex-col items-center flex-1">
+                <div className="w-8 h-8 bg-gray-300 rounded-full flex items-center justify-center mb-2">
+                  <Mail className="w-5 h-5 text-gray-500" />
+                </div>
+                <span className="text-gray-500 font-medium">Verified</span>
+              </div>
+            </div>
           </div>
 
           {/* Back to Login Button */}
