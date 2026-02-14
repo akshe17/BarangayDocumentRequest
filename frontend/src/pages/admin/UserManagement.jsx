@@ -39,7 +39,14 @@ const UserManagement = () => {
     type: "success",
   });
 
-  const roles = ["All", "Admin", "Clerk", "Zone Leader", "Barangay Captain"];
+  const roles = [
+    "All",
+    "Admin",
+    "Clerk",
+    "Zone Leader",
+    "Barangay Captain",
+    "Resident",
+  ];
 
   const roleColors = {
     Admin: "bg-purple-100 text-purple-700 border-purple-200",
