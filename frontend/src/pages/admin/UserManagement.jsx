@@ -39,13 +39,13 @@ const UserManagement = () => {
     type: "success",
   });
 
-  const roles = ["All", "Admin", "Clerk", "Zone Leader", "Captain"];
+  const roles = ["All", "Admin", "Clerk", "Zone Leader", "Barangay Captain"];
 
   const roleColors = {
     Admin: "bg-purple-100 text-purple-700 border-purple-200",
     Clerk: "bg-blue-100 text-blue-700 border-blue-200",
     "Zone Leader": "bg-amber-100 text-amber-700 border-amber-200",
-    Captain: "bg-emerald-100 text-emerald-700 border-emerald-200",
+    "Barangay Captain": "bg-emerald-100 text-emerald-700 border-emerald-200",
   };
 
   // 5. Toast Utility Function
