@@ -12,6 +12,8 @@ import {
   User,
   Heart,
   Calendar,
+  Clock,
+  ArrowLeft,
 } from "lucide-react";
 import api from "../../axious/api";
 import { Link } from "react-router-dom";
@@ -36,6 +38,123 @@ function getPasswordStrength(password) {
     return { score: 4, label: "Strong", color: "bg-emerald-400" };
   return { score: 5, label: "Very Strong", color: "bg-emerald-500" };
 }
+
+// ─── VERIFICATION PENDING PAGE ──────────────────────────────────────────────
+const VerificationPending = ({ email, onBackToLogin }) => {
+  return (
+    <div className="min-h-screen bg-white to-blue-50 flex items-center justify-center p-4">
+      <div className="max-w-md w-full">
+        {/* Card */}
+        <div className="bg-white rounded-3xl  p-6 sm:p-8 text-center">
+          {/* Success Icon */}
+          <div className="flex justify-center mb-6">
+            <div className="relative">
+              <div className="w-20 h-20 sm:w-24 sm:h-24 bg-emerald-100 rounded-full flex items-center justify-center animate-pulse">
+                <CheckCircle2 className="w-12 h-12 sm:w-14 sm:h-14 text-emerald-600" />
+              </div>
+              <div className="absolute -top-1 -right-1">
+                <div className="w-8 h-8 bg-amber-400 rounded-full flex items-center justify-center">
+                  <Clock className="w-5 h-5 text-white" />
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Title */}
+          <h2 className="text-2xl sm:text-3xl font-bold text-gray-900 mb-3">
+            Registration Successful!
+          </h2>
+
+          {/* Status Badge */}
+          <div className="inline-flex items-center gap-2 px-4 py-2 bg-amber-100 text-amber-800 rounded-full text-sm font-semibold mb-6">
+            <Clock className="w-4 h-4" />
+            Pending Verification
+          </div>
+
+          {/* Message */}
+          <div className="space-y-4 mb-8">
+            <p className="text-gray-600 leading-relaxed">
+              Thank you for registering! Your account has been created
+              successfully.
+            </p>
+
+            <div className="bg-blue-50 border border-blue-200 rounded-xl p-4">
+              <div className="flex items-start gap-3 text-left">
+                <Mail className="w-5 h-5 text-blue-600 mt-0.5 flex-shrink-0" />
+                <div>
+                  <p className="text-sm text-blue-900 font-semibold mb-1">
+                    What happens next?
+                  </p>
+                  <p className="text-sm text-blue-800 leading-relaxed">
+                    Our admin team will review your information and verify your
+                    account. We'll send a confirmation email to{" "}
+                    <span className="font-bold">{email}</span> once your account
+                    is verified.
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            <p className="text-sm text-gray-500">
+              This usually takes 1-2 business days. You'll be able to login
+              after verification is complete.
+            </p>
+          </div>
+
+          {/* Timeline */}
+          <div className="bg-gray-50 rounded-xl p-4 mb-6">
+            <div className="flex items-center justify-between text-xs sm:text-sm">
+              <div className="flex flex-col items-center flex-1">
+                <div className="w-8 h-8 bg-emerald-500 rounded-full flex items-center justify-center mb-2">
+                  <CheckCircle2 className="w-5 h-5 text-white" />
+                </div>
+                <span className="text-gray-700 font-medium">Registered</span>
+              </div>
+
+              <div className="flex-1 h-0.5 bg-gray-300 mx-2"></div>
+
+              <div className="flex flex-col items-center flex-1">
+                <div className="w-8 h-8 bg-amber-400 rounded-full flex items-center justify-center mb-2 animate-pulse">
+                  <Clock className="w-5 h-5 text-white" />
+                </div>
+                <span className="text-gray-700 font-medium">Reviewing</span>
+              </div>
+
+              <div className="flex-1 h-0.5 bg-gray-300 mx-2"></div>
+
+              <div className="flex flex-col items-center flex-1">
+                <div className="w-8 h-8 bg-gray-300 rounded-full flex items-center justify-center mb-2">
+                  <Mail className="w-5 h-5 text-gray-500" />
+                </div>
+                <span className="text-gray-500 font-medium">Verified</span>
+              </div>
+            </div>
+          </div>
+
+          {/* Back to Login Button */}
+          <button
+            onClick={onBackToLogin}
+            className="w-full flex items-center justify-center gap-2 px-6 py-3 bg-gradient-to-r from-emerald-600 to-emerald-500 text-white rounded-xl font-semibold hover:from-emerald-700 hover:to-emerald-600 transition-all shadow-md hover:shadow-lg"
+          >
+            <ArrowLeft className="w-4 h-4" />
+            Back to Login
+          </button>
+
+          {/* Help Text */}
+          <p className="text-xs text-gray-500 mt-6">
+            Need help? Contact us at{" "}
+            <a
+              href="mailto:support@barangay.gov"
+              className="text-emerald-600 hover:underline font-medium"
+            >
+              support@barangay.gov
+            </a>
+          </p>
+        </div>
+      </div>
+    </div>
+  );
+};
 
 // ─── STEP PROGRESS ──────────────────────────────────────────────────────────
 const StepProgress = ({ current }) => {
@@ -112,7 +231,7 @@ const InputField = ({
   type = "text",
   suffix,
   error,
-  children, // Added to allow password strength indicator
+  children,
 }) => (
   <div className="w-full group">
     <label className="text-xs font-bold text-gray-500 uppercase tracking-widest ml-0.5 mb-2 block group-focus-within:text-emerald-600 transition-colors">
@@ -141,7 +260,7 @@ const InputField = ({
         </div>
       )}
     </div>
-    {children} {/* Renders password strength indicator here */}
+    {children}
     {error && (
       <p className="text-xs text-red-500 mt-1.5 ml-0.5 font-medium">{error}</p>
     )}
@@ -244,13 +363,18 @@ const Register = () => {
   const [selectedImage, setSelectedImage] = useState(null);
   const [currentStep, setCurrentStep] = useState(1);
   const [imageFile, setImageFile] = useState(null);
-  const [errors, setErrors] = useState({}); // State for API errors
+  const [errors, setErrors] = useState({});
   const navigate = useNavigate();
   const today = new Date().toISOString().split("T")[0];
   const [genders, setGenders] = useState([]);
   const [civilStatus, setCivilStatus] = useState([]);
+  const [zones, setZones] = useState([]);
 
-  const { isAuthenticated, isAdmin, login } = useAuth();
+  // ─── NEW STATE FOR VERIFICATION PENDING ───────────────────────────────────
+  const [showVerificationPending, setShowVerificationPending] = useState(false);
+  const [registeredEmail, setRegisteredEmail] = useState("");
+
+  const { isAuthenticated, isAdmin } = useAuth();
 
   const [formData, setFormData] = useState({
     email: "",
@@ -270,18 +394,6 @@ const Register = () => {
     return getPasswordStrength(formData.password);
   }, [formData.password]);
 
-  const zones = [
-    "Zone 1",
-    "Zone 2",
-    "Zone 3",
-    "Zone 4",
-    "Zone 5",
-    "Zone 6",
-    "Zone 7",
-    "Zone 8",
-    "Zone 9",
-  ];
-
   if (isAuthenticated) {
     return <Navigate to={isAdmin() ? "/dashboard" : "/resident"} replace />;
   }
@@ -289,7 +401,6 @@ const Register = () => {
   const handleInputChange = (e) => {
     const { name, value } = e.target;
     setFormData((prev) => ({ ...prev, [name]: value }));
-    // Clear error for this field when user starts typing again
     if (errors[name]) {
       setErrors((prev) => ({ ...prev, [name]: null }));
     }
@@ -313,7 +424,7 @@ const Register = () => {
   };
 
   const handleRegistration = async () => {
-    setErrors({}); // Reset errors
+    setErrors({});
 
     if (!imageFile) {
       setErrors({ id_image: "Please upload a valid ID image" });
@@ -327,23 +438,21 @@ const Register = () => {
     data.append("id_image", imageFile);
 
     try {
-      // 1. Register the user
-      await api.post("/register", data, {
+      // Register the user
+      const response = await api.post("/register", data, {
         headers: { "Content-Type": "multipart/form-data" },
       });
 
-      // 2. Automatically log in after successful registration
-      await login(formData.email, formData.password);
-
-      // Redirect is handled inside login() via navigate
+      // ─── SHOW VERIFICATION PENDING PAGE ─────────────────────────────────
+      if (response.data.status === "pending_verification") {
+        setRegisteredEmail(response.data.email);
+        setShowVerificationPending(true);
+      }
     } catch (err) {
-      // ─── ERROR HANDLING ───────────────────────────────────────────────────
       if (err.response && err.response.data) {
-        // Laravel validation errors (422)
         if (err.response.status === 422) {
           setErrors(err.response.data.errors || {});
         } else {
-          // General server errors, set to a general error key
           setErrors({
             general: err.response.data.message || "Something went wrong",
           });
@@ -358,12 +467,14 @@ const Register = () => {
   useEffect(() => {
     const fetchData = async () => {
       try {
-        const [gRes, cRes] = await Promise.all([
+        const [gRes, cRes, zRes] = await Promise.all([
           api.get("/genders"),
           api.get("/civil-status"),
+          api.get("/zones"),
         ]);
         setGenders(gRes.data);
         setCivilStatus(cRes.data);
+        setZones(zRes.data);
       } catch (err) {
         console.error("Failed to fetch initial data:", err);
       }
@@ -404,7 +515,17 @@ const Register = () => {
     else setCurrentStep(1);
   }, [section1Valid, section2Valid]);
 
-  // ── Render ──────────────────────────────────────────────────────────────
+  // ─── SHOW VERIFICATION PENDING PAGE IF REGISTERED ────────────────────────
+  if (showVerificationPending) {
+    return (
+      <VerificationPending
+        email={registeredEmail}
+        onBackToLogin={() => navigate("/login")}
+      />
+    );
+  }
+
+  // ── Render Registration Form ───────────────────────────────────────────
   return (
     <div className="min-h-screen flex flex-col md:flex-row bg-gray-100 font-sans">
       <aside className="hidden md:block md:w-[38%] shrink-0">
@@ -510,7 +631,6 @@ const Register = () => {
                       </button>
                     }
                   >
-                    {/* ─── PASSWORD STRENGTH INDICATOR ───────────────────────── */}
                     {formData.password && (
                       <div className="mt-2 ml-0.5">
                         <div className="flex gap-1.5 h-1.5 mb-1.5">
@@ -609,8 +729,8 @@ const Register = () => {
                     value={formData.zone}
                     onChange={handleInputChange}
                     options={zones.map((z) => ({
-                      id: z,
-                      label: z,
+                      id: z.zone_id,
+                      label: z.zone_name,
                     }))}
                     error={errors.zone}
                   />

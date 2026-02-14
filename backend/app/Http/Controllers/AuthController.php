@@ -40,8 +40,7 @@ class AuthController extends Controller
     ]);
 }
 
-
-    public function register(Request $request)
+ public function register(Request $request)
     {
   
         try {
@@ -52,7 +51,7 @@ class AuthController extends Controller
                 'lname' => 'required|string|max:255',
                 'birthdate' => 'required|date|before:today',
                 'house_no' => 'required|string|max:255',
-                'zone' => 'required|string',
+                'zone' => 'required|integer|exists:zones,zone_id', // Changed to integer and validate it exists
                 'gender_id' => 'required|integer|exists:genders,gender_id',
                 'civil_status_id' => 'required|integer|exists:civil_statuses,civil_status_id',
                 'id_image' => 'required|image|mimes:jpg,jpeg,png|max:10240',
@@ -61,6 +60,7 @@ class AuthController extends Controller
                 'email.email' => 'Please provide a valid email address.',
                 'password.min' => 'Password must be at least 6 characters.',
                 'birthdate.before' => 'Birthdate must be in the past.',
+                'zone.exists' => 'Please select a valid zone.',
                 'gender_id.exists' => 'Please select a valid gender.',
                 'civil_status_id.exists' => 'Please select a valid marital status.',
                 'id_image.required' => 'Please upload a valid ID image.',
@@ -80,35 +80,34 @@ class AuthController extends Controller
           
                 $path = $request->file('id_image')->store('verification_ids', 'public');
 
+                // Create user with first_name, last_name, and zone_id in User table
                 $user = User::create([
                     'email' => $request->email,
                     'password' => Hash::make($request->password),
                     'role_id' => 2,
+                    'first_name' => $request->fname,  // Store in User table
+                    'last_name' => $request->lname,   // Store in User table
+                    'zone_id' => $request->zone,       // Store in User table (zone is the zone_id)
                 ]);
 
             
                 $resident = Resident::create([
-                    'user_id' => $user->user_id, 
-                    'first_name' => $request->fname,
-                    'last_name' => $request->lname,
+                    'user_id' => $user->user_id,
                     'birthdate' => $request->birthdate,
                     'house_no' => $request->house_no,
-                    'zone' => $request->zone,
                     'gender_id' => $request->gender_id,
                     'civil_status_id' => $request->civil_status_id,
                     'id_image_path' => $path,
-                    'is_active' => true,
-                    'is_verified' => false,
+                    'is_active' => false, // Changed to false - inactive until verified
+                    'is_verified' => false, // Not verified by default
                 ]);
 
-                $token = $user->createToken('auth_token')->plainTextToken;
-
-                $user->load('resident');
-
+                // Don't create token or return user data - they need verification first
                 return response()->json([
-                    'message' => 'Registration successful',
-                    'access_token' => $token,
-                    'user' => $user,
+                    'message' => 'Registration successful! Please wait for account verification.',
+                    'email' => $user->email,
+                    'status' => 'pending_verification',
+                    'note' => 'We will send you an email once your account has been verified. You will be able to login after verification is complete.'
                 ], 201);
             });
         } catch (\Exception $e) {

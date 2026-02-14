@@ -27,7 +27,7 @@ Route::middleware('custom.auth')->get('/user', function (Request $request) {
      
 });
 Route::middleware(['custom.auth'])->group(function () {
-    Route::get('/zones', [ZoneController::class, 'index']);
+   
     // Profile Management Routes
     Route::post('/resident/profile/update', [ResidentController::class, 'updateProfile']);
     Route::post('/resident/profile/change-password', [ResidentController::class, 'changePassword']);
@@ -116,5 +116,5 @@ Route::post('/register', [AuthController::class, 'register']);
 
 Route::post('/login', [AuthController::class, 'login'])->name('login');
 Route::get('/genders', [GenderController::class, 'index']);
-
+ Route::get('/zones', [ZoneController::class, 'index']);
 Route::get('/civil-status', [CivilStatusController::class, 'index']);
