@@ -2,39 +2,74 @@ import React, { useState } from "react";
 import { Lock, User, ShieldCheck, Eye, EyeOff, Download } from "lucide-react";
 import logo from "../assets/logo.png";
 import bonbonVideo from "../assets/bonbonVideo.mp4";
-import { Link, useNavigate } from "react-router-dom"; // Fixed: Added useNavigate
+import { Link, useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
-
+import PendingVerification from "../components/login/PendingVerification";
 const LoginPage = () => {
   const { login } = useAuth();
   const navigate = useNavigate();
 
   // Form States
-  const [email, setEmail] = useState(""); // Linked to "Username" field
+  const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
-
-  // LoginPage.jsx — only the part that changed (inside handleSubmit)
+  const [isPending, setIsPending] = useState(false);
+  const [pendingEmail, setPendingEmail] = useState("");
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     setLoading(true);
     setError("");
 
-    const result = await login(email, password);
+    try {
+      const result = await login(email, password);
 
-    if (result.success) {
-      // FIX: navigate based on role instead of hardcoding /dashboard
-      const redirectPath =
-        result.user?.role_id === 1 ? "/dashboard" : "/resident";
-      navigate(redirectPath);
-    } else {
-      setError(result.error || "Invalid credentials");
+      // Debug: Log the entire result
+      console.log("=== LOGIN RESULT ===");
+      console.log("Full result:", result);
+      console.log("result.success:", result.success);
+      console.log("result.status:", result.status);
+      console.log("result.error:", result.error);
+      console.log("result.message:", result.message);
+      console.log("===================");
+
+      // Check if login was successful
+      if (result.success) {
+        console.log("Login successful, redirecting...");
+        const redirectPath =
+          result.user?.role_id === 1 ? "/dashboard" : "/resident";
+        navigate(redirectPath);
+      }
+      // Check for pending verification (multiple ways)
+      else if (
+        result.status === "pending_verification" ||
+        (result.error && result.error.toLowerCase().includes("pending")) ||
+        (result.message && result.message.toLowerCase().includes("pending"))
+      ) {
+        console.log("Account pending verification detected!");
+        setIsPending(true);
+        setPendingEmail(result.email || email);
+      }
+      // Other errors
+      else {
+        console.log("Login failed with error");
+        setError(result.error || result.message || "Invalid credentials");
+      }
+    } catch (err) {
+      console.error("Exception during login:", err);
+      setError("An unexpected error occurred. Please try again.");
     }
+
     setLoading(false);
   };
+
+  // If account is pending, show the pending verification page
+  if (isPending) {
+    console.log("Rendering PendingVerification page");
+    return <PendingVerification email={pendingEmail} />;
+  }
 
   return (
     <div className="min-h-screen flex flex-col md:flex-row bg-gradient-to-br from-slate-50 to-gray-100 font-sans overflow-hidden">
