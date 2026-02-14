@@ -12,7 +12,8 @@ use Illuminate\Support\Facades\Storage;
 use Laravel\Sanctum\PersonalAccessToken;
 class AuthController extends Controller
 {
-    public function login(Request $request)
+   
+public function login(Request $request)
 {
     $credentials = $request->validate([
         'email' => 'required|email',
@@ -26,19 +27,52 @@ class AuthController extends Controller
     
     $user = User::where('email', $request->email)->first();
     
+    // Check if user is a resident (role_id = 2) and needs verification
+    if((int) $user->role_id === 2){
+        $user->load('resident');
+        
+        // Check if resident account exists
+        if (!$user->resident) {
+            auth()->logout();
+            return response()->json([
+                'message' => 'Resident profile not found',
+                'status' => 'error'
+            ], 403);
+        }
+        
+        // Check if resident is verified
+        if (!$user->resident->is_verified) {
+            auth()->logout();
+            return response()->json([
+                'message' => 'Account pending verification',
+                'status' => 'pending_verification',
+                'email' => $user->email,
+                'note' => 'Your account is awaiting verification. We will notify you via email once your account has been verified.'
+            ], 403);
+        }
+        
+        // Check if resident is active
+        if (!$user->resident->is_active) {
+            auth()->logout();
+            return response()->json([
+                'message' => 'Account is inactive',
+                'status' => 'inactive',
+                'email' => $user->email,
+                'note' => 'Your account has been deactivated. Please contact the administrator.'
+            ], 403);
+        }
+    }
   
     $user->tokens()->delete(); 
 
     $token = $user->createToken($request->password)->plainTextToken;
-    if((int) $user->role_id === 2){
-        $user = $user->load('resident');
-    }
 
     return response()->json([
         'user' => $user,
         'access_token' => $token
     ]);
 }
+
 
  public function register(Request $request)
     {
