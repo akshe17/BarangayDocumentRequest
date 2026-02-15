@@ -135,7 +135,7 @@ public function register(Request $request)
                 'civil_status_id' => $request->civil_status_id,
                 'id_image_path' => $path,
                 'is_active' => false,
-                'is_verified' => false,
+                'is_verified' => null,
             ]);
 
             // --- EMAIL LOGIC ---

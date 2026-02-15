@@ -55,42 +55,49 @@ const ZoneResidentDirectory = () => {
   useEffect(() => {
     fetchZoneResidents();
   }, []);
-
   const fetchZoneResidents = async () => {
     try {
       setLoading(true);
-      // Endpoint should return only residents belonging to the leader's zone_id
       const response = await api.get("/zone-leader/residents");
+
+      // --- FIX: Check if response.data is an array ---
+      if (!response.data || !Array.isArray(response.data)) {
+        console.error("Unexpected API response format:", response.data);
+        setResidents([]); // Fallback to empty array
+        return;
+      }
+      // ------------------------------------------------
 
       const formattedData = response.data.map((r) => ({
         id: r.resident_id,
         name: `${r.first_name} ${r.last_name}`,
         email: r.user?.email || "No Email",
-        zoneName: r.zone?.zone_name || "Unassigned",
-        status: r.is_verified
-          ? "Verified"
-          : r.rejection_reason
-            ? "Rejected"
-            : "Pending",
+
+        status:
+          r.is_verified === null
+            ? "Pending"
+            : r.is_verified
+              ? "Verified"
+              : "Rejected",
+
         date: new Date(r.created_at).toLocaleDateString("en-US", {
           month: "short",
           day: "numeric",
           year: "numeric",
         }),
-        avatar: `${r.first_name[0]}${r.last_name[0]}`,
-
-        // --- IMAGE URL HANDLING ---
+        // --- FIX: Check if names exist before accessing [0] ---
+        avatar: `${r.first_name?.[0] || "?"}${r.last_name?.[0] || "?"}`,
+        // ------------------------------------------------------
         idUrl: r.id_image_path
           ? `${BASE_URL}/storage/${r.id_image_path}`
           : null,
-        // --------------------------
-
         rejectionReason: r.rejection_reason,
       }));
       setResidents(formattedData);
     } catch (error) {
       console.error("Error fetching residents:", error);
       showToast("Failed to fetch zone residents", "error");
+      setResidents([]); // Ensure state is array on error
     } finally {
       setLoading(false);
     }

@@ -31,13 +31,14 @@ class ZoneLeaderController extends Controller
         return response()->json($residents);
     }
 
-    // 2. Verify a resident
-    public function verifyResident($residentId)
+   public function verifyResident($residentId)
     {
         $zoneLeader = Auth::user();
 
         $resident = Resident::where('resident_id', $residentId)
-            ->where('zone_id', $zoneLeader->zone_id)
+            ->whereHas('user', function ($query) use ($zoneLeader) {
+                $query->where('zone_id', $zoneLeader->zone_id);
+            })
             ->first();
 
         if (!$resident) {
@@ -45,12 +46,10 @@ class ZoneLeaderController extends Controller
         }
 
         $resident->update([
-            'is_verified' => true,
-            
-            'verified_by' => $zoneLeader->user_id // Assuming you track who verified
+            'is_verified' => true, // 1 for Verified
+            'rejection_reason' => null, // Clear reason if it was rejected
+            'verified_by' => $zoneLeader->user_id 
         ]);
-
-        // Optional: Send notification to resident
         
         Log::info("Zone Leader {$zoneLeader->user_id} verified resident {$residentId}");
 
@@ -58,7 +57,7 @@ class ZoneLeaderController extends Controller
     }
 
     // 3. Reject a resident
-    public function rejectResident(Request $request, $residentId)
+   public function rejectResident(Request $request, $residentId)
     {
         $zoneLeader = Auth::user();
         
@@ -67,7 +66,9 @@ class ZoneLeaderController extends Controller
         ]);
 
         $resident = Resident::where('resident_id', $residentId)
-            ->where('zone_id', $zoneLeader->zone_id)
+            ->whereHas('user', function ($query) use ($zoneLeader) {
+                $query->where('zone_id', $zoneLeader->zone_id);
+            })
             ->first();
 
         if (!$resident) {
@@ -75,11 +76,9 @@ class ZoneLeaderController extends Controller
         }
 
         $resident->update([
-            'is_verified' => false,
-          
+            'is_verified' => false, // 0 for Rejected
+            'rejection_reason' => $request->rejection_reason, 
         ]);
-
-        // Optional: Send notification to resident
         
         Log::info("Zone Leader {$zoneLeader->user_id} rejected resident {$residentId}. Reason: {$request->rejection_reason}");
 
