@@ -1,8 +1,9 @@
 import React from "react";
 import { Navigate, useLocation } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
+
 const ProtectedRoute = ({ children, allowedRoles }) => {
-  const { isAuthenticated, user, loading, isAdmin, isResident } = useAuth();
+  const { isAuthenticated, user, loading } = useAuth();
   const location = useLocation();
 
   if (loading) {
@@ -18,10 +19,18 @@ const ProtectedRoute = ({ children, allowedRoles }) => {
   }
 
   const userRole = Number(user.role_id);
+  // Ensure allowedRoles are treated as numbers for strict comparison
   const hasAccess = allowedRoles.map(Number).includes(userRole);
 
   if (!hasAccess) {
-    const homePath = isAdmin() ? "/dashboard" : "/resident";
+    // Redirect to a safe default based on their actual role
+    let homePath = "/login";
+    if (userRole === 1) homePath = "/dashboard";
+    else if (userRole === 2) homePath = "/resident";
+    else if (userRole === 3) homePath = "/clerk/dashboard";
+    else if (userRole === 4) homePath = "/zone-leader/dashboard";
+    else if (userRole === 5) homePath = "/captain/dashboard";
+
     return <Navigate to={homePath} replace />;
   }
 
