@@ -36,12 +36,12 @@ class ZoneLeaderController extends Controller
         return response()->json($residents);
     }
 
-    public function verifyResident($residentId)
+   public function verifyResident($residentId)
     {
         $zoneLeader = Auth::user();
 
         $resident = Resident::where('resident_id', $residentId)
-            ->with('user') // Eager load user to get email
+            ->with('user')
             ->whereHas('user', function ($query) use ($zoneLeader) {
                 $query->where('zone_id', $zoneLeader->zone_id);
             })
@@ -52,11 +52,24 @@ class ZoneLeaderController extends Controller
         }
 
         $resident->update([
-            'is_verified' => true, // 1 for Verified
+            'is_verified' => true,
             'is_active' => true,
-            
             'verified_by' => $zoneLeader->user_id 
         ]);
+        
+        // --- ADD LOG ENTRY WITH TRY-CATCH ---
+        try {
+            ActionLog::create([
+                'user_id' => $zoneLeader->user_id,
+                'request_id' => null, // NULL for resident actions
+                'action' => 'Verify Resident',
+                'details' => "Zone Leader {$zoneLeader->first_name} {$zoneLeader->last_name} (ID: {$zoneLeader->user_id}) verified resident {$resident->first_name} {$resident->last_name} (ID: {$residentId}).",
+            ]);
+        } catch (\Exception $e) {
+            // This will log the error to storage/logs/laravel.log
+            Log::error('ActionLog failed for verification: ' . $e->getMessage());
+        }
+        // ---------------------
         
         Log::info("Zone Leader {$zoneLeader->user_id} verified resident {$residentId}");
 
@@ -70,7 +83,7 @@ class ZoneLeaderController extends Controller
     }
 
     // 3. Reject a resident
-    public function rejectResident(Request $request, $residentId)
+   public function rejectResident(Request $request, $residentId)
     {
         $zoneLeader = Auth::user();
         
@@ -79,7 +92,7 @@ class ZoneLeaderController extends Controller
         ]);
 
         $resident = Resident::where('resident_id', $residentId)
-            ->with('user') // Eager load user to get email
+            ->with('user')
             ->whereHas('user', function ($query) use ($zoneLeader) {
                 $query->where('zone_id', $zoneLeader->zone_id);
             })
@@ -90,10 +103,24 @@ class ZoneLeaderController extends Controller
         }
 
         $resident->update([
-            'is_verified' => false, // 0 for Rejected
+            'is_verified' => false,
             'rejection_reason' => $request->rejection_reason, 
         ]);
         
+        // --- ADD LOG ENTRY WITH TRY-CATCH ---
+        try {
+            ActionLog::create([
+                'user_id' => $zoneLeader->user_id,
+                'request_id' => null,
+                'action' => 'Reject Resident',
+                'details' => "Zone Leader {$zoneLeader->first_name} {$zoneLeader->last_name} (ID: {$zoneLeader->user_id}) rejected resident {$resident->first_name} {$resident->last_name} (ID: {$residentId}). Reason: {$request->rejection_reason}",
+            ]);
+        } catch (\Exception $e) {
+            // This will log the error to storage/logs/laravel.log
+            Log::error('ActionLog failed for rejection: ' . $e->getMessage());
+        }
+        // ---------------------
+
         Log::info("Zone Leader {$zoneLeader->user_id} rejected resident {$residentId}. Reason: {$request->rejection_reason}");
 
         // --- SEND REJECTION EMAIL ---
