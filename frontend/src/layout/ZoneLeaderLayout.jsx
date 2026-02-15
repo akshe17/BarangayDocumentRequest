@@ -24,8 +24,8 @@ const ZoneLeaderLayout = () => {
       icon: <FileText size={20} />,
     },
     {
-      path: "/zone-leader/zone-map",
-      label: "Zone Map",
+      path: "/zone-leader/logs",
+      label: "Logs",
       icon: <FileText size={20} />,
     },
   ];

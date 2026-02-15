@@ -16,7 +16,7 @@ use App\Http\Controllers\ResidentVerificationController;
 use App\Http\Controllers\InboxController;
 use App\Http\Controllers\ResidentNotificationController;
 use App\Http\Controllers\AdminUserController;
-// routes/api.php
+use App\Http\Controllers\ZoneLeaderController;
 
 Route::middleware('custom.auth')->get('/user', function (Request $request) {
     return response()->json([
@@ -104,7 +104,14 @@ Route::get('/audit-logs', [InboxController::class, 'index']);
 Route::get('/resident/notifications', [ResidentNotificationController::class, 'index']);
         Route::put('/resident/notifications/{id}/read', [ResidentNotificationController::class, 'markAsRead']);
 
+
+        // Zone Leader Routes
+        Route::get('/zone-leader/logs', [ZoneLeaderController::class, 'getZoneLogs']);
+    Route::get('/zone-leader/residents', [ZoneLeaderController::class, 'getZoneResidents']);
+    Route::post('/zone-leader/residents/{id}/verify', [ZoneLeaderController::class, 'verifyResident']);
+    Route::post('/zone-leader/residents/{id}/reject', [ZoneLeaderController::class, 'rejectResident']);
 });
+
 
 
      Route::post('/logout', [AuthController::class, 'logout']);

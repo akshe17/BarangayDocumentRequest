@@ -32,6 +32,7 @@ import ClerkDashboard from "./pages/clerk/ClerkDashboard";
 import ZoneMap from "./pages/zoneLeader/ZoneMap";
 import ZoneResidentDirectory from "./pages/zoneLeader/ZoneResidentDirectory";
 import ZoneLeaderDashboard from "./pages/zoneLeader/ZoneLeaderDashboard";
+import ZoneLeaderLogs from "./pages/zoneLeader/ZoneLeaderLogs";
 import CaptainDashboard from "./pages/barangayCaptain/CaptainDashboard";
 import CaptainDocumentRequests from "./pages/barangayCaptain/CaptainDocumentRequest";
 const App = () => {
@@ -132,6 +133,7 @@ const App = () => {
           <Route index element={<Navigate to="dashboard" replace />} />
           <Route path="dashboard" element={<ZoneLeaderDashboard />} />
           <Route path="residents" element={<ZoneResidentDirectory />} />
+          <Route path="logs" element={<ZoneLeaderLogs />} />
           <Route path="zone-map" element={<ZoneMap />} />
         </Route>
 
