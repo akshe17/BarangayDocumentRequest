@@ -14,11 +14,6 @@ const ZoneLeaderLayout = () => {
   // Streamlined Navigation Links
   const menuItems = [
     {
-      path: "/zone-leader/dashboard",
-      label: "Dashboard",
-      icon: <LayoutDashboard size={20} />,
-    },
-    {
       path: "/zone-leader/residents",
       label: "Residents",
       icon: <FileText size={20} />,
