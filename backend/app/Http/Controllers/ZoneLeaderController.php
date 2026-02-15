@@ -8,6 +8,11 @@ use App\Models\ActionLog;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Log;
+// --- IMPORT MAIL CLASSES ---
+use Illuminate\Support\Facades\Mail;
+use App\Mail\ResidentVerified;
+use App\Mail\ResidentRejected;
+// ---------------------------
 
 class ZoneLeaderController extends Controller
 {
@@ -21,21 +26,22 @@ class ZoneLeaderController extends Controller
             return response()->json(['message' => 'Unauthorized'], 403);
         }
 
-      $residents = Resident::with(['user'])
-        ->whereHas('user', function ($query) use ($zoneLeader) {
-            $query->where('zone_id', $zoneLeader->zone_id);
-        })
-        ->orderBy('created_at', 'desc')
-        ->get();
+        $residents = Resident::with(['user'])
+            ->whereHas('user', function ($query) use ($zoneLeader) {
+                $query->where('zone_id', $zoneLeader->zone_id);
+            })
+            ->orderBy('created_at', 'desc')
+            ->get();
 
         return response()->json($residents);
     }
 
-   public function verifyResident($residentId)
+    public function verifyResident($residentId)
     {
         $zoneLeader = Auth::user();
 
         $resident = Resident::where('resident_id', $residentId)
+            ->with('user') // Eager load user to get email
             ->whereHas('user', function ($query) use ($zoneLeader) {
                 $query->where('zone_id', $zoneLeader->zone_id);
             })
@@ -47,17 +53,24 @@ class ZoneLeaderController extends Controller
 
         $resident->update([
             'is_verified' => true, // 1 for Verified
-            'rejection_reason' => null, // Clear reason if it was rejected
+            'is_active' => true,
+            
             'verified_by' => $zoneLeader->user_id 
         ]);
         
         Log::info("Zone Leader {$zoneLeader->user_id} verified resident {$residentId}");
 
+        // --- SEND VERIFICATION EMAIL ---
+        if ($resident->user && $resident->user->email) {
+            Mail::to($resident->user->email)->send(new ResidentVerified());
+        }
+        // -------------------------------
+
         return response()->json(['message' => 'Resident verified successfully']);
     }
 
     // 3. Reject a resident
-   public function rejectResident(Request $request, $residentId)
+    public function rejectResident(Request $request, $residentId)
     {
         $zoneLeader = Auth::user();
         
@@ -66,6 +79,7 @@ class ZoneLeaderController extends Controller
         ]);
 
         $resident = Resident::where('resident_id', $residentId)
+            ->with('user') // Eager load user to get email
             ->whereHas('user', function ($query) use ($zoneLeader) {
                 $query->where('zone_id', $zoneLeader->zone_id);
             })
@@ -81,6 +95,12 @@ class ZoneLeaderController extends Controller
         ]);
         
         Log::info("Zone Leader {$zoneLeader->user_id} rejected resident {$residentId}. Reason: {$request->rejection_reason}");
+
+        // --- SEND REJECTION EMAIL ---
+        if ($resident->user && $resident->user->email) {
+            Mail::to($resident->user->email)->send(new ResidentRejected($request->rejection_reason));
+        }
+        // ----------------------------
 
         return response()->json(['message' => 'Resident rejected successfully']);
     }
@@ -123,5 +143,11 @@ class ZoneLeaderController extends Controller
         });
 
         return response()->json($formattedLogs);
+    }
+
+    // Helper function for roles (ensure this exists in your controller)
+    private function getRoleName($roleId) {
+        $roles = [1 => 'Admin', 4 => 'Zone Leader', 5 => 'Resident'];
+        return $roles[$roleId] ?? 'Unknown';
     }
 }
