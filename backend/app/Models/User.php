@@ -51,11 +51,10 @@ class User extends Authenticatable
         return $this->belongsTo(Role::class, 'role_id', 'role_id');
     }
 
-    public function zone()
-    {
-        return $this->belongsTo(Zone::class, 'zone_id', 'zone_id');
-    }
-
+public function zone()
+{
+    return $this->belongsTo(Zone::class, 'zone_id', 'zone_id');
+}
     protected function casts(): array
     {
         return [
