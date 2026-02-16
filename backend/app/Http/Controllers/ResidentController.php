@@ -232,4 +232,51 @@ class ResidentController extends Controller
             ], 500);
         }
     }
+
+    public function resubmitID(Request $request)
+    {
+        // 1. Validate the request
+        $validator = Validator::make($request->all(), [
+            'id_image' => 'required|image|mimes:jpeg,png,jpg|max:2048', // Max 2MB
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json(['message' => $validator->errors()->first()], 422);
+        }
+
+        // 2. Get the authenticated user
+        $user = auth()->user();
+        
+        // Assumes a 'resident' relationship exists on the User model
+        $resident = $user->resident; 
+
+        if (!$resident) {
+            return response()->json(['message' => 'Resident profile not found'], 404);
+        }
+
+        if ($request->hasFile('id_image')) {
+            // 3. Delete old image if it exists
+            if ($resident->id_image) {
+                Storage::disk('public')->delete($resident->id_image);
+            }
+
+            // 4. Store new image
+            $path = $request->file('id_image')->store('resident_ids', 'public');
+            
+            // 5. Update database
+            $resident->update([
+                'id_image' => $path,
+                // Reset status to null (Pending) so admin knows to review
+                'is_active' => false,
+                'is_verified' => null, 
+            ]);
+
+            return response()->json([
+                'success' => true,
+                'message' => 'New ID uploaded successfully. Awaiting admin review.'
+            ]);
+        }
+
+        return response()->json(['message' => 'File upload failed'], 400);
+    }
 }

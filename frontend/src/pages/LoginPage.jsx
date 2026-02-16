@@ -5,6 +5,8 @@ import bonbonVideo from "../assets/bonbonVideo.mp4";
 import { Link, useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 import PendingVerification from "../components/login/PendingVerification";
+// MAKE SURE THIS COMPONENT EXISTS OR CREATE IT
+import RejectedPage from "../components/login/RejectedPage";
 const LoginPage = () => {
   const { login } = useAuth();
   const navigate = useNavigate();
@@ -15,7 +17,10 @@ const LoginPage = () => {
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
+
+  // Verification States
   const [isPending, setIsPending] = useState(false);
+  const [isRejected, setIsRejected] = useState(false);
   const [pendingEmail, setPendingEmail] = useState("");
 
   const handleSubmit = async (e) => {
@@ -24,35 +29,30 @@ const LoginPage = () => {
     setError("");
 
     try {
+      // Assuming login() returns the JSON response from the backend
       const result = await login(email, password);
 
-      // Debug: Log the entire result
-      console.log("=== LOGIN RESULT ===");
-      console.log("Full result:", result);
-      console.log("result.success:", result.success);
-      console.log("result.status:", result.status);
-      console.log("result.error:", result.error);
-      console.log("result.message:", result.message);
-      console.log("===================");
+      // Debug: Log the result
+      console.log("=== LOGIN RESULT ===", result);
 
-      // Check if login was successful
       if (result.success) {
         console.log("Login successful, redirecting...");
         const redirectPath =
           result.user?.role_id === 1 ? "/dashboard" : "/resident";
         navigate(redirectPath);
       }
-      // Check for pending verification (multiple ways)
-      else if (
-        result.status === "pending_verification" ||
-        (result.error && result.error.toLowerCase().includes("pending")) ||
-        (result.message && result.message.toLowerCase().includes("pending"))
-      ) {
-        console.log("Account pending verification detected!");
+      // Handle Pending
+      else if (result.status === "pending_verification") {
+        console.log("Account pending verification");
         setIsPending(true);
         setPendingEmail(result.email || email);
       }
-      // Other errors
+      // Handle Rejected
+      else if (result.status === "rejected") {
+        console.log("Account rejected");
+        setIsRejected(true);
+      }
+      // Other errors (401, etc.)
       else {
         console.log("Login failed with error");
         setError(result.error || result.message || "Invalid credentials");
@@ -65,12 +65,19 @@ const LoginPage = () => {
     setLoading(false);
   };
 
-  // If account is pending, show the pending verification page
+  // --- CONDITIONAL RENDERING ---
+
+  // 1. If account is pending, show the pending verification page
   if (isPending) {
-    console.log("Rendering PendingVerification page");
     return <PendingVerification email={pendingEmail} />;
   }
 
+  // 2. If account is rejected, show the rejected page
+  if (isRejected) {
+    return <RejectedPage />;
+  }
+
+  // 3. Otherwise, show the Login Form
   return (
     <div className="min-h-screen flex flex-col md:flex-row bg-gradient-to-br from-slate-50 to-gray-100 font-sans overflow-hidden">
       {/* LEFT SIDE: Branding & Video */}

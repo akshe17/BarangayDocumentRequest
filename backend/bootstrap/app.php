@@ -16,6 +16,7 @@ return Application::configure(basePath: dirname(__DIR__))
         $middleware->statefulApi();
         $middleware->alias([
         'custom.auth' => \App\Http\Middleware\CustomTokenAuth::class,
+        'verified.resident' => \App\Http\Middleware\ResidentVerified::class, // ADD THIS
     ]);
     $middleware->validateCsrfTokens(except: [
         'api/*',

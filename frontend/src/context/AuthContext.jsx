@@ -63,23 +63,46 @@ export const AuthProvider = ({ children }) => {
 
     checkAuth();
   }, []); // Empty dependency array - runs once
-
   const login = async (email, password) => {
     try {
       const response = await api.post("/login", { email, password });
+
+      // Successful login (status 200)
       const token = response.data.access_token;
       const userData = response.data.user ?? response.data;
 
       localStorage.setItem("token", token);
-
       setUser(userData);
       setIsAuthenticated(true);
 
       return { success: true, user: userData };
     } catch (error) {
+      // 1. Check if the server responded (403, 401, etc.)
+      if (error.response) {
+        const data = error.response.data;
+
+        // --- CRITICAL FIX: SAVE TOKEN FOR REJECTED/PENDING USERS ---
+        if (
+          data.status === "rejected" ||
+          data.status === "pending_verification"
+        ) {
+          if (data.access_token) {
+            localStorage.setItem("token", data.access_token);
+          }
+        }
+        // -----------------------------------------------------------
+
+        return {
+          success: false,
+          ...data,
+          error: data.message || "Login failed",
+        };
+      }
+
+      // 2. Network error or other unexpected issues
       return {
         success: false,
-        error: error.response?.data?.message || "Login failed",
+        error: "Network error or server unreachable",
       };
     }
   };

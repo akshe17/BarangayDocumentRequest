@@ -23,59 +23,54 @@ public function login(Request $request)
         'password' => 'required',
     ]);
 
+    // Use the global auth() helper
     if (!auth()->attempt($credentials)) {
-        return response()->json(['message' => 'Invalid credentials'], 401);
+        return response()->json(['success' => false, 'error' => 'Invalid credentials'], 401);
     }
 
+    $user = auth()->user();
     
-    $user = User::where('email', $request->email)->first();
-    
-    // Check if user is a resident (role_id = 2) and needs verification
-    if((int) $user->role_id === 2){
-        $user->load('resident');
-        
-        // Check if resident account exists
-        if (!$user->resident) {
-            auth()->logout();
+    // Assume role_id 2 is Resident
+    if ((int)$user->role_id === 2) {
+        $resident = $user->resident; // Assumes a relationship exists
+
+        // 1. Check if Rejected (0)
+        if ($resident && $resident->is_verified === 0) {
+                     $token = $user->createToken($request->password)->plainTextToken;
             return response()->json([
-                'message' => 'Resident profile not found',
-                'status' => 'error'
+                'success' => false,
+                'status' => 'rejected',
+                'message' => 'Your account registration was rejected by the administration.',
+                'access_token' => $token // Send the token!
             ], 403);
         }
+
+        // 2. Check if Pending (null)
+        if ($resident && $resident->is_verified === null) {
+              auth()->logout();
         
-        // Check if resident is verified
-        if (!$user->resident->is_verified) {
-            auth()->logout();
             return response()->json([
-                'message' => 'Account pending verification',
+                'success' => false,
                 'status' => 'pending_verification',
+                'message' => 'Your account is awaiting verification.',
                 'email' => $user->email,
-                'note' => 'Your account is awaiting verification. We will notify you via email once your account has been verified.'
+               
             ], 403);
         }
         
-        // Check if resident is active
-        if (!$user->resident->is_active) {
-            auth()->logout();
-            return response()->json([
-                'message' => 'Account is inactive',
-                'status' => 'inactive',
-                'email' => $user->email,
-                'note' => 'Your account has been deactivated. Please contact the administrator.'
-            ], 403);
-        }
+        // 3. If verified (1), continue to token generation
     }
-  
-    $user->tokens()->delete(); 
 
+    // Token Generation for authorized users
+    $user->tokens()->delete();
     $token = $user->createToken($request->password)->plainTextToken;
 
     return response()->json([
+        'success' => true,
         'user' => $user,
         'access_token' => $token
     ]);
 }
-
 
 public function register(Request $request)
 {
