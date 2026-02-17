@@ -19,13 +19,13 @@ use App\Mail\ZoneLeaderNotificationMail;
 class ResidentController extends Controller
 {
     /**
-     * Update resident profile information
+     * Update resident email address (only field editable online)
      */
     public function updateProfile(Request $request)
     {
         try {
             $user = auth()->user();
-            
+
             if (!$user) {
                 return response()->json([
                     'success' => false,
@@ -49,12 +49,9 @@ class ResidentController extends Controller
             $primaryKey = $user->getKeyName();
             $primaryKeyValue = $user->{$primaryKey};
 
+            // Only email is editable online; all other changes require a visit to the Barangay Hall
             $validator = Validator::make($request->all(), [
-                'first_name' => 'required|string|max:255',
-                'last_name' => 'required|string|max:255',
                 'email' => 'required|email|unique:users,email,' . $primaryKeyValue . ',' . $primaryKey,
-                'house_no' => 'required|string|max:50',
-                'zone' => 'required|string|max:50',
             ]);
 
             if ($validator->fails()) {
@@ -65,39 +62,28 @@ class ResidentController extends Controller
                 ], 422);
             }
 
-            // Update user email
+            // Update email only
             $user->email = $request->email;
             $user->save();
 
-            // Update resident information
-            $resident = $user->resident;
-            $resident->first_name = $request->first_name;
-            $resident->last_name = $request->last_name;
-            $resident->house_no = $request->house_no;
-            $resident->zone = $request->zone;
-            $resident->save();
-
-            // Reload user with fresh data from database
+            // Reload with fresh data
             $user->refresh();
-       
-          $user->load('resident'); 
-
+            $user->load('resident');
 
             return response()->json([
                 'success' => true,
-                'message' => 'Profile updated successfully',
+                'message' => 'Email updated successfully',
                 'user' => $user
             ], 200);
 
         } catch (\Exception $e) {
-            // Log the error for debugging
             Log::error('Profile Update Error: ' . $e->getMessage());
             Log::error('Stack Trace: ' . $e->getTraceAsString());
-            
+
             return response()->json([
                 'success' => false,
-                'message' => 'Failed to update profile',
-                'error' => config('app.debug') ? $e->getMessage() : 'An error occurred while updating your profile'
+                'message' => 'Failed to update email',
+                'error' => config('app.debug') ? $e->getMessage() : 'An error occurred while updating your email'
             ], 500);
         }
     }

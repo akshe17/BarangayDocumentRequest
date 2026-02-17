@@ -1,202 +1,150 @@
 import React, { useState } from "react";
 import { useAuth } from "../../context/AuthContext";
-// --- IMPORT YOUR CONFIGURED API INSTANCE HERE ---
 import api from "../../axious/api";
 import {
   User,
   Mail,
   Calendar,
   MapPin,
-  Loader2,
-  Edit2,
   Shield,
   ShieldAlert,
   Clock,
-  X,
   Check,
-  Image as ImageIcon,
-  Upload,
-  Eye,
   AlertTriangle,
+  Loader2,
+  ChevronRight,
+  ArrowLeft,
+  Lock,
+  Eye,
+  EyeOff,
 } from "lucide-react";
 import bonbonVideo from "../../assets/bonbonVideo.mp4";
 
+// ── View keys ──────────────────────────────────────────────────────────────────
+const VIEWS = {
+  PROFILE: "profile",
+  EMAIL: "change-email",
+  PASSWORD: "change-password",
+};
+
 const ResidentProfile = () => {
   const { user, setUser } = useAuth();
-  const [isEditing, setIsEditing] = useState(false);
-  const [editedData, setEditedData] = useState(null);
-  const [showIdModal, setShowIdModal] = useState(false);
-  const [showUploadModal, setShowUploadModal] = useState(false);
-  const [showPasswordModal, setShowPasswordModal] = useState(false);
-  const [showPassword, setShowPassword] = useState({
+
+  const [view, setView] = useState(VIEWS.PROFILE);
+
+  // Email state
+  const [editedEmail, setEditedEmail] = useState("");
+  const [isSavingEmail, setIsSavingEmail] = useState(false);
+
+  // Password state
+  const [passwordData, setPasswordData] = useState({
+    current_password: "",
+    new_password: "",
+    new_password_confirmation: "",
+  });
+  const [showPw, setShowPw] = useState({
     current: false,
     new: false,
     confirm: false,
   });
-
-  const [isLoading, setIsLoading] = useState(false);
-  const [previewId, setPreviewId] = useState(null);
+  const [isSavingPassword, setIsSavingPassword] = useState(false);
 
   const [toast, setToast] = useState({
     show: false,
     message: "",
     type: "success",
   });
-  const [passwordData, setPasswordData] = useState({
-    current_password: "",
-    new_password: "",
-    new_password_confirmation: "",
-  });
 
   const triggerToast = (message, type = "success") => {
     setToast({ show: true, message, type });
-    setTimeout(() => {
-      setToast({ show: false, message: "", type: "success" });
-    }, 4000);
+    setTimeout(
+      () => setToast({ show: false, message: "", type: "success" }),
+      4000,
+    );
   };
 
-  if (!user || !user.resident || !user.zone) {
+  const goTo = (nextView) => {
+    if (nextView === VIEWS.EMAIL) setEditedEmail(user?.email || "");
+    if (nextView === VIEWS.PASSWORD)
+      setPasswordData({
+        current_password: "",
+        new_password: "",
+        new_password_confirmation: "",
+      });
+    setView(nextView);
+  };
+
+  const goBack = () => setView(VIEWS.PROFILE);
+
+  // ── Guard ──────────────────────────────────────────────────────────────────
+  if (!user) {
     return (
       <div className="flex items-center justify-center min-h-[400px]">
-        <div className="flex flex-col items-center gap-3">
-          <Loader2 className="w-8 h-8 animate-spin text-emerald-600" />
-          <p className="text-sm text-gray-600 font-medium">
-            Loading profile...
-          </p>
-        </div>
+        <Loader2 className="w-8 h-8 animate-spin text-emerald-600" />
       </div>
     );
   }
 
-  const { resident, zone, email } = user;
+  const resident = user.resident || {};
+  const zone = user.zone || {};
+  const email = user.email || "";
 
-  const handleEditClick = () => {
-    setEditedData({
-      first_name: user.first_name,
-      last_name: user.last_name,
-      email: email,
-      house_no: resident.house_no,
-      // --- CHANGE: Map from the nested zone object ---
-      zone_name: zone.zone_name || "",
-    });
-    setIsEditing(true);
-  };
-
-  const handleCancelEdit = () => {
-    setEditedData(null);
-    setIsEditing(false);
-  };
-  const handleSaveEdit = async () => {
-    setIsLoading(true);
+  // ── Email handler ──────────────────────────────────────────────────────────
+  const handleSaveEmail = async (e) => {
+    e.preventDefault();
+    setIsSavingEmail(true);
     try {
-      const response = await api.post("/resident/profile/update", editedData);
-
+      const response = await api.post("/resident/profile/update", {
+        email: editedEmail,
+      });
       if (response.data.success) {
-        const userData = response.data.user ?? response.data;
-        setUser(userData);
-        setIsEditing(false);
-        setEditedData(null);
+        setUser((prev) => ({
+          ...prev,
+          ...(response.data.user ?? {}),
+          resident: response.data.user?.resident ?? prev?.resident,
+          zone: response.data.user?.zone ?? prev?.zone,
+        }));
         triggerToast(
-          response.data.message || "Profile updated successfully!",
+          response.data.message || "Email updated successfully!",
           "success",
         );
+        goBack();
       }
     } catch (error) {
       if (error.response?.data?.errors) {
-        Object.values(error.response.data.errors).forEach((errorArray) => {
-          errorArray.forEach((errorMessage) => {
-            triggerToast(errorMessage, "error");
-          });
-        });
+        Object.values(error.response.data.errors).forEach((arr) =>
+          arr.forEach((msg) => triggerToast(msg, "error")),
+        );
       } else {
         triggerToast(
-          error.response?.data?.message || "Failed to update profile",
+          error.response?.data?.message || "Failed to update email",
           "error",
         );
       }
     } finally {
-      setIsLoading(false);
+      setIsSavingEmail(false);
     }
   };
 
-  const handleInputChange = (field, value) => {
-    setEditedData((prev) => ({
-      ...prev,
-      [field]: value,
-    }));
-  };
-
-  const handleIdUpload = async (e) => {
-    const file = e.target.files[0];
-    if (!file) return;
-    setPreviewId(URL.createObjectURL(file));
-    if (file.size > 5 * 1024 * 1024) {
-      triggerToast("File size must be less than 5MB", "error");
-      return;
-    }
-
-    if (!["image/jpeg", "image/jpg", "image/png"].includes(file.type)) {
-      triggerToast("Only JPG, JPEG, and PNG files are allowed", "error");
-      return;
-    }
-
-    setIsLoading(true);
-    const formData = new FormData();
-    formData.append("id_image", file);
-
-    try {
-      const response = await api.post("/resident/profile/upload-id", formData, {
-        headers: {
-          "Content-Type": "multipart/form-data",
-        },
-      });
-
-      if (response.data.success) {
-        setUser((prevUser) => ({
-          ...prevUser,
-          resident: {
-            ...prevUser.resident,
-            id_image_path: response.data.id_image_path,
-            is_verified: response.data.is_verified,
-          },
-        }));
-        setShowUploadModal(false);
-        setPreviewId(null);
-        triggerToast(response.data.message, "success");
-      }
-    } catch (error) {
-      triggerToast(
-        error.response?.data?.message || "Failed to upload ID",
-        "error",
-      );
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  const handlePasswordChange = async (e) => {
+  // ── Password handler ───────────────────────────────────────────────────────
+  const handleSavePassword = async (e) => {
     e.preventDefault();
-
     if (passwordData.new_password !== passwordData.new_password_confirmation) {
       triggerToast("New passwords do not match", "error");
       return;
     }
-
-    setIsLoading(true);
+    setIsSavingPassword(true);
     try {
       const response = await api.post(
         "/resident/profile/change-password",
         passwordData,
       );
-
       if (response.data.success) {
-        setShowPasswordModal(false);
-        setPasswordData({
-          current_password: "",
-          new_password: "",
-          new_password_confirmation: "",
-        });
-        triggerToast(response.data.message, "success");
+        triggerToast(
+          response.data.message || "Password changed successfully!",
+          "success",
+        );
+        goBack();
       }
     } catch (error) {
       triggerToast(
@@ -204,175 +152,356 @@ const ResidentProfile = () => {
         "error",
       );
     } finally {
-      setIsLoading(false);
+      setIsSavingPassword(false);
     }
   };
 
-  const formatDate = (dateString) => {
-    if (!dateString) return "N/A";
-    return new Date(dateString).toLocaleDateString("en-US", {
+  // ── Helpers ────────────────────────────────────────────────────────────────
+  const formatDate = (d) => {
+    if (!d) return "N/A";
+    return new Date(d).toLocaleDateString("en-US", {
       year: "numeric",
       month: "long",
       day: "numeric",
     });
   };
+  const getGenderLabel = (id) =>
+    ({ 1: "Male", 2: "Female", 3: "Other" })[id] || "Not specified";
+  const getCivilStatusLabel = (id) =>
+    ({ 1: "Single", 2: "Married", 3: "Divorced", 4: "Widowed" })[id] ||
+    "Not specified";
 
-  const getGenderLabel = (genderId) => {
-    const genders = { 1: "Male", 2: "Female", 3: "Other" };
-    return genders[genderId] || "Not specified";
-  };
+  // ── Shared header banner ───────────────────────────────────────────────────
+  const ProfileHeader = () => (
+    <div className="relative bg-gradient-to-br from-emerald-600 to-emerald-700 rounded-3xl p-8 mb-8 overflow-hidden border border-gray-100">
+      <video
+        autoPlay
+        loop
+        muted
+        playsInline
+        className="absolute inset-0 w-full h-full object-cover"
+      >
+        <source src={bonbonVideo} type="video/mp4" />
+      </video>
+      <div className="absolute inset-0 bg-gradient-to-br from-emerald-600/90 via-emerald-700/85 to-emerald-800/90" />
+      <div className="relative z-10">
+        <h1 className="text-4xl font-bold text-white mb-2">
+          {user.first_name} {user.last_name}
+        </h1>
+        <p className="text-emerald-100 text-lg font-medium">
+          Resident ID: {resident.resident_id}
+        </p>
+        {resident.is_verified ? (
+          <div className="mt-2 inline-flex items-center gap-2 bg-white/20 backdrop-blur-sm text-white px-4 py-1.5 rounded-full text-sm font-semibold border border-white/30">
+            <Shield size={16} /> Verified Resident
+          </div>
+        ) : (
+          <div className="mt-2 inline-flex items-center gap-2 bg-white backdrop-blur-sm text-red-500 px-4 py-1.5 rounded-full text-sm font-semibold border border-red-300/30">
+            <ShieldAlert size={16} /> Not Verified
+          </div>
+        )}
+      </div>
+    </div>
+  );
 
-  const getCivilStatusLabel = (statusId) => {
-    const statuses = {
-      1: "Single",
-      2: "Married",
-      3: "Divorced",
-      4: "Widowed",
-    };
-    return statuses[statusId] || "Not specified";
-  };
+  // ── Sub-page header with back button ──────────────────────────────────────
+  const SubPageHeader = ({ title, subtitle }) => (
+    <div className="flex items-center gap-4 mb-8">
+      <button
+        onClick={goBack}
+        className="p-2.5 rounded-xl border border-gray-200 hover:bg-gray-50 transition-colors"
+      >
+        <ArrowLeft size={20} className="text-gray-600" />
+      </button>
+      <div>
+        <h2 className="text-2xl font-bold text-gray-950">{title}</h2>
+        <p className="text-sm text-gray-500 mt-0.5">{subtitle}</p>
+      </div>
+    </div>
+  );
 
-  const displayData = isEditing
-    ? editedData
-    : {
-        first_name: user.first_name,
-        last_name: user.last_name,
-        email: email,
-        house_no: resident.house_no,
-        // --- CHANGE: Map from the nested zone object ---
-        zone_name: zone.zone_name || "",
-      };
+  // ══════════════════════════════════════════════════════════════════════════
+  // VIEW: CHANGE EMAIL
+  // ══════════════════════════════════════════════════════════════════════════
+  if (view === VIEWS.EMAIL) {
+    return (
+      <div className="animate-in fade-in duration-300 max-w-2xl mx-auto relative">
+        <CustomToast
+          show={toast.show}
+          message={toast.message}
+          type={toast.type}
+          onClose={() => setToast((t) => ({ ...t, show: false }))}
+        />
 
-  const hasValidId =
-    resident.id_image_path && resident.id_image_path.trim() !== "";
+        <SubPageHeader
+          title="Change Email Address"
+          subtitle="Update the email linked to your account"
+        />
 
-  const STORAGE_URL = "http://localhost:8000";
+        <div className="bg-white p-8 rounded-2xl border border-gray-100">
+          <form onSubmit={handleSaveEmail} className="space-y-6">
+            {/* Current email (read-only) */}
+            <div>
+              <label className="text-sm font-semibold text-gray-700 block mb-1.5">
+                Current Email
+              </label>
+              <div className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl text-base text-gray-500 font-medium">
+                {email}
+              </div>
+            </div>
 
+            {/* New email */}
+            <div>
+              <label className="text-sm font-semibold text-gray-700 block mb-1.5">
+                New Email Address
+              </label>
+              <input
+                type="email"
+                value={editedEmail}
+                onChange={(e) => setEditedEmail(e.target.value)}
+                required
+                autoFocus
+                placeholder="Enter new email"
+                className="w-full px-4 py-3 border border-gray-200 rounded-xl text-base focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent transition-all"
+              />
+            </div>
+
+            <div className="flex gap-3 pt-2">
+              <button
+                type="button"
+                onClick={goBack}
+                disabled={isSavingEmail}
+                className="flex-1 border border-gray-200 px-6 py-3 rounded-xl font-semibold hover:bg-gray-50 transition-colors disabled:opacity-50"
+              >
+                Cancel
+              </button>
+              <button
+                type="submit"
+                disabled={isSavingEmail}
+                className="flex-1 bg-emerald-600 text-white px-6 py-3 rounded-xl font-semibold hover:bg-emerald-700 transition-colors flex items-center justify-center gap-2 disabled:opacity-70"
+              >
+                {isSavingEmail ? (
+                  <>
+                    <Loader2 size={18} className="animate-spin" /> Saving...
+                  </>
+                ) : (
+                  <>
+                    <Check size={18} /> Save Email
+                  </>
+                )}
+              </button>
+            </div>
+          </form>
+        </div>
+      </div>
+    );
+  }
+
+  // ══════════════════════════════════════════════════════════════════════════
+  // VIEW: CHANGE PASSWORD
+  // ══════════════════════════════════════════════════════════════════════════
+  if (view === VIEWS.PASSWORD) {
+    const pwFields = [
+      {
+        label: "Current Password",
+        key: "current_password",
+        showKey: "current",
+      },
+      { label: "New Password", key: "new_password", showKey: "new" },
+      {
+        label: "Confirm New Password",
+        key: "new_password_confirmation",
+        showKey: "confirm",
+      },
+    ];
+
+    return (
+      <div className="animate-in fade-in duration-300 max-w-2xl mx-auto relative">
+        <CustomToast
+          show={toast.show}
+          message={toast.message}
+          type={toast.type}
+          onClose={() => setToast((t) => ({ ...t, show: false }))}
+        />
+
+        <SubPageHeader
+          title="Change Password"
+          subtitle="Choose a strong password with uppercase, lowercase, and numbers"
+        />
+
+        <div className="bg-white p-8 rounded-2xl border border-gray-100">
+          <form onSubmit={handleSavePassword} className="space-y-5">
+            {pwFields.map(({ label, key, showKey }) => (
+              <div key={key}>
+                <label className="text-sm font-semibold text-gray-700 block mb-1.5">
+                  {label}
+                </label>
+                <div className="relative">
+                  <input
+                    type={showPw[showKey] ? "text" : "password"}
+                    value={passwordData[key]}
+                    onChange={(e) =>
+                      setPasswordData({
+                        ...passwordData,
+                        [key]: e.target.value,
+                      })
+                    }
+                    required
+                    className="w-full px-4 py-3 pr-12 border border-gray-200 rounded-xl text-base focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent transition-all"
+                  />
+                  <button
+                    type="button"
+                    onClick={() =>
+                      setShowPw((prev) => ({
+                        ...prev,
+                        [showKey]: !prev[showKey],
+                      }))
+                    }
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                  >
+                    {showPw[showKey] ? <EyeOff size={18} /> : <Eye size={18} />}
+                  </button>
+                </div>
+              </div>
+            ))}
+
+            <div className="flex gap-3 pt-2">
+              <button
+                type="button"
+                onClick={goBack}
+                disabled={isSavingPassword}
+                className="flex-1 border border-gray-200 px-6 py-3 rounded-xl font-semibold hover:bg-gray-50 transition-colors disabled:opacity-50"
+              >
+                Cancel
+              </button>
+              <button
+                type="submit"
+                disabled={isSavingPassword}
+                className="flex-1 bg-emerald-600 text-white px-6 py-3 rounded-xl font-semibold hover:bg-emerald-700 transition-colors flex items-center justify-center gap-2 disabled:opacity-70"
+              >
+                {isSavingPassword ? (
+                  <>
+                    <Loader2 size={18} className="animate-spin" /> Saving...
+                  </>
+                ) : (
+                  <>
+                    <Check size={18} /> Update Password
+                  </>
+                )}
+              </button>
+            </div>
+          </form>
+        </div>
+      </div>
+    );
+  }
+
+  // ══════════════════════════════════════════════════════════════════════════
+  // VIEW: MAIN PROFILE
+  // ══════════════════════════════════════════════════════════════════════════
   return (
-    <div className="animate-in fade-in duration-500 max-w-7xl mx-auto relative">
+    <div className="animate-in fade-in duration-300 max-w-7xl mx-auto relative">
       <CustomToast
         show={toast.show}
         message={toast.message}
         type={toast.type}
-        onClose={() => setToast({ ...toast, show: false })}
+        onClose={() => setToast((t) => ({ ...t, show: false }))}
       />
 
-      {/* HEADER SECTION */}
-      <div className="relative bg-gradient-to-br from-emerald-600 to-emerald-700 rounded-3xl p-8 mb-8 overflow-hidden border border-gray-100">
-        <video
-          autoPlay
-          loop
-          muted
-          playsInline
-          className="absolute inset-0 w-full h-full object-cover"
-        >
-          <source src={bonbonVideo} type="video/mp4" />
-        </video>
+      <ProfileHeader />
 
-        <div className="absolute inset-0 bg-gradient-to-br from-emerald-600/90 via-emerald-700/85 to-emerald-800/90"></div>
-
-        <div className="relative z-10 flex flex-col md:flex-row justify-between items-start md:items-center gap-6">
-          <div className="flex items-center gap-6">
-            <div>
-              <h1 className="text-4xl font-bold text-white mb-2">
-                {user.first_name} {user.last_name}
-              </h1>
-              <p className="text-emerald-100 text-lg font-medium">
-                Resident ID: {resident.resident_id}
-              </p>
-              {resident.is_verified ? (
-                <div className="mt-2 inline-flex items-center gap-2 bg-white/20 backdrop-blur-sm text-white px-4 py-1.5 rounded-full text-sm font-semibold border border-white/30">
-                  <Shield size={16} />
-                  Verified Resident
-                </div>
-              ) : (
-                <div className="mt-2 inline-flex items-center gap-2 bg-white backdrop-blur-sm text-red-500 px-4 py-1.5 rounded-full text-sm font-semibold border border-red-300/30">
-                  <ShieldAlert size={16} />
-                  Not Verified
-                </div>
-              )}
-            </div>
+      <div className="grid grid-cols-1 md:grid-cols-2 ">
+        {/* CHANGE EMAIL */}
+        <div className="bg-white w-full p-8 rounded-2xl border border-gray-100">
+          <h3 className="text-xl font-bold text-gray-950 mb-6 flex items-center gap-3 pb-4 border-b border-gray-200">
+            <Mail size={22} className="text-emerald-600" />
+            Email Address
+          </h3>
+          <div className="bg-gray-50 p-5 rounded-xl border border-gray-100 mb-4">
+            <label className="text-xs font-bold text-gray-500 uppercase tracking-wider block mb-2">
+              Current Email
+            </label>
+            <p className="text-base font-semibold text-gray-950 truncate">
+              {email}
+            </p>
           </div>
+          <button
+            onClick={() => goTo(VIEWS.EMAIL)}
+            className="w-full flex items-center justify-between px-5 py-3.5 bg-emerald-600 text-white rounded-xl font-semibold hover:bg-emerald-700 transition-colors text-sm"
+          >
+            <span className="flex items-center gap-2">
+              <Mail size={16} /> Change Email
+            </span>
+            <ChevronRight size={16} />
+          </button>
+        </div>
 
-          {!isEditing ? (
-            <button
-              onClick={handleEditClick}
-              className="bg-white cursor-pointer text-emerald-700 px-6 py-3 rounded-xl text-base font-semibold hover:bg-emerald-50 transition-all flex items-center gap-2"
-            >
-              <Edit2 size={18} />
-              Edit Profile
-            </button>
-          ) : (
-            <div className="flex gap-3">
-              <button
-                onClick={handleCancelEdit}
-                disabled={isLoading}
-                className="bg-white/20 backdrop-blur-sm text-white px-6 py-3 rounded-xl text-base font-semibold hover:bg-white/30 transition-all border border-white/30 flex items-center gap-2 disabled:opacity-50"
-              >
-                <X size={18} />
-                Cancel
-              </button>
-              <button
-                onClick={handleSaveEdit}
-                disabled={isLoading}
-                className="bg-white text-emerald-700 px-6 py-3 rounded-xl text-base font-semibold hover:bg-emerald-50 transition-all flex items-center gap-2 disabled:opacity-50"
-              >
-                {isLoading ? (
-                  <Loader2 size={18} className="animate-spin" />
-                ) : (
-                  <Check size={18} />
-                )}
-                {isLoading ? "Saving..." : "Save Changes"}
-              </button>
-            </div>
-          )}
+        {/* CHANGE PASSWORD */}
+        <div className="bg-white p-8 rounded-2xl w-full border border-gray-100">
+          <h3 className="text-xl font-bold text-gray-950 mb-6 flex items-center gap-3 pb-4 border-b border-gray-200">
+            <Shield size={22} className="text-emerald-600" />
+            Account Security
+          </h3>
+          <div className="bg-gray-50 p-5 rounded-xl border border-gray-100 mb-4">
+            <label className="text-xs font-bold text-gray-500 uppercase tracking-wider block mb-2">
+              Password
+            </label>
+            <p className="text-base font-semibold text-gray-950 tracking-widest">
+              ••••••••
+            </p>
+          </div>
+          <button
+            onClick={() => goTo(VIEWS.PASSWORD)}
+            className="w-full flex items-center justify-between px-5 py-3.5 bg-emerald-600 text-white rounded-xl font-semibold hover:bg-emerald-700 transition-colors text-sm"
+          >
+            <span className="flex items-center gap-2">
+              <Lock size={16} /> Change Password
+            </span>
+            <ChevronRight size={16} />
+          </button>
         </div>
       </div>
 
-      {/* MAIN CONTENT GRID */}
+      {/* MAIN GRID */}
       <div className="grid lg:grid-cols-2 gap-8 mb-8">
-        {/* PERSONAL INFORMATION CARD */}
+        {/* PERSONAL INFORMATION */}
         <div className="bg-white p-8 rounded-2xl border border-gray-100">
           <h3 className="text-2xl font-bold text-gray-950 mb-6 flex items-center gap-3 pb-4 border-b border-gray-200">
             <User size={24} className="text-emerald-600" />
             Personal Information
           </h3>
 
+          <div className="flex gap-3 bg-amber-50 border border-amber-200 p-4 rounded-xl mb-5">
+            <AlertTriangle
+              className="text-amber-500 flex-shrink-0 mt-0.5"
+              size={18}
+            />
+            <p className="text-sm text-amber-800 font-medium">
+              To update your name, birthdate, gender, or civil status, please
+              visit the <span className="font-bold">Barangay Hall</span> in
+              person with a valid ID.
+            </p>
+          </div>
+
           <div className="space-y-5">
             <div className="grid grid-cols-2 gap-5">
-              <InputField
+              <ReadOnlyField
                 icon={User}
                 label="First Name"
-                value={displayData.first_name}
-                isEditing={isEditing}
-                onChange={(value) => handleInputChange("first_name", value)}
+                value={user.first_name}
               />
-              <InputField
+              <ReadOnlyField
                 icon={User}
                 label="Last Name"
-                value={displayData.last_name}
-                isEditing={isEditing}
-                onChange={(value) => handleInputChange("last_name", value)}
+                value={user.last_name}
               />
             </div>
 
-            <InputField
-              icon={Mail}
-              label="Email Address"
-              value={displayData.email}
-              isEditing={isEditing}
-              onChange={(value) => handleInputChange("email", value)}
-              type="email"
-            />
-
-            <InputField
+            <ReadOnlyField
               icon={Calendar}
               label="Date of Birth"
               value={formatDate(resident.birthdate)}
-              isEditing={false}
-              readOnly
             />
-
             <div className="grid grid-cols-2 gap-5">
               <div className="bg-gray-50 p-5 rounded-xl border border-gray-100">
                 <label className="text-xs font-bold text-gray-500 uppercase tracking-wider block mb-2">
@@ -394,37 +523,42 @@ const ResidentProfile = () => {
           </div>
         </div>
 
-        {/* ADDRESS INFORMATION CARD */}
+        {/* ADDRESS INFORMATION */}
         <div className="bg-white p-8 rounded-2xl border border-gray-100">
           <h3 className="text-2xl font-bold text-gray-950 mb-6 flex items-center gap-3 pb-4 border-b border-gray-200">
             <MapPin size={24} className="text-emerald-600" />
             Address Information
           </h3>
 
+          <div className="flex gap-3 bg-amber-50 border border-amber-200 p-4 rounded-xl mb-5">
+            <AlertTriangle
+              className="text-amber-500 flex-shrink-0 mt-0.5"
+              size={18}
+            />
+            <p className="text-sm text-amber-800 font-medium">
+              To update your house number or zone, please visit the{" "}
+              <span className="font-bold">Barangay Hall</span> in person.
+            </p>
+          </div>
+
           <div className="space-y-5">
-            <InputField
+            <ReadOnlyField
               icon={MapPin}
               label="House Number"
-              value={displayData.house_no}
-              isEditing={isEditing}
-              onChange={(value) => handleInputChange("house_no", value)}
+              value={resident.house_no}
             />
-            <InputField
+            <ReadOnlyField
               icon={MapPin}
               label="Zone"
-              value={displayData.zone_name}
-              isEditing={isEditing}
-              onChange={(value) => handleInputChange("zone_name", value)}
+              value={zone.zone_name || ""}
             />
-
-            <div className="mt-8 p-6 bg-gray-50 rounded-xl border border-gray-100">
+            <div className="p-6 bg-gray-50 rounded-xl border border-gray-100">
               <h4 className="text-sm font-bold text-gray-600 mb-3 flex items-center gap-2">
-                <MapPin size={20} className="text-emerald-600" />
-                Complete Address
+                <MapPin size={20} className="text-emerald-600" /> Complete
+                Address
               </h4>
-              <p className=" text-base font-semibold text-gray-950">
-                {/* --- CHANGE: Display nested zone_name --- */}
-                {displayData.house_no}, {displayData.zone_name}
+              <p className="text-base font-semibold text-gray-950">
+                {resident.house_no}, {zone.zone_name || ""}
               </p>
             </div>
           </div>
@@ -432,59 +566,13 @@ const ResidentProfile = () => {
       </div>
 
       {/* BOTTOM GRID */}
-      <div className="grid lg:grid-cols-3 gap-8">
-        {/* VALID ID CARD */}
-        <div className="bg-white p-8 rounded-2xl border border-gray-100">
-          <h3 className="text-xl font-bold text-gray-950 mb-6 flex items-center gap-3 pb-4 border-b border-gray-200">
-            <ImageIcon size={22} className="text-emerald-600" />
-            Valid ID
-          </h3>
-
-          {hasValidId ? (
-            <div className="space-y-3">
-              <div className="aspect-video bg-gray-100 rounded-xl border-2 border-dashed border-gray-300 overflow-hidden">
-                <img
-                  src={`${STORAGE_URL}/storage/${resident.id_image_path}`}
-                  alt="Valid ID Thumbnail"
-                  className="w-full h-full object-cover"
-                />
-              </div>
-              <button
-                onClick={() => setShowIdModal(true)}
-                className="w-full bg-emerald-600 text-white px-4 py-3 rounded-xl text-sm font-semibold hover:bg-emerald-700 transition-all flex items-center justify-center gap-2"
-              >
-                <Eye size={16} />
-                View Full Image
-              </button>
-            </div>
-          ) : (
-            <div className="space-y-4">
-              <div className="aspect-video bg-gray-50 rounded-xl border-2 border-dashed border-gray-300 flex items-center justify-center">
-                <div className="text-center">
-                  <ImageIcon className="w-12 h-12 text-gray-300 mx-auto mb-2" />
-                  <p className="text-sm text-gray-400 font-medium">
-                    No ID uploaded
-                  </p>
-                </div>
-              </div>
-              <button
-                onClick={() => setShowUploadModal(true)}
-                className="w-full bg-emerald-600 text-white px-4 py-3 rounded-xl text-sm font-semibold hover:bg-emerald-700 transition-all flex items-center justify-center gap-2"
-              >
-                <Upload size={16} />
-                Upload Valid ID
-              </button>
-            </div>
-          )}
-        </div>
-
-        {/* ACCOUNT DETAILS CARD */}
+      <div className="grid lg:grid-cols-1 gap-8">
+        {/* ACCOUNT DETAILS */}
         <div className="bg-white p-8 rounded-2xl border border-gray-100">
           <h3 className="text-xl font-bold text-gray-950 mb-6 flex items-center gap-3 pb-4 border-b border-gray-200">
             <Clock size={22} className="text-emerald-600" />
             Account Details
           </h3>
-
           <div className="space-y-5">
             <div>
               <label className="text-xs font-bold text-gray-500 uppercase tracking-wider block mb-2">
@@ -504,226 +592,26 @@ const ResidentProfile = () => {
             </div>
           </div>
         </div>
-
-        {/* ACCOUNT SECURITY CARD */}
-        <div className="bg-white p-8 rounded-2xl border border-gray-100">
-          <h3 className="text-xl font-bold text-gray-950 mb-6 flex items-center gap-3 pb-4 border-b border-gray-200">
-            <Shield size={22} className="text-emerald-600" />
-            Account Security
-          </h3>
-
-          <div className="space-y-4">
-            <div className="bg-gray-50 p-5 rounded-xl border border-gray-100">
-              <label className="text-xs font-bold text-gray-500 uppercase tracking-wider block mb-2">
-                Password
-              </label>
-              <p className="text-base font-semibold text-gray-950 mb-3">
-                ••••••••
-              </p>
-              <button
-                onClick={() => setShowPasswordModal(true)}
-                className="text-sm text-emerald-600 hover:text-emerald-700 font-semibold hover:underline"
-              >
-                Change Password →
-              </button>
-            </div>
-          </div>
-        </div>
       </div>
-
-      {/* --- MODALS --- */}
-      {showIdModal && (
-        <Modal onClose={() => setShowIdModal(false)} title="Valid ID">
-          <div className="p-4">
-            <img
-              src={`${STORAGE_URL}/storage/${resident.id_image_path}`}
-              alt="Valid ID"
-              className="w-full h-auto rounded-lg border border-gray-200"
-            />
-          </div>
-        </Modal>
-      )}
-
-      {showUploadModal && (
-        <Modal
-          onClose={() => {
-            setShowUploadModal(false);
-            setPreviewId(null);
-          }}
-          title="Submit Valid ID"
-        >
-          <div className="p-6 space-y-5">
-            <div className="flex gap-3 bg-yellow-50 border border-yellow-200 p-4 rounded-xl">
-              <AlertTriangle className="text-yellow-600 flex-shrink-0" />
-              <p className="text-sm text-yellow-800 font-medium">
-                Please upload a clear photo of a government-issued ID (e.g.,
-                Driver's License, National ID).
-              </p>
-            </div>
-
-            {previewId && (
-              <img
-                src={previewId}
-                alt="ID Preview"
-                className="w-full h-64 object-contain rounded-xl border bg-gray-50"
-              />
-            )}
-
-            <label className="flex flex-col items-center justify-center w-full h-32 border-2 border-dashed border-emerald-300 rounded-xl cursor-pointer hover:bg-emerald-50 transition">
-              {isLoading ? (
-                <Loader2 className="w-8 h-8 animate-spin text-emerald-600" />
-              ) : (
-                <>
-                  <Upload className="w-8 h-8 text-emerald-600 mb-2" />
-                  <p className="text-sm font-semibold text-gray-700">
-                    Click to upload
-                  </p>
-                  <p className="text-xs text-gray-500 mt-1">
-                    JPG, PNG • Max 5MB
-                  </p>
-                </>
-              )}
-              <input
-                type="file"
-                className="hidden"
-                accept="image/png, image/jpeg, image/jpg"
-                onChange={handleIdUpload}
-                disabled={isLoading}
-              />
-            </label>
-          </div>
-        </Modal>
-      )}
-
-      {showPasswordModal && (
-        <Modal
-          onClose={() => setShowPasswordModal(false)}
-          title="Change Password"
-        >
-          <form onSubmit={handlePasswordChange} className="p-6 space-y-5">
-            <div>
-              <label className="text-sm font-semibold text-gray-700">
-                Current Password
-              </label>
-              <input
-                type="password"
-                value={passwordData.current_password}
-                onChange={(e) =>
-                  setPasswordData({
-                    ...passwordData,
-                    current_password: e.target.value,
-                  })
-                }
-                required
-                className="w-full px-4 py-3 border rounded-xl mt-1"
-              />
-            </div>
-            <div>
-              <label className="text-sm font-semibold text-gray-700">
-                New Password
-              </label>
-              <input
-                type="password"
-                value={passwordData.new_password}
-                onChange={(e) =>
-                  setPasswordData({
-                    ...passwordData,
-                    new_password: e.target.value,
-                  })
-                }
-                required
-                className="w-full px-4 py-3 border rounded-xl mt-1"
-              />
-            </div>
-            <div>
-              <label className="text-sm font-semibold text-gray-700">
-                Confirm New Password
-              </label>
-              <input
-                type="password"
-                value={passwordData.new_password_confirmation}
-                onChange={(e) =>
-                  setPasswordData({
-                    ...passwordData,
-                    new_password_confirmation: e.target.value,
-                  })
-                }
-                required
-                className="w-full px-4 py-3 border rounded-xl mt-1"
-              />
-            </div>
-            <div className="flex gap-3 pt-4">
-              <button
-                type="button"
-                onClick={() => setShowPasswordModal(false)}
-                className="flex-1 border px-6 py-3 rounded-xl font-semibold"
-              >
-                Cancel
-              </button>
-              <button
-                type="submit"
-                disabled={isLoading}
-                className="flex-1 bg-emerald-600 text-white px-6 py-3 rounded-xl font-semibold hover:bg-emerald-700 disabled:opacity-50 flex items-center justify-center gap-2"
-              >
-                {isLoading && <Loader2 size={18} className="animate-spin" />}
-                Update Password
-              </button>
-            </div>
-          </form>
-        </Modal>
-      )}
     </div>
   );
 };
 
-// --- HELPER COMPONENTS ---
-const InputField = ({
-  icon: Icon,
-  label,
-  value,
-  isEditing,
-  onChange,
-  type = "text",
-  readOnly = false,
-}) => (
-  <div className="flex gap-4 p-5 rounded-xl bg-gray-50 border border-gray-100 transition-all">
+// ── Helper Components ──────────────────────────────────────────────────────────
+
+const ReadOnlyField = ({ icon: Icon, label, value }) => (
+  <div className="flex gap-4 p-5 rounded-xl bg-gray-50 border border-gray-100">
     <div className="bg-white p-4 rounded-lg h-fit border border-gray-100 flex-shrink-0">
       <Icon className="w-6 h-6 text-emerald-600" />
     </div>
-    <div className="flex-1">
+    <div className="flex-1 min-w-0">
       <label className="text-xs font-bold text-gray-600 uppercase tracking-wider block mb-1">
         {label}
       </label>
-      {isEditing && !readOnly ? (
-        <input
-          type={type}
-          value={value}
-          onChange={(e) => onChange(e.target.value)}
-          className="w-full text-base font-semibold text-gray-950 bg-white border border-gray-200 rounded-lg px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent transition-all"
-        />
-      ) : (
-        <p className="text-base font-semibold text-gray-950">{value}</p>
-      )}
-      {readOnly && (
-        <p className="text-xs text-gray-400 mt-1">Cannot be edited online</p>
-      )}
-    </div>
-  </div>
-);
-
-const Modal = ({ onClose, title, children }) => (
-  <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-    <div className="bg-white rounded-2xl max-w-2xl w-full max-h-[90vh] overflow-hidden border border-gray-100 shadow-xl">
-      <div className="flex items-center justify-between p-6 border-b border-gray-100">
-        <h3 className="text-xl font-bold text-gray-950">{title}</h3>
-        <button
-          onClick={onClose}
-          className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
-        >
-          <X size={20} className="text-gray-600" />
-        </button>
-      </div>
-      <div className="overflow-y-auto max-h-[calc(90vh-80px)]">{children}</div>
+      <p className="text-base font-semibold text-gray-950 truncate">{value}</p>
+      <p className="text-xs text-gray-400 mt-1">
+        Visit the Barangay Hall to update
+      </p>
     </div>
   </div>
 );
@@ -745,8 +633,11 @@ const CustomToast = ({ show, message, type, onClose }) => {
       >
         {icons[type]}
         <p className="text-sm font-semibold flex-1">{message}</p>
-        <button onClick={onClose} className="text-gray-400 hover:text-gray-600">
-          <X size={18} />
+        <button
+          onClick={onClose}
+          className="text-gray-400 hover:text-gray-600 ml-2 text-lg font-bold leading-none"
+        >
+          ×
         </button>
       </div>
     </div>
