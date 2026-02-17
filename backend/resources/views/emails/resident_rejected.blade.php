@@ -16,7 +16,7 @@
 <body>
     <div class="container">
         <div class="header">
-            <h2>Website Notice</h2>
+            <h2>Barangay Bonbon Update</h2>
         </div>
         
         <div class="content">

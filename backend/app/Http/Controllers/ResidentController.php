@@ -2,13 +2,19 @@
 
 namespace App\Http\Controllers;
 
+use Illuminate\Support\Facades\Mail;
+
+use App\Mail\ResidentRejected;
 use Illuminate\Http\Request;
 use App\Models\User;
+use App\Models\ActionLog;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Validation\Rules\Password;
+
+use App\Mail\ZoneLeaderNotificationMail; 
 
 class ResidentController extends Controller
 {
@@ -234,12 +240,13 @@ class ResidentController extends Controller
         }
     }
 
- public function resubmitID(Request $request)
+
+
+public function resubmitID(Request $request)
 {
     // 1. Validate the request
     $validator = Validator::make($request->all(), [
-        // --- CHANGE: Make user_id required ---
-        'user_id' => 'required|exists:users,user_id', 
+        'user_id' => 'required|exists:users,user_id',
         'id_image' => 'required|image|mimes:jpeg,png,jpg|max:2048', // Max 2MB
     ]);
 
@@ -247,11 +254,9 @@ class ResidentController extends Controller
         return response()->json(['message' => $validator->errors()->first()], 422);
     }
 
-    // 2. Find the user by the ID sent in the request
+    // 2. Find the user and their resident profile
     $user = User::find($request->user_id);
-    
-    // Assumes a 'resident' relationship exists on the User model
-    $resident = $user->resident; 
+    $resident = $user->resident; // Assumes 'resident' relationship exists on User model
 
     if (!$resident) {
         return response()->json(['message' => 'Resident profile not found'], 404);
@@ -259,9 +264,8 @@ class ResidentController extends Controller
 
     if ($request->hasFile('id_image')) {
         // 3. Delete old image if it exists
-        // --- NOTE: Ensure the column name matches your DB (e.g., id_image_path) ---
-        if ($resident->id_image) {
-            Storage::disk('public')->delete($resident->id_image);
+        if ($resident->id_image_path) {
+            Storage::disk('public')->delete($resident->id_image_path);
         }
 
         // 4. Store new image
@@ -269,11 +273,48 @@ class ResidentController extends Controller
         
         // 5. Update database
         $resident->update([
-            'id_image_path' => $path, // --- NOTE: Match your DB column name ---
+            'id_image_path' => $path,
             // Reset status to null (Pending) so admin knows to review
             'is_active' => false,
-            'is_verified' => null, 
+            'is_verified' => null,
+            'rejection_reason' => null
         ]);
+
+        // --- NEW LOGIC: Notify Zone Leaders ---
+        $zoneLeaders = User::where('role_id', 4) // Assuming 4 is Zone Leader
+                            ->where('zone_id', $user->zone_id)
+                            ->get();
+
+        foreach ($zoneLeaders as $leader) {
+            // Log to database for each leader
+            ActionLog::create([
+                'user_id' => $leader->user_id, // Logged for the zone leader
+                'request_id' => null, 
+                'action' => 'ID Resubmission',
+                'details' => "Resident {$user->first_name} {$user->last_name} in Zone {$user->zone_id} has resubmitted their ID for review.",
+            ]);
+        }
+
+        // --- EMAIL LOGIC ---
+        Log::info("Looking for zone leaders in zone: {$user->zone_id}");
+        Log::info("Found " . $zoneLeaders->count() . " zone leaders");
+
+        if ($zoneLeaders->isEmpty()) {
+            Log::warning("No zone leaders found for zone_id: {$user->zone_id}");
+        }
+
+        foreach ($zoneLeaders as $leader) {
+            try {
+                // Send email to Mailtrap
+                Mail::to($leader->email)
+                    ->send(new ZoneLeaderNotificationMail($user, $leader));
+                
+                Log::info("Zone leader notification sent to: {$leader->email}");
+            } catch (\Exception $e) {
+                Log::error("Failed to send zone leader email to {$leader->email}: " . $e->getMessage());
+            }
+        }
+        // -----------------------------------------------------
 
         return response()->json([
             'success' => true,

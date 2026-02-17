@@ -21,22 +21,35 @@ class ZoneLeaderController extends Controller
     {
         $zoneLeader = Auth::user();
 
-        // Ensure the user is a zone leader
         if ($zoneLeader->role_id !== 4) {
             return response()->json(['message' => 'Unauthorized'], 403);
         }
 
-        $residents = Resident::with(['user'])
-            ->whereHas('user', function ($query) use ($zoneLeader) {
+        // This fetches users and eager-loads their resident profile
+        $users = User::with(['resident'])
+            ->whereHas('resident', function ($query) use ($zoneLeader) {
                 $query->where('zone_id', $zoneLeader->zone_id);
             })
             ->orderBy('created_at', 'desc')
             ->get();
 
-        return response()->json($residents);
+        // Transform the data for the frontend
+        return response()->json($users->map(function ($user) {
+            return [
+                'user_id' => $user->user_id,
+                'first_name' => $user->first_name,
+                'last_name' => $user->last_name,
+                'email' => $user->email,
+                // Accessing the resident relationship
+                'resident_id' => $user->resident->resident_id ?? null,
+                'is_verified' => $user->resident->is_verified ?? null,
+                'id_image_path' => $user->resident->id_image_path ?? null,
+                'created_at' => $user->created_at,
+            ];
+        }));
     }
 
-   public function verifyResident($residentId)
+    public function verifyResident($residentId)
     {
         $zoneLeader = Auth::user();
 
@@ -63,7 +76,7 @@ class ZoneLeaderController extends Controller
                 'user_id' => $zoneLeader->user_id,
                 'request_id' => null, // NULL for resident actions
                 'action' => 'Verify Resident',
-                'details' => "Zone Leader {$zoneLeader->first_name} {$zoneLeader->last_name} (ID: {$zoneLeader->user_id}) verified resident {$resident->first_name} {$resident->last_name} (ID: {$residentId}).",
+                'details' => "Verification completed by Zone Leader {$zoneLeader->last_name} for resident {$resident->first_name} {$resident->last_name}.",
             ]);
         } catch (\Exception $e) {
             // This will log the error to storage/logs/laravel.log
@@ -71,7 +84,9 @@ class ZoneLeaderController extends Controller
         }
         // ---------------------
         
+        // --- LOG TO FILE ---
         Log::info("Zone Leader {$zoneLeader->user_id} verified resident {$residentId}");
+        // -------------------
 
         // --- SEND VERIFICATION EMAIL ---
         if ($resident->user && $resident->user->email) {
@@ -83,7 +98,7 @@ class ZoneLeaderController extends Controller
     }
 
     // 3. Reject a resident
-   public function rejectResident(Request $request, $residentId)
+    public function rejectResident(Request $request, $residentId)
     {
         $zoneLeader = Auth::user();
         
@@ -113,7 +128,8 @@ class ZoneLeaderController extends Controller
                 'user_id' => $zoneLeader->user_id,
                 'request_id' => null,
                 'action' => 'Reject Resident',
-                'details' => "Zone Leader {$zoneLeader->first_name} {$zoneLeader->last_name} (ID: {$zoneLeader->user_id}) rejected resident {$resident->first_name} {$resident->last_name} (ID: {$residentId}). Reason: {$request->rejection_reason}",
+                // --- FIX: Added 'details' key here ---
+                'details' => "Resident {$resident->first_name} {$resident->last_name} rejected by Zone Leader {$zoneLeader->last_name}. Reason: {$request->rejection_reason}"
             ]);
         } catch (\Exception $e) {
             // This will log the error to storage/logs/laravel.log
@@ -121,7 +137,9 @@ class ZoneLeaderController extends Controller
         }
         // ---------------------
 
+        // --- LOG TO FILE ---
         Log::info("Zone Leader {$zoneLeader->user_id} rejected resident {$residentId}. Reason: {$request->rejection_reason}");
+        // -------------------
 
         // --- SEND REJECTION EMAIL ---
         if ($resident->user && $resident->user->email) {
@@ -132,45 +150,50 @@ class ZoneLeaderController extends Controller
         return response()->json(['message' => 'Resident rejected successfully']);
     }
 
-    public function getZoneLogs()
-    {
-        $user = Auth::user();
+   public function getZoneLogs()
+{
+    $user = Auth::user();
 
-        // 1. Ensure user is a Zone Leader (assuming role_id 4)
-        if ($user->role_id !== 4) {
-            return response()->json(['message' => 'Unauthorized'], 403);
-        }
-
-        // 2. Fetch logs for the leader's zone
-        // We use whereHas to check the zone_id on the user who performed the action
-        $logs = ActionLog::with(['user', 'documentRequest'])
-            ->whereHas('user', function($query) use ($user) {
-                $query->where('zone_id', $user->zone_id);
-            })
-            ->orderBy('created_at', 'desc')
-            ->get();
-
-        // 3. Format data for the frontend component
-        $formattedLogs = $logs->map(function ($log) {
-            // Determine type based on action for icons/colors
-            $type = 'update';
-            if (str_contains(strtolower($log->action), 'verify')) $type = 'verification';
-            if (str_contains(strtolower($log->action), 'reject')) $type = 'rejection';
-
-            return [
-                'id' => $log->log_id,
-                'action' => $log->action,
-                'description' => $log->details,
-                'type' => $type,
-                'user' => $log->user->name,
-                'userRole' => $this->getRoleName($log->user->role_id),
-                'time' => $log->created_at->format('h:i A'),
-                'date' => $log->created_at->format('M d, Y'),
-            ];
-        });
-
-        return response()->json($formattedLogs);
+    // 1. Ensure user is a Zone Leader
+    if ($user->role_id !== 4) {
+        return response()->json(['message' => 'Unauthorized'], 403);
     }
+
+    // 2. Fetch logs
+    // Ensure 'user' and 'documentRequest' relationships exist on ActionLog model
+    $logs = ActionLog::with(['user', 'documentRequest'])
+        ->whereHas('user', function($query) use ($user) {
+            $query->where('zone_id', $user->zone_id);
+        })
+        ->orderBy('created_at', 'desc')
+        ->get();
+
+    // 3. Format data
+    $formattedLogs = $logs->map(function ($log) {
+        // Determine type based on action for icons/colors
+        $type = 'update';
+        $actionLower = strtolower($log->action);
+        if (str_contains($actionLower, 'verify')) $type = 'verification';
+        elseif (str_contains($actionLower, 'reject')) $type = 'rejection';
+        elseif (str_contains($actionLower, 'request')) $type = 'request';
+
+        return [
+            // --- FIX: Ensure 'log_id' is the correct primary key ---
+            'id' => $log->log_id, 
+            'action' => $log->action,
+            'description' => $log->details,
+            'type' => $type,
+            // --- FIX: Optional chaining to prevent errors if user is null ---
+            'user' => $log->user?->name ?? 'Unknown',
+            'userRole' => $this->getRoleName($log->user?->role_id ?? 0),
+            // -----------------------------------------------------------------
+            'time' => $log->created_at->format('h:i A'),
+            'date' => $log->created_at->format('M d, Y'),
+        ];
+    });
+
+    return response()->json($formattedLogs);
+}
 
     // Helper function for roles (ensure this exists in your controller)
     private function getRoleName($roleId) {

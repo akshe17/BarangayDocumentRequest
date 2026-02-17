@@ -71,7 +71,7 @@ const ZoneResidentDirectory = () => {
       const formattedData = response.data.map((r) => ({
         id: r.resident_id,
         name: `${r.first_name} ${r.last_name}`,
-        email: r.user?.email || "No Email",
+        email: r.email || "No Email",
 
         status:
           r.is_verified === null

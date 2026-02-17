@@ -13,6 +13,7 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\Log;
 use Laravel\Sanctum\PersonalAccessToken;
+use App\Models\ActionLog;
 class AuthController extends Controller
 {
    
@@ -106,7 +107,7 @@ public function register(Request $request)
         ], 422);
     }
 
-    try {
+   try {
         return DB::transaction(function () use ($request) {
 
             $path = $request->file('id_image')->store('verification_ids', 'public');
@@ -133,57 +134,54 @@ public function register(Request $request)
                 'is_verified' => null,
             ]);
 
+            // --- NEW: ACTION LOG LOGIC FOR WEBSITE NOTIFICATION ---
+            // Find Zone Leaders to log the action for them
+            $zoneLeaders = User::where('role_id', 4) // Assuming 4 is Zone Leader based on your original code
+                               ->where('zone_id', $user->zone_id)
+                               ->get();
+
+            foreach ($zoneLeaders as $leader) {
+                ActionLog::create([
+                    'user_id' => $leader->user_id, // Logged for the zone leader
+                    'request_id' => null, // Not a specific document request yet
+                    'action' => 'New Registration',
+                    'details' => "New resident registration received from: {$user->first_name} {$user->last_name} in Zone {$user->zone_id}.",
+                ]);
+            }
+            // -----------------------------------------------------
+
             // --- EMAIL LOGIC ---
-    // B. Send email to Zone Leaders in the same zone
-            // Assumes role_id 3 is 'Zone Leader'
-   // ... inside your register method ...
+            // Send email to Zone Leaders in the same zone
+            Log::info("Looking for zone leaders in zone: {$user->zone_id}");
+            Log::info("Found " . $zoneLeaders->count() . " zone leaders");
 
-// 1. Find Zone Leaders
-$zoneLeaders = User::where('role_id', 4)
-                   ->where('zone_id', $user->zone_id)
-                   ->get();
+            if ($zoneLeaders->isEmpty()) {
+                Log::warning("No zone leaders found for zone_id: {$user->zone_id}");
+            }
 
-Log::info("Looking for zone leaders in zone: {$user->zone_id}");
-Log::info("Found " . $zoneLeaders->count() . " zone leaders");
+            foreach ($zoneLeaders as $leader) {
+                try {
+                    Mail::to($leader->email)
+                        ->send(new ZoneLeaderNotificationMail($user, $leader));
+                    
+                    Log::info("Zone leader notification sent to: {$leader->email}");
+                } catch (\Exception $e) {
+                    Log::error("Failed to send zone leader email to {$leader->email}: " . $e->getMessage());
+                }
+            }
 
-if ($zoneLeaders->isEmpty()) {
-    Log::warning("No zone leaders found for zone_id: {$user->zone_id}");
-}
-
-// 2. Send emails to Zone Leaders immediately (or with a small initial delay if needed)
-foreach ($zoneLeaders as $leader) {
-    try {
-      
-        Mail::to($leader->email)
-            ->send(new ZoneLeaderNotificationMail($user, $leader));
-        
-        Log::info("Zone leader notification sent to: {$leader->email}");
-    } catch (\Exception $e) {
-        Log::error("Failed to send zone leader email to {$leader->email}: " . $e->getMessage());
-    }
-}
-
-
-        
             return response()->json([
                 'message' => 'Registration successful! Please wait for account verification.',
                 'email' => $user->email,
                 'status' => 'pending_verification',
                 'note' => 'We will send you an email once your account has been verified. You will be able to login after verification is complete.',
-                'debug' => [
-                    'zone_id' => $user->zone_id,
-                    'zone_leaders_found' => $zoneLeaders->count(),
-                    'zone_leader_emails' => $zoneLeaders->pluck('email')->toArray()
-                ]
             ], 201);
         });
     } catch (\Exception $e) {
-       return response()->json([
-        'message' => 'Registration failed',
-        'error' => $e->getMessage(),
-        'file' => $e->getFile(),
-        'line' => $e->getLine()
-    ], 500);
+        return response()->json([
+            'message' => 'Registration failed',
+            'error' => $e->getMessage(),
+        ], 500);
     }
 }
 public function logout(Request $request)
