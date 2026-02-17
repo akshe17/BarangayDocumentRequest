@@ -33,30 +33,30 @@ public function login(Request $request)
     // Assume role_id 2 is Resident
     if ((int)$user->role_id === 2) {
         $resident = $user->resident; // Assumes a relationship exists
+// In AuthController.php -> login() method
 
-        // 1. Check if Rejected (0)
-        if ($resident && $resident->is_verified === 0) {
-                     $token = $user->createToken($request->password)->plainTextToken;
-            return response()->json([
-                'success' => false,
-                'status' => 'rejected',
-                'message' => 'Your account registration was rejected by the administration.',
-                'access_token' => $token // Send the token!
-            ], 403);
-        }
+// 1. Check if Rejected (0)
+if ($resident && $resident->is_verified === 0) {
+    // --- CHANGE: Send user_id instead of access_token ---
+    return response()->json([
+        'success' => false,
+        'status' => 'rejected',
+        'message' => 'Your account registration was rejected by the administration.',
+        'user_id' => $user->user_id // Send the user_id
+    ], 403);
+}
 
-        // 2. Check if Pending (null)
-        if ($resident && $resident->is_verified === null) {
-              auth()->logout();
-        
-            return response()->json([
-                'success' => false,
-                'status' => 'pending_verification',
-                'message' => 'Your account is awaiting verification.',
-                'email' => $user->email,
-               
-            ], 403);
-        }
+// 2. Check if Pending (null)
+if ($resident && $resident->is_verified === null) {
+    // ... pending logic ...
+    return response()->json([
+        'success' => false,
+        'status' => 'pending_verification',
+        'message' => 'Your account is awaiting verification.',
+        'email' => $user->email,
+        'user_id' => $user->user_id // Optional: send user_id here too
+    ], 403);
+}
         
         // 3. If verified (1), continue to token generation
     }

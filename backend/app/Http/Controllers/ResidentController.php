@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
+use App\Models\User;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Storage;
@@ -233,50 +234,53 @@ class ResidentController extends Controller
         }
     }
 
-    public function resubmitID(Request $request)
-    {
-        // 1. Validate the request
-        $validator = Validator::make($request->all(), [
-            'id_image' => 'required|image|mimes:jpeg,png,jpg|max:2048', // Max 2MB
+ public function resubmitID(Request $request)
+{
+    // 1. Validate the request
+    $validator = Validator::make($request->all(), [
+        // --- CHANGE: Make user_id required ---
+        'user_id' => 'required|exists:users,user_id', 
+        'id_image' => 'required|image|mimes:jpeg,png,jpg|max:2048', // Max 2MB
+    ]);
+
+    if ($validator->fails()) {
+        return response()->json(['message' => $validator->errors()->first()], 422);
+    }
+
+    // 2. Find the user by the ID sent in the request
+    $user = User::find($request->user_id);
+    
+    // Assumes a 'resident' relationship exists on the User model
+    $resident = $user->resident; 
+
+    if (!$resident) {
+        return response()->json(['message' => 'Resident profile not found'], 404);
+    }
+
+    if ($request->hasFile('id_image')) {
+        // 3. Delete old image if it exists
+        // --- NOTE: Ensure the column name matches your DB (e.g., id_image_path) ---
+        if ($resident->id_image) {
+            Storage::disk('public')->delete($resident->id_image);
+        }
+
+        // 4. Store new image
+        $path = $request->file('id_image')->store('verification_ids', 'public');
+        
+        // 5. Update database
+        $resident->update([
+            'id_image_path' => $path, // --- NOTE: Match your DB column name ---
+            // Reset status to null (Pending) so admin knows to review
+            'is_active' => false,
+            'is_verified' => null, 
         ]);
 
-        if ($validator->fails()) {
-            return response()->json(['message' => $validator->errors()->first()], 422);
-        }
-
-        // 2. Get the authenticated user
-        $user = auth()->user();
-        
-        // Assumes a 'resident' relationship exists on the User model
-        $resident = $user->resident; 
-
-        if (!$resident) {
-            return response()->json(['message' => 'Resident profile not found'], 404);
-        }
-
-        if ($request->hasFile('id_image')) {
-            // 3. Delete old image if it exists
-            if ($resident->id_image) {
-                Storage::disk('public')->delete($resident->id_image);
-            }
-
-            // 4. Store new image
-            $path = $request->file('id_image')->store('resident_ids', 'public');
-            
-            // 5. Update database
-            $resident->update([
-                'id_image' => $path,
-                // Reset status to null (Pending) so admin knows to review
-                'is_active' => false,
-                'is_verified' => null, 
-            ]);
-
-            return response()->json([
-                'success' => true,
-                'message' => 'New ID uploaded successfully. Awaiting admin review.'
-            ]);
-        }
-
-        return response()->json(['message' => 'File upload failed'], 400);
+        return response()->json([
+            'success' => true,
+            'message' => 'New ID uploaded successfully. Awaiting admin review.'
+        ]);
     }
+
+    return response()->json(['message' => 'File upload failed'], 400);
+}
 }

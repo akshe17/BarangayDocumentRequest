@@ -6,13 +6,14 @@ import {
   UploadCloud,
   Loader2,
   CheckCircle2,
-  Image as ImageIcon,
 } from "lucide-react";
 
 import { useNavigate } from "react-router-dom";
 // Assuming you have a configured axios instance
 import api from "../../axious/api";
-const RejectedPage = () => {
+
+// --- UPDATE: Receive userId as a prop ---
+const RejectedPage = ({ userId }) => {
   const navigate = useNavigate();
   const [file, setFile] = useState(null);
   const [previewUrl, setPreviewUrl] = useState(null); // STATE FOR PREVIEW
@@ -46,16 +47,25 @@ const RejectedPage = () => {
       return;
     }
 
+    // --- SECURITY CHECK ---
+    if (!userId) {
+      setError("User ID missing. Please login again.");
+      return;
+    }
+
     setLoading(true);
     setMessage("");
     setError("");
 
     const formData = new FormData();
     formData.append("id_image", file);
+    // --- CHANGE: Append the user_id ---
+    formData.append("user_id", userId);
     // Needed to spoof PUT request in Laravel for file uploads
     formData.append("_method", "PUT");
 
     try {
+      // NOTE: This endpoint should NOT require auth:sanctum
       await api.post("/resident/resubmit-id", formData, {
         headers: {
           "Content-Type": "multipart/form-data",
@@ -77,11 +87,7 @@ const RejectedPage = () => {
 
   return (
     <div className="min-h-screen bg-white flex flex-col items-center justify-center p-4">
-      <div className="bg-white p-10 rounded-3xl  max-w-lg w-full text-center">
-        {/* Logo */}
-
-        {/* Icon - Large Red Circle with X */}
-
+      <div className="bg-white p-10 rounded-3xl max-w-lg w-full text-center">
         {/* Title & Message */}
         <h2 className="text-2xl font-extrabold text-gray-900 mb-4 tracking-tight">
           Account Request Rejected
@@ -125,7 +131,7 @@ const RejectedPage = () => {
           <button
             onClick={handleResubmit}
             disabled={loading || !file}
-            className={`${loading || !file ? "cursor-not-allowed" : "cursor-pointer"} w-full  bg-emerald-600 text-white font-bold py-3 rounded-xl transition-all shadow-md hover:bg-emerald-700 flex items-center justify-center gap-2 active:scale-95 disabled:opacity-50`}
+            className={`${loading || !file ? "cursor-not-allowed" : "cursor-pointer"} w-full bg-emerald-600 text-white font-bold py-3 rounded-xl transition-all shadow-md hover:bg-emerald-700 flex items-center justify-center gap-2 active:scale-95 disabled:opacity-50`}
           >
             {loading ? (
               <>

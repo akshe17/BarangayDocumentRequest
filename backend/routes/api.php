@@ -26,12 +26,13 @@ Route::middleware('custom.auth')->get('/user', function (Request $request) {
 
      
 });
-Route::middleware(['custom.auth', 'verified.resident'])->group(function () {
+  Route::put('/resident/resubmit-id', [ResidentController::class, 'resubmitID']);
+
+Route::middleware(['custom.auth'])->group(function () {
    
     // Profile Management Routes
     Route::post('/resident/profile/update', [ResidentController::class, 'updateProfile']);
-        Route::put('/resident/resubmit-id', [ResidentController::class, 'resubmitID']);
-
+      
 
     Route::post('/resident/profile/change-password', [ResidentController::class, 'changePassword']);
     Route::post('/resident/profile/upload-id', [ResidentController::class, 'uploadValidId']);

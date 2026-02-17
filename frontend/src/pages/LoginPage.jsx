@@ -17,7 +17,7 @@ const LoginPage = () => {
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
-
+  const [rejectedUserId, setRejectedUserId] = useState(null);
   // Verification States
   const [isPending, setIsPending] = useState(false);
   const [isRejected, setIsRejected] = useState(false);
@@ -49,8 +49,8 @@ const LoginPage = () => {
       }
       // Handle Rejected
       else if (result.status === "rejected") {
-        console.log("Account rejected");
         setIsRejected(true);
+        setRejectedUserId(result.user_id); // --- SET USER ID HERE ---
       }
       // Other errors (401, etc.)
       else {
@@ -74,7 +74,8 @@ const LoginPage = () => {
 
   // 2. If account is rejected, show the rejected page
   if (isRejected) {
-    return <RejectedPage />;
+    // --- PASS USER ID HERE ---
+    return <RejectedPage userId={rejectedUserId} />;
   }
 
   // 3. Otherwise, show the Login Form
