@@ -1,10 +1,8 @@
-import React, { useState, useEffect, useMemo } from "react";
+import React, { useState, useEffect } from "react";
 // Import your Axios instance here
 import api from "../../axious/api";
 import {
   Activity,
-  Terminal,
-  Search,
   Calendar,
   User,
   Edit,
@@ -13,31 +11,29 @@ import {
   AlertCircle,
   Loader2,
   Clock,
+  FileText,
 } from "lucide-react";
 
 const ZoneLeaderLogs = () => {
   const [logs, setLogs] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-  const [searchTerm, setSearchTerm] = useState("");
-  const [filterType, setFilterType] = useState("all");
-  const [dateFilter, setDateFilter] = useState("today");
 
-  // Fetch data using Axios - Updated Endpoint
+  // Fetch data using Axios
   useEffect(() => {
     const fetchLogs = async () => {
       try {
         setLoading(true);
-        // GET logs specifically for the Zone Leader
+        // GET logs specifically for the Logged-in User
         const response = await api.get("/zone-leader/logs");
 
-        // Assuming API returns data in format: { id, action, description, type, user, time, date, color, userRole }
+        // Assumes API returns data in format: { id, action, description, type, user, time, date }
         setLogs(response.data);
       } catch (err) {
         console.error("API Error:", err);
         setError(
           err.response?.data?.message ||
-            "Failed to fetch zone logs. Please check console.",
+            "Failed to fetch your logs. Please check console.",
         );
       } finally {
         setLoading(false);
@@ -47,31 +43,13 @@ const ZoneLeaderLogs = () => {
     fetchLogs();
   }, []);
 
-  // Filter logs based on search, type, and date
-  const filteredLogs = useMemo(() => {
-    return logs.filter((log) => {
-      const matchesSearch =
-        log.action.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        log.description.toLowerCase().includes(searchTerm.toLowerCase());
-
-      const matchesType = filterType === "all" || log.type === filterType;
-
-      // Note: Date logic should ideally be handled by backend,
-      // but keeping frontend filtering for now based on string matching
-      const matchesDate =
-        dateFilter === "all" ||
-        (dateFilter === "today" && log.date === "Feb 15, 2026") ||
-        (dateFilter === "yesterday" && log.date === "Feb 14, 2026");
-
-      return matchesSearch && matchesType && matchesDate;
-    });
-  }, [logs, searchTerm, filterType, dateFilter]);
-
-  // Map log types to specific icons for Zone Leader actions
+  // Map log types to specific icons
   const getIcon = (type) => {
     const icons = {
       verification: <ShieldCheck size={18} className="text-emerald-600" />,
       rejection: <XCircle size={18} className="text-red-600" />,
+      request: <FileText size={18} className="text-purple-600" />,
+      resubmission: <AlertCircle size={18} className="text-amber-600" />,
       update: <Edit size={18} className="text-blue-600" />,
     };
     return icons[type] || <Activity size={18} className="text-gray-600" />;
@@ -81,6 +59,8 @@ const ZoneLeaderLogs = () => {
     const colors = {
       verification: "bg-emerald-100 border-emerald-200",
       rejection: "bg-red-100 border-red-200",
+      request: "bg-purple-100 border-purple-200",
+      resubmission: "bg-amber-100 border-amber-200",
       update: "bg-blue-100 border-blue-200",
     };
     return colors[type] || "bg-gray-100 border-gray-200";
@@ -96,59 +76,9 @@ const ZoneLeaderLogs = () => {
           </div>
           <div>
             <h1 className="text-3xl font-black text-gray-900">
-              Zone Leader Activity Logs
+              My Activity Logs
             </h1>
-            <p className="text-gray-500">
-              Tracking resident verifications and zone updates
-            </p>
-          </div>
-        </div>
-      </div>
-
-      {/* FILTERS & SEARCH */}
-      <div className="bg-white p-5 rounded-xl border border-gray-200 shadow-sm">
-        <div className="flex flex-col md:flex-row justify-between items-center gap-4">
-          <div className="relative w-full md:w-96">
-            <Search
-              className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400"
-              size={18}
-            />
-            <input
-              className="w-full pl-11 pr-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-emerald-500 focus:border-transparent outline-none transition-all text-sm"
-              placeholder="Search actions or descriptions..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-            />
-          </div>
-
-          <div className="flex items-center gap-3 w-full md:w-auto">
-            {/* Filter by Type */}
-            <div className="flex items-center gap-2 bg-gray-50 p-1 rounded-xl border border-gray-200">
-              {["all", "verification", "rejection"].map((type) => (
-                <button
-                  key={type}
-                  onClick={() => setFilterType(type)}
-                  className={`px-3 py-2 rounded-lg text-xs font-bold transition-all ${
-                    filterType === type
-                      ? "bg-white text-gray-900 shadow-sm"
-                      : "text-gray-500 hover:text-gray-700"
-                  }`}
-                >
-                  {type.charAt(0).toUpperCase() + type.slice(1)}
-                </button>
-              ))}
-            </div>
-
-            {/* Filter by Date */}
-            <select
-              value={dateFilter}
-              onChange={(e) => setDateFilter(e.target.value)}
-              className="px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-xs font-bold text-gray-700 outline-none focus:ring-2 focus:ring-emerald-500 transition-all"
-            >
-              <option value="all">All Time</option>
-              <option value="today">Today</option>
-              <option value="yesterday">Yesterday</option>
-            </select>
+            <p className="text-gray-500">Personal log of your actions</p>
           </div>
         </div>
       </div>
@@ -163,15 +93,15 @@ const ZoneLeaderLogs = () => {
           <div className="text-center py-10 text-red-500 bg-red-50 rounded-xl border border-red-200">
             <AlertCircle className="mx-auto mb-2" /> {error}
           </div>
-        ) : filteredLogs.length === 0 ? (
+        ) : logs.length === 0 ? (
           <div className="bg-white p-12 rounded-xl border border-gray-200 shadow-sm text-center">
-            <Search size={48} className="mx-auto mb-3 text-gray-300" />
+            <Activity size={48} className="mx-auto mb-3 text-gray-300" />
             <p className="font-semibold text-sm text-gray-500">
-              No activity logs found for your zone.
+              No activity logs found for your account.
             </p>
           </div>
         ) : (
-          filteredLogs.map((log) => (
+          logs.map((log) => (
             <div
               key={log.id}
               className="bg-white p-5 rounded-xl border border-gray-200 shadow-sm hover:shadow-md hover:border-gray-300 transition-all group"

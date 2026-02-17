@@ -150,43 +150,39 @@ class ZoneLeaderController extends Controller
         return response()->json(['message' => 'Resident rejected successfully']);
     }
 
-   public function getZoneLogs()
+    public function zoneLeaderPersonalLogs()
 {
-    $user = Auth::user();
+    $userId = Auth::id(); // Get currently logged-in user ID
 
-    // 1. Ensure user is a Zone Leader
-    if ($user->role_id !== 4) {
-        return response()->json(['message' => 'Unauthorized'], 403);
-    }
-
-    // 2. Fetch logs
-    // Ensure 'user' and 'documentRequest' relationships exist on ActionLog model
+    // 1. Fetch logs created ONLY by this user
     $logs = ActionLog::with(['user', 'documentRequest'])
-        ->whereHas('user', function($query) use ($user) {
-            $query->where('zone_id', $user->zone_id);
-        })
+        ->where('user_id', $userId)
         ->orderBy('created_at', 'desc')
         ->get();
 
-    // 3. Format data
+    // 2. Format data
     $formattedLogs = $logs->map(function ($log) {
-        // Determine type based on action for icons/colors
+        // --- TYPE MAPPING ---
         $type = 'update';
         $actionLower = strtolower($log->action);
-        if (str_contains($actionLower, 'verify')) $type = 'verification';
-        elseif (str_contains($actionLower, 'reject')) $type = 'rejection';
-        elseif (str_contains($actionLower, 'request')) $type = 'request';
+        
+        if (str_contains($actionLower, 'verify')) {
+            $type = 'verification';
+        } elseif (str_contains($actionLower, 'reject')) {
+            $type = 'rejection';
+        } elseif (str_contains($actionLower, 'request')) {
+            $type = 'request';
+        } elseif (str_contains($actionLower, 'resubmit')) {
+            $type = 'resubmission';
+        }
+        // ---------------------
 
         return [
-            // --- FIX: Ensure 'log_id' is the correct primary key ---
             'id' => $log->log_id, 
             'action' => $log->action,
             'description' => $log->details,
             'type' => $type,
-            // --- FIX: Optional chaining to prevent errors if user is null ---
-            'user' => $log->user?->name ?? 'Unknown',
-            'userRole' => $this->getRoleName($log->user?->role_id ?? 0),
-            // -----------------------------------------------------------------
+            'user' => $log->user?->name ?? 'System',
             'time' => $log->created_at->format('h:i A'),
             'date' => $log->created_at->format('M d, Y'),
         ];
@@ -194,7 +190,6 @@ class ZoneLeaderController extends Controller
 
     return response()->json($formattedLogs);
 }
-
     // Helper function for roles (ensure this exists in your controller)
     private function getRoleName($roleId) {
         $roles = [1 => 'Admin', 4 => 'Zone Leader', 5 => 'Resident'];
