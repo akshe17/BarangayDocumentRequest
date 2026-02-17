@@ -21,6 +21,7 @@ const ResidentLayout = () => {
   // State for mobile sidebar toggle
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
 
+  // Safeguard check based on provided JSON structure
   if (!user || !user.resident) {
     return (
       <div className="min-h-screen flex items-center justify-center">
@@ -29,7 +30,13 @@ const ResidentLayout = () => {
     );
   }
 
-  const { first_name, last_name, is_verified } = user.resident;
+  // Properly destructure from the resident object
+  const { first_name, last_name, is_verified } = user;
+  const { is_verified: residentVerified } = user.resident;
+
+  // Use the verified status from resident object if available, otherwise fallback
+  const isVerified =
+    residentVerified !== undefined ? residentVerified : is_verified;
   const fullName = `${first_name} ${last_name}`;
 
   const toggleSidebar = () => setIsSidebarOpen(!isSidebarOpen);
@@ -123,7 +130,7 @@ const ResidentLayout = () => {
               <p className="font-bold text-gray-950 text-xs truncate max-w-[150px]">
                 {fullName}
               </p>
-              {is_verified ? (
+              {isVerified ? (
                 <span className="flex items-center gap-1 text-emerald-600 text-[10px] font-semibold uppercase tracking-wider">
                   <Shield size={10} />
                   Verified
@@ -151,7 +158,7 @@ const ResidentLayout = () => {
               <p className="text-[10px] font-black text-gray-900 leading-none">
                 {fullName}
               </p>
-              {is_verified ? (
+              {isVerified ? (
                 <p className="text-[8px] font-bold text-emerald-500 uppercase tracking-widest mt-1">
                   Verified
                 </p>
