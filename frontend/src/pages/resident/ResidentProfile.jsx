@@ -11,7 +11,6 @@ import {
   Edit2,
   Shield,
   ShieldAlert,
-  FileText,
   Clock,
   X,
   Check,
@@ -35,7 +34,6 @@ const ResidentProfile = () => {
     confirm: false,
   });
 
-  const [videoError, setVideoError] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [previewId, setPreviewId] = useState(null);
 
@@ -57,7 +55,7 @@ const ResidentProfile = () => {
     }, 4000);
   };
 
-  if (!user || !user.resident) {
+  if (!user || !user.resident || !user.zone) {
     return (
       <div className="flex items-center justify-center min-h-[400px]">
         <div className="flex flex-col items-center gap-3">
@@ -70,15 +68,16 @@ const ResidentProfile = () => {
     );
   }
 
-  const { resident, email } = user;
+  const { resident, zone, email } = user;
 
   const handleEditClick = () => {
     setEditedData({
-      first_name: resident.first_name,
-      last_name: resident.last_name,
+      first_name: user.first_name,
+      last_name: user.last_name,
       email: email,
       house_no: resident.house_no,
-      zone: resident.zone,
+      // --- CHANGE: Map from the nested zone object ---
+      zone_name: zone.zone_name || "",
     });
     setIsEditing(true);
   };
@@ -94,7 +93,6 @@ const ResidentProfile = () => {
 
       if (response.data.success) {
         const userData = response.data.user ?? response.data;
-
         setUser(userData);
         setIsEditing(false);
         setEditedData(null);
@@ -104,14 +102,6 @@ const ResidentProfile = () => {
         );
       }
     } catch (error) {
-      // --- ADD THIS LOGGING ---
-      console.error("API Error Object:", error);
-      if (error.response) {
-        console.error("Error Data:", error.response.data);
-        console.error("Error Status:", error.response.status);
-      }
-      // -------------------------
-
       if (error.response?.data?.errors) {
         Object.values(error.response.data.errors).forEach((errorArray) => {
           errorArray.forEach((errorMessage) => {
@@ -155,7 +145,6 @@ const ResidentProfile = () => {
     formData.append("id_image", file);
 
     try {
-      // --- USING YOUR API INSTANCE ---
       const response = await api.post("/resident/profile/upload-id", formData, {
         headers: {
           "Content-Type": "multipart/form-data",
@@ -172,21 +161,14 @@ const ResidentProfile = () => {
           },
         }));
         setShowUploadModal(false);
+        setPreviewId(null);
         triggerToast(response.data.message, "success");
       }
     } catch (error) {
-      if (error.response?.data?.errors) {
-        Object.values(error.response.data.errors).forEach((errorArray) => {
-          errorArray.forEach((errorMessage) => {
-            triggerToast(errorMessage, "error");
-          });
-        });
-      } else {
-        triggerToast(
-          error.response?.data?.message || "Failed to upload ID",
-          "error",
-        );
-      }
+      triggerToast(
+        error.response?.data?.message || "Failed to upload ID",
+        "error",
+      );
     } finally {
       setIsLoading(false);
     }
@@ -202,7 +184,6 @@ const ResidentProfile = () => {
 
     setIsLoading(true);
     try {
-      // --- USING YOUR API INSTANCE ---
       const response = await api.post(
         "/resident/profile/change-password",
         passwordData,
@@ -218,24 +199,17 @@ const ResidentProfile = () => {
         triggerToast(response.data.message, "success");
       }
     } catch (error) {
-      if (error.response?.data?.errors) {
-        Object.values(error.response.data.errors).forEach((errorArray) => {
-          errorArray.forEach((errorMessage) => {
-            triggerToast(errorMessage, "error");
-          });
-        });
-      } else {
-        triggerToast(
-          error.response?.data?.message || "Failed to change password",
-          "error",
-        );
-      }
+      triggerToast(
+        error.response?.data?.message || "Failed to change password",
+        "error",
+      );
     } finally {
       setIsLoading(false);
     }
   };
 
   const formatDate = (dateString) => {
+    if (!dateString) return "N/A";
     return new Date(dateString).toLocaleDateString("en-US", {
       year: "numeric",
       month: "long",
@@ -261,17 +235,17 @@ const ResidentProfile = () => {
   const displayData = isEditing
     ? editedData
     : {
-        first_name: resident.first_name,
-        last_name: resident.last_name,
+        first_name: user.first_name,
+        last_name: user.last_name,
         email: email,
         house_no: resident.house_no,
-        zone: resident.zone,
+        // --- CHANGE: Map from the nested zone object ---
+        zone_name: zone.zone_name || "",
       };
 
   const hasValidId =
     resident.id_image_path && resident.id_image_path.trim() !== "";
 
-  // Assumes API instance handles the base URL
   const STORAGE_URL = "http://localhost:8000";
 
   return (
@@ -301,7 +275,7 @@ const ResidentProfile = () => {
           <div className="flex items-center gap-6">
             <div>
               <h1 className="text-4xl font-bold text-white mb-2">
-                {resident.first_name} {resident.last_name}
+                {user.first_name} {user.last_name}
               </h1>
               <p className="text-emerald-100 text-lg font-medium">
                 Resident ID: {resident.resident_id}
@@ -400,7 +374,7 @@ const ResidentProfile = () => {
             />
 
             <div className="grid grid-cols-2 gap-5">
-              <div className="bg-white p-5 rounded-xl ">
+              <div className="bg-gray-50 p-5 rounded-xl border border-gray-100">
                 <label className="text-xs font-bold text-gray-500 uppercase tracking-wider block mb-2">
                   Gender
                 </label>
@@ -408,7 +382,7 @@ const ResidentProfile = () => {
                   {getGenderLabel(resident.gender_id)}
                 </p>
               </div>
-              <div className="bg-white p-5 rounded-xl ">
+              <div className="bg-gray-50 p-5 rounded-xl border border-gray-100">
                 <label className="text-xs font-bold text-gray-500 uppercase tracking-wider block mb-2">
                   Civil Status
                 </label>
@@ -438,18 +412,19 @@ const ResidentProfile = () => {
             <InputField
               icon={MapPin}
               label="Zone"
-              value={displayData.zone}
+              value={displayData.zone_name}
               isEditing={isEditing}
-              onChange={(value) => handleInputChange("zone", value)}
+              onChange={(value) => handleInputChange("zone_name", value)}
             />
 
-            <div className="mt-8 p-6 bg-white rounded-xl">
+            <div className="mt-8 p-6 bg-gray-50 rounded-xl border border-gray-100">
               <h4 className="text-sm font-bold text-gray-600 mb-3 flex items-center gap-2">
                 <MapPin size={20} className="text-emerald-600" />
                 Complete Address
               </h4>
               <p className=" text-base font-semibold text-gray-950">
-                {displayData.zone}, {displayData.house_no}
+                {/* --- CHANGE: Display nested zone_name --- */}
+                {displayData.house_no}, {displayData.zone_name}
               </p>
             </div>
           </div>
@@ -480,12 +455,6 @@ const ResidentProfile = () => {
               >
                 <Eye size={16} />
                 View Full Image
-              </button>
-              <button
-                onClick={() => setShowUploadModal(true)}
-                className="w-full text-emerald-600 hover:text-emerald-700 text-sm font-semibold hover:underline"
-              >
-                Resubmit ID
               </button>
             </div>
           ) : (
@@ -544,7 +513,7 @@ const ResidentProfile = () => {
           </h3>
 
           <div className="space-y-4">
-            <div className="bg-gray-white p-5 rounded-xl ">
+            <div className="bg-gray-50 p-5 rounded-xl border border-gray-100">
               <label className="text-xs font-bold text-gray-500 uppercase tracking-wider block mb-2">
                 Password
               </label>
@@ -562,7 +531,7 @@ const ResidentProfile = () => {
         </div>
       </div>
 
-      {/* Modals and other components remain the same as previous response */}
+      {/* --- MODALS --- */}
       {showIdModal && (
         <Modal onClose={() => setShowIdModal(false)} title="Valid ID">
           <div className="p-4">
@@ -584,32 +553,30 @@ const ResidentProfile = () => {
           title="Submit Valid ID"
         >
           <div className="p-6 space-y-5">
-            {/* Info */}
             <div className="flex gap-3 bg-yellow-50 border border-yellow-200 p-4 rounded-xl">
-              <AlertTriangle className="text-yellow-600" />
+              <AlertTriangle className="text-yellow-600 flex-shrink-0" />
               <p className="text-sm text-yellow-800 font-medium">
-                Please upload a clear photo of a government-issued ID.
+                Please upload a clear photo of a government-issued ID (e.g.,
+                Driver's License, National ID).
               </p>
             </div>
 
-            {/* Preview */}
             {previewId && (
               <img
                 src={previewId}
                 alt="ID Preview"
-                className="w-full rounded-xl border"
+                className="w-full h-64 object-contain rounded-xl border bg-gray-50"
               />
             )}
 
-            {/* Upload */}
-            <label className="flex flex-col items-center justify-center w-full h-56 border-2 border-dashed border-emerald-300 rounded-xl cursor-pointer hover:bg-emerald-50 transition">
+            <label className="flex flex-col items-center justify-center w-full h-32 border-2 border-dashed border-emerald-300 rounded-xl cursor-pointer hover:bg-emerald-50 transition">
               {isLoading ? (
-                <Loader2 className="w-12 h-12 animate-spin text-emerald-600" />
+                <Loader2 className="w-8 h-8 animate-spin text-emerald-600" />
               ) : (
                 <>
-                  <Upload className="w-10 h-10 text-emerald-600 mb-2" />
+                  <Upload className="w-8 h-8 text-emerald-600 mb-2" />
                   <p className="text-sm font-semibold text-gray-700">
-                    Click to upload or drag image here
+                    Click to upload
                   </p>
                   <p className="text-xs text-gray-500 mt-1">
                     JPG, PNG • Max 5MB
@@ -619,21 +586,11 @@ const ResidentProfile = () => {
               <input
                 type="file"
                 className="hidden"
-                accept="image/png, image/jpeg"
+                accept="image/png, image/jpeg, image/jpg"
                 onChange={handleIdUpload}
                 disabled={isLoading}
               />
             </label>
-
-            {/* Actions */}
-            <div className="flex gap-3">
-              <button
-                onClick={() => setShowUploadModal(false)}
-                className="flex-1 border px-6 py-3 rounded-xl font-semibold"
-              >
-                Cancel
-              </button>
-            </div>
           </div>
         </Modal>
       )}
@@ -644,107 +601,57 @@ const ResidentProfile = () => {
           title="Change Password"
         >
           <form onSubmit={handlePasswordChange} className="p-6 space-y-5">
-            {/* Current Password */}
             <div>
               <label className="text-sm font-semibold text-gray-700">
                 Current Password
               </label>
-              <div className="relative mt-1">
-                <input
-                  type={showPassword.current ? "text" : "password"}
-                  value={passwordData.current_password}
-                  onChange={(e) =>
-                    setPasswordData({
-                      ...passwordData,
-                      current_password: e.target.value,
-                    })
-                  }
-                  required
-                  className="w-full px-4 py-3 border rounded-xl focus:ring-2 focus:ring-emerald-500"
-                />
-                <button
-                  type="button"
-                  onClick={() =>
-                    setShowPassword({
-                      ...showPassword,
-                      current: !showPassword.current,
-                    })
-                  }
-                  className="absolute right-3 top-3 text-gray-400"
-                >
-                  <Eye size={18} />
-                </button>
-              </div>
+              <input
+                type="password"
+                value={passwordData.current_password}
+                onChange={(e) =>
+                  setPasswordData({
+                    ...passwordData,
+                    current_password: e.target.value,
+                  })
+                }
+                required
+                className="w-full px-4 py-3 border rounded-xl mt-1"
+              />
             </div>
-
-            {/* New Password */}
             <div>
               <label className="text-sm font-semibold text-gray-700">
                 New Password
               </label>
-              <div className="relative mt-1">
-                <input
-                  type={showPassword.new ? "text" : "password"}
-                  value={passwordData.new_password}
-                  onChange={(e) =>
-                    setPasswordData({
-                      ...passwordData,
-                      new_password: e.target.value,
-                    })
-                  }
-                  required
-                  className="w-full px-4 py-3 border rounded-xl focus:ring-2 focus:ring-emerald-500"
-                />
-                <button
-                  type="button"
-                  onClick={() =>
-                    setShowPassword({ ...showPassword, new: !showPassword.new })
-                  }
-                  className="absolute right-3 top-3 text-gray-400"
-                >
-                  <Eye size={18} />
-                </button>
-              </div>
-
-              <p className="text-xs text-gray-500 mt-1">
-                Must be at least 8 characters
-              </p>
+              <input
+                type="password"
+                value={passwordData.new_password}
+                onChange={(e) =>
+                  setPasswordData({
+                    ...passwordData,
+                    new_password: e.target.value,
+                  })
+                }
+                required
+                className="w-full px-4 py-3 border rounded-xl mt-1"
+              />
             </div>
-
-            {/* Confirm Password */}
             <div>
               <label className="text-sm font-semibold text-gray-700">
                 Confirm New Password
               </label>
-              <div className="relative mt-1">
-                <input
-                  type={showPassword.confirm ? "text" : "password"}
-                  value={passwordData.new_password_confirmation}
-                  onChange={(e) =>
-                    setPasswordData({
-                      ...passwordData,
-                      new_password_confirmation: e.target.value,
-                    })
-                  }
-                  required
-                  className="w-full px-4 py-3 border rounded-xl focus:ring-2 focus:ring-emerald-500"
-                />
-                <button
-                  type="button"
-                  onClick={() =>
-                    setShowPassword({
-                      ...showPassword,
-                      confirm: !showPassword.confirm,
-                    })
-                  }
-                  className="absolute right-3 top-3 text-gray-400"
-                >
-                  <Eye size={18} />
-                </button>
-              </div>
+              <input
+                type="password"
+                value={passwordData.new_password_confirmation}
+                onChange={(e) =>
+                  setPasswordData({
+                    ...passwordData,
+                    new_password_confirmation: e.target.value,
+                  })
+                }
+                required
+                className="w-full px-4 py-3 border rounded-xl mt-1"
+              />
             </div>
-
-            {/* Actions */}
             <div className="flex gap-3 pt-4">
               <button
                 type="button"
@@ -769,7 +676,7 @@ const ResidentProfile = () => {
   );
 };
 
-// ... InputField, Modal, CustomToast components remain the same ...
+// --- HELPER COMPONENTS ---
 const InputField = ({
   icon: Icon,
   label,
@@ -780,7 +687,7 @@ const InputField = ({
   readOnly = false,
 }) => (
   <div className="flex gap-4 p-5 rounded-xl bg-gray-50 border border-gray-100 transition-all">
-    <div className="bg-white p-4 rounded-lg h-fit border border-gray-100">
+    <div className="bg-white p-4 rounded-lg h-fit border border-gray-100 flex-shrink-0">
       <Icon className="w-6 h-6 text-emerald-600" />
     </div>
     <div className="flex-1">

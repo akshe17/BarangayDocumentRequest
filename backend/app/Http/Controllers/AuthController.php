@@ -24,55 +24,56 @@ public function login(Request $request)
         'password' => 'required',
     ]);
 
-    // Use the global auth() helper
     if (!auth()->attempt($credentials)) {
         return response()->json(['success' => false, 'error' => 'Invalid credentials'], 401);
     }
 
-    $user = auth()->user();
+    // Load relationships: zone and resident
+    $user = auth()->user()->load('zone', 'resident');
     
     // Assume role_id 2 is Resident
     if ((int)$user->role_id === 2) {
-        $resident = $user->resident; // Assumes a relationship exists
-// In AuthController.php -> login() method
+        $resident = $user->resident;
 
-// 1. Check if Rejected (0)
-if ($resident && $resident->is_verified === 0) {
-    // --- CHANGE: Send user_id instead of access_token ---
-    return response()->json([
-        'success' => false,
-        'status' => 'rejected',
-        'message' => 'Your account registration was rejected by the administration.',
-        'user_id' => $user->user_id // Send the user_id
-    ], 403);
-}
+        if ($resident && $resident->is_verified === 0) {
+            return response()->json([
+                'success' => false,
+                'status' => 'rejected',
+                'message' => 'Your account registration was rejected.',
+                'user_id' => $user->user_id
+            ], 403);
+        }
 
-// 2. Check if Pending (null)
-if ($resident && $resident->is_verified === null) {
-    // ... pending logic ...
-    return response()->json([
-        'success' => false,
-        'status' => 'pending_verification',
-        'message' => 'Your account is awaiting verification.',
-        'email' => $user->email,
-        'user_id' => $user->user_id // Optional: send user_id here too
-    ], 403);
-}
-        
-        // 3. If verified (1), continue to token generation
+        if ($resident && $resident->is_verified === null) {
+            return response()->json([
+                'success' => false,
+                'status' => 'pending_verification',
+                'message' => 'Your account is awaiting verification.',
+                'email' => $user->email,
+                'user_id' => $user->user_id
+            ], 403);
+        }
     }
 
-    // Token Generation for authorized users
+    // Token Generation
     $user->tokens()->delete();
     $token = $user->createToken($request->password)->plainTextToken;
 
+    // --- CHANGE: Add 'zone_name' while keeping 'zone_id' ---
+    $userData = $user->toArray();
+    
+    if ($user->zone) {
+        $userData['zone_name'] = $user->zone->name; // Assumes 'name' field in zones table
+    } else {
+        $userData['zone_name'] = null; // Or a default value
+    }
+
     return response()->json([
         'success' => true,
-        'user' => $user,
+        'user' => $userData,
         'access_token' => $token
     ]);
 }
-
 public function register(Request $request)
 {
     try {
