@@ -35,6 +35,7 @@ import ZoneLeaderDashboard from "./pages/zoneLeader/ZoneLeaderDashboard";
 import ZoneLeaderLogs from "./pages/zoneLeader/ZoneLeaderLogs";
 import CaptainDashboard from "./pages/barangayCaptain/CaptainDashboard";
 import CaptainDocumentRequests from "./pages/barangayCaptain/CaptainDocumentRequest";
+import { AdminProfile } from "./pages/admin/AdminProfile";
 const App = () => {
   const { isAuthenticated, loading, user } = useAuth();
 
@@ -88,6 +89,7 @@ const App = () => {
           <Route path="residents" element={<AdminResidents />} />
           <Route path="documents" element={<Documents />} />
           <Route path="logs" element={<AuditLogs />} />
+          <Route path="profile/*" element={<AdminProfile />} />
         </Route>
 
         {/* Resident Routes (role_id: 2) */}

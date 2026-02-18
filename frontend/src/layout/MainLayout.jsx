@@ -9,17 +9,15 @@ import {
   LogOut,
   Menu,
   X,
-  Bell,
-  ChevronDown,
   Package,
 } from "lucide-react";
 import logo from "../assets/logo.png";
 import { useAuth } from "../context/AuthContext";
+
 const MainLayout = () => {
   const { logout } = useAuth();
   const location = useLocation();
   const [isOpen, setIsOpen] = useState(false);
-  const [showProfileMenu, setShowProfileMenu] = useState(false);
 
   const toggleSidebar = () => setIsOpen(!isOpen);
 
@@ -56,6 +54,8 @@ const MainLayout = () => {
     },
   ];
 
+  // Logic to determine active state
+  const isProfileActive = location.pathname.startsWith("/dashboard/profile");
   const currentPage = menuItems.find((m) => m.path === location.pathname);
 
   return (
@@ -113,7 +113,7 @@ const MainLayout = () => {
                 to={item.path}
                 onClick={() => setIsOpen(false)}
                 className={`
-                  flex items-center gap-3 px-4 py-3 rounded-lg
+                  flex items-center gap-3 px-4 py-3 rounded-lg text-sm
                   ${
                     isActive
                       ? "bg-emerald-500 text-white"
@@ -122,14 +122,32 @@ const MainLayout = () => {
                 `}
               >
                 {item.icon}
-                <span className="text-sm">{item.label}</span>
+                <span>{item.label}</span>
               </Link>
             );
           })}
         </nav>
 
-        {/* ADMIN INFO & LOGOUT */}
-        <div className="p-4 border-t border-gray-700">
+        {/* PROFILE SETTINGS & LOGOUT */}
+        <div className="p-4 border-t border-gray-700 space-y-2">
+          {/* PROFILE SETTINGS LINK */}
+          <Link
+            to="/dashboard/profile"
+            onClick={() => setIsOpen(false)}
+            className={`
+              flex items-center gap-3 px-4 py-3 rounded-lg text-sm
+              ${
+                isProfileActive
+                  ? "bg-emerald-500 text-white"
+                  : "text-gray-400 hover:text-white hover:bg-gray-800"
+              }
+            `}
+          >
+            <Settings size={18} />
+            <span>Profile Settings</span>
+          </Link>
+
+          {/* LOGOUT BUTTON */}
           <button
             onClick={logout}
             className="w-full flex items-center gap-3 px-4 py-2 rounded-lg text-gray-400 hover:text-red-400 hover:bg-red-500/10"
@@ -152,7 +170,9 @@ const MainLayout = () => {
               <Menu size={24} />
             </button>
             <h2 className="text-xl font-bold text-gray-900">
-              {currentPage?.label || "Dashboard"}
+              {isProfileActive
+                ? "Profile Settings"
+                : currentPage?.label || "Dashboard"}
             </h2>
           </div>
 
