@@ -16,26 +16,39 @@ use Laravel\Sanctum\PersonalAccessToken;
 use App\Models\ActionLog;
 class AuthController extends Controller
 {
-   
-public function login(Request $request)
+   public function login(Request $request)
 {
     $credentials = $request->validate([
         'email' => 'required|email',
         'password' => 'required',
     ]);
 
+    // 1. Initial attempt to authenticate
     if (!auth()->attempt($credentials)) {
         return response()->json(['success' => false, 'error' => 'Invalid credentials'], 401);
     }
 
-    // Load relationships: zone and resident
-    $user = auth()->user()->load('zone', 'resident');
+    $user = auth()->user();
+
+    // 2. CHECK IS_ACTIVE: If false, logout and throw error
+    if (!$user->is_active) {
+        auth()->logout(); // Important: terminate the session we just started
+        return response()->json([
+            'success' => false,
+            'error' => 'Your account is deactivated. Please contact the administrator.'
+        ], 403);
+    }
+
+    // Load relationships
+    $user->load('zone', 'resident');
     
-    // Assume role_id 2 is Resident
-    if ((int)$user->role_id === 2) {
+    // 3. Resident-specific verification checks (Role 5)
+    if ((int)$user->role_id === 5) {
         $resident = $user->resident;
 
+        // Account was specifically Rejected
         if ($resident && $resident->is_verified === 0) {
+            auth()->logout();
             return response()->json([
                 'success' => false,
                 'status' => 'rejected',
@@ -44,7 +57,9 @@ public function login(Request $request)
             ], 403);
         }
 
+        // Account is still Pending
         if ($resident && $resident->is_verified === null) {
+            auth()->logout();
             return response()->json([
                 'success' => false,
                 'status' => 'pending_verification',
@@ -57,15 +72,16 @@ public function login(Request $request)
 
     // Token Generation
     $user->tokens()->delete();
-    $token = $user->createToken($request->password)->plainTextToken;
+    $token = $user->createToken('auth_token')->plainTextToken;
 
-    // --- CHANGE: Add 'zone_name' while keeping 'zone_id' ---
+    // Prepare response data
     $userData = $user->toArray();
     
+    // Add zone name
     if ($user->zone) {
-        $userData['zone_name'] = $user->zone->name; // Assumes 'name' field in zones table
+        $userData['zone_name'] = $user->zone->zone_name; // Matches your migration field 'zone_name'
     } else {
-        $userData['zone_name'] = null; // Or a default value
+        $userData['zone_name'] = null;
     }
 
     return response()->json([
