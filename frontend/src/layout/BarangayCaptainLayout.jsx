@@ -2,12 +2,11 @@ import React, { useState } from "react";
 import { Outlet, Link, useLocation } from "react-router-dom";
 import {
   LayoutDashboard,
-  CreditCard,
   LogOut,
   Menu,
   X,
   FileText,
-  History,
+  UserCog, // Import UserCog for Profile
 } from "lucide-react";
 // Assuming you have your logo and auth context imported here
 import logo from "../assets/logo.png";
@@ -20,7 +19,7 @@ const BarangayCaptainLayout = () => {
 
   const toggleSidebar = () => setIsOpen(!isOpen);
 
-  // Updated Clerk Specific Navigation Links
+  // Updated Captain Specific Navigation Links
   const menuItems = [
     {
       path: "/captain/dashboard",
@@ -107,14 +106,26 @@ const BarangayCaptainLayout = () => {
           })}
         </nav>
 
-        {/* LOGOUT */}
-        <div className="p-4 border-t border-gray-700">
+        {/* BOTTOM SECTION: PROFILE & LOGOUT */}
+        <div className="p-4 border-t border-gray-700 space-y-2">
+          <Link
+            to="/captain/profile"
+            onClick={() => setIsOpen(false)}
+            className={`flex items-center gap-3 px-4 py-2 rounded-lg ${
+              location.pathname === "/captain/profile"
+                ? "bg-gray-800 text-white"
+                : "text-gray-400 hover:text-white hover:bg-gray-800"
+            }`}
+          >
+            <UserCog size={18} />
+            <span className="text-sm">Profile Settings</span>
+          </Link>
           <button
             onClick={logout}
             className="w-full flex items-center gap-3 px-4 py-2 rounded-lg text-gray-400 hover:text-red-400 hover:bg-red-500/10"
           >
             <LogOut size={18} />
-            <span>Logout</span>
+            <span className="text-sm">Logout</span>
           </button>
         </div>
       </aside>
@@ -131,7 +142,7 @@ const BarangayCaptainLayout = () => {
               <Menu size={24} />
             </button>
             <h2 className="text-xl font-bold text-gray-900">
-              {currentPage?.label || "Clerk Portal"}
+              {currentPage?.label || "Captain Portal"}
             </h2>
           </div>
         </header>

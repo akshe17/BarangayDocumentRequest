@@ -38,6 +38,7 @@ import CaptainDocumentRequests from "./pages/barangayCaptain/CaptainDocumentRequ
 import { ZoneLeaaderProfile } from "./pages/zoneLeader/ZoneLeaderProfile";
 import { AdminProfile } from "./pages/admin/AdminProfile";
 import { ClerkProfile } from "./pages/clerk/ClerkProfile";
+import { CaptainProfile } from "./pages/barangayCaptain/CaptainProfile";
 const App = () => {
   const { isAuthenticated, loading, user } = useAuth();
 
@@ -154,6 +155,8 @@ const App = () => {
           <Route index element={<Navigate to="dashboard" replace />} />
           <Route path="dashboard" element={<CaptainDashboard />} />
           <Route path="requests" element={<CaptainDocumentRequests />} />
+          <Route path="profile" element={<CaptainProfile />} />
+
           {/* Add other captain routes here */}
         </Route>
 
