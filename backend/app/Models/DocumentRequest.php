@@ -11,6 +11,7 @@ class DocumentRequest extends Model
     protected $fillable = [
         'resident_id', 
         'status_id', 
+        'document_id',
         'last_updated_by', // Added
         'purpose', 
         'request_date', 
@@ -42,5 +43,9 @@ class DocumentRequest extends Model
     public function lastUpdatedBy()
     {
         return $this->belongsTo(User::class, 'last_updated_by', 'user_id');
+    }
+    public function formData()
+    {
+        return $this->hasMany(RequestFormData::class, 'request_id', 'request_id');
     }
 }

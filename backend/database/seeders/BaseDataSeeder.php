@@ -33,6 +33,7 @@ class BaseDataSeeder extends Seeder
                 'last_name' => 'Tuyor',
                 'email' => 'admin@gmail.com',
                 'password' => Hash::make('12341234'), // Change this password!
+                'is_active' => true,
                 'created_at' => Carbon::now(),
                 'updated_at' => Carbon::now(),
             ]);

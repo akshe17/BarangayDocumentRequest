@@ -28,13 +28,13 @@ const MainLayout = () => {
       icon: <LayoutDashboard size={20} />,
     },
     {
-      path: "/dashboard/users",
-      label: "User Management",
+      path: "/dashboard/users-staff",
+      label: "Manage Staffs",
       icon: <Users size={20} />,
     },
     {
       path: "/dashboard/residents",
-      label: "Residents",
+      label: "Manage Resident",
       icon: <Users size={20} />,
     },
     {

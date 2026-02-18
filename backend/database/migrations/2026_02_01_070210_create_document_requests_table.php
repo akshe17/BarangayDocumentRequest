@@ -15,6 +15,7 @@ return new class extends Migration
             $table->id('request_id');
             $table->foreignId('resident_id')->constrained('residents', 'resident_id');
             $table->foreignId('status_id')->constrained('request_statuses', 'status_id');
+            $table->foreignId('document_id')->constrained('document_types', 'document_id');
             // NEW: Tracks who last modified this request
             $table->foreignId('last_updated_by')->nullable()->constrained('users', 'user_id')->onDelete('set null');
             

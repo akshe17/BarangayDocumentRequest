@@ -88,7 +88,7 @@ const App = () => {
         >
           <Route index element={<Overview />} />
           <Route path="requests" element={<RequestTable />} />
-          <Route path="users" element={<UserManagement />} />
+          <Route path="users-staff" element={<UserManagement />} />
           <Route path="residents" element={<AdminResidents />} />
           <Route path="documents" element={<Documents />} />
           <Route path="logs" element={<AuditLogs />} />

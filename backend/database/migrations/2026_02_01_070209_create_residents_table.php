@@ -18,15 +18,18 @@ return new class extends Migration
             $table->foreignId('gender_id')->constrained('genders', 'gender_id');
             $table->foreignId('civil_status_id')->constrained('civil_statuses', 'civil_status_id');
             // Optional: Add a foreign key constraint to ensure data integrity
-            $table->foreign('verified_by')->references('user_id')->on('users')->onDelete('set null');
+    $table->unsignedBigInteger('verified_by')->nullable();
 
-            // --- REMOVED NAMES FROM HERE ---
-            
+        // 2. Then define the foreign key relationship
+        $table->foreign('verified_by')
+              ->references('user_id')
+              ->on('users')
+              ->onDelete('set null');
             $table->date('birthdate');
             $table->string('house_no', 50);
 
             $table->string('id_image_path')->nullable(); 
-            $table->boolean('is_active')->default(true);
+      
             $table->boolean('is_verified')->default(null); 
             $table->timestamps();
         });

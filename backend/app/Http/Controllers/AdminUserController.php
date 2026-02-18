@@ -12,12 +12,15 @@ use Illuminate\Database\Eloquent\ModelNotFoundException;
 class AdminUserController extends Controller
 {
     // READ: Get all users with their roles and zones
-    public function index()
-    {
-        // Added 'zone' to eager loading
-        $users = User::with(['role', 'zone'])->get();
-        return response()->json($users);
-    }
+   public function index()
+{
+    // Added 'zone' to eager loading and filtered out role_id = 2
+    $users = User::with(['role', 'zone'])
+        ->whereNot('role_id', 2)
+        ->get();
+        
+    return response()->json($users);
+}
 
     // CREATE: Add new user
     public function store(Request $request)
@@ -69,7 +72,7 @@ class AdminUserController extends Controller
             'first_name' => 'required|string|max:255',
             'last_name' => 'required|string|max:255',
             'email' => 'required|string|email|max:100|unique:users,email,'.$id.',user_id',
-            'role_name' => 'required|string|in:Admin,Clerk,Zone Leader,Barangay Captain', // Accept role name
+            'role_name' => 'required|string|in:Admin,Clerk,Zone Leader,Barangay Captain,Resident', // Accept role name
             'zone_id' => 'nullable|integer|exists:zones,zone_id',
         ]);
 

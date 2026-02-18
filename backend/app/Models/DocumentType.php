@@ -16,8 +16,15 @@ class DocumentType extends Model
         return $this->hasMany(DocumentRequirement::class, 'document_id', 'document_id');
     }
 
-    public function requestItems()
+    public function formFields()
     {
-        return $this->hasMany(RequestItem::class, 'document_id', 'document_id');
+        return $this->hasMany(RequestFormField::class, 'document_id', 'document_id');
     }
+
+    public function requests()
+    {
+        return $this->hasMany(DocumentRequest::class, 'document_id', 'document_id');
+    }
+
+   
 }
