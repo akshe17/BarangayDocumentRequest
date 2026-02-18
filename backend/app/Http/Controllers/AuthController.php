@@ -121,6 +121,7 @@ public function register(Request $request)
                 'first_name' => $request->fname,
                 'last_name' => $request->lname,
                 'zone_id' => $request->zone,
+                'is_active' => true,
             ]);
 
             // 2. Create resident
@@ -131,7 +132,7 @@ public function register(Request $request)
                 'gender_id' => $request->gender_id,
                 'civil_status_id' => $request->civil_status_id,
                 'id_image_path' => $path,
-                'is_active' => false,
+    
                 'is_verified' => null,
             ]);
 

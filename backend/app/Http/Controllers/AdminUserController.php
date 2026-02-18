@@ -57,6 +57,7 @@ class AdminUserController extends Controller
             'password' => $validated['password'], // Hashed by model cast
             'role_id' => $role->role_id, // Use the ID from the Role model
             'zone_id' => $zoneId,
+                        'is_active' => true,
         ]);
 
         // Return user with loaded relationships

@@ -24,7 +24,8 @@ class User extends Authenticatable
         'password',
         'role_id',
         'zone_id',
-        'verified_by',
+       
+          'is_active',
         // --- ADDED THESE LINES ---
         'first_name',
         'last_name',

@@ -14,8 +14,7 @@ return new class extends Migration
         // FK pointing to the User who performed the action
         $table->foreignId('user_id')->constrained('users', 'user_id');
         // FK pointing to the Request being acted upon
-        $table->foreignId('request_id')->constrained('document_requests', 'request_id');
-        
+  $table->foreignId('request_id')->nullable()->constrained('document_requests', 'request_id');
         $table->string('action', 100); // e.g., 'Status Updated', 'Request Created'
         $table->text('details')->nullable(); // e.g., 'From Pending to Approved'
         $table->timestamp('created_at')->useCurrent();
