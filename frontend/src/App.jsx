@@ -37,6 +37,7 @@ import CaptainDashboard from "./pages/barangayCaptain/CaptainDashboard";
 import CaptainDocumentRequests from "./pages/barangayCaptain/CaptainDocumentRequest";
 import { ZoneLeaaderProfile } from "./pages/zoneLeader/ZoneLeaderProfile";
 import { AdminProfile } from "./pages/admin/AdminProfile";
+import { ClerkProfile } from "./pages/clerk/ClerkProfile";
 const App = () => {
   const { isAuthenticated, loading, user } = useAuth();
 
@@ -122,6 +123,7 @@ const App = () => {
           <Route path="dashboard" element={<ClerkDashboard />} />
           <Route path="requests" element={<RequestTable />} />
           <Route path="logs" element={<AuditLogs />} />
+          <Route path="profile" element={<ClerkProfile />} />
         </Route>
 
         {/* Zone Leader Routes (role_id: 4) */}
