@@ -203,4 +203,78 @@ public function logout(Request $request)
         'message' => 'Logged out successfully'
     ]);
 }
+ public function updateName(Request $request)
+    {
+        $request->validate([
+            'first_name' => 'required|string|max:255',
+            'last_name'  => 'required|string|max:255',
+        ]);
+
+        $user = $request->user();
+        $user->update([
+            'first_name' => $request->first_name,
+            'last_name'  => $request->last_name,
+        ]);
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Name updated successfully.',
+            'user' => $user->fresh(),
+        ]);
+    }
+
+    /**
+     * Update the authenticated user's email address.
+     * Route: POST /auth/update-email
+     */
+    public function updateEmail(Request $request)
+    {
+        $user = $request->user();
+
+        $request->validate([
+            'email' => 'required|email|unique:users,email,' . $user->user_id . ',user_id',
+        ], [
+            'email.unique' => 'This email is already in use by another account.',
+        ]);
+
+        $user->update(['email' => $request->email]);
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Email updated successfully.',
+            'user' => $user->fresh(),
+        ]);
+    }
+
+    /**
+     * Change the authenticated user's password.
+     * Route: POST /auth/change-password
+     */
+    public function changePassword(Request $request)
+    {
+        $request->validate([
+            'currentPassword' => 'required',
+            'newPassword'     => 'required|min:6',
+        ], [
+            'newPassword.min' => 'New password must be at least 6 characters.',
+        ]);
+
+        $user = $request->user();
+
+        if (!Hash::check($request->currentPassword, $user->password)) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Current password is incorrect.',
+            ], 422);
+        }
+
+        $user->update([
+            'password' => Hash::make($request->newPassword),
+        ]);
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Password changed successfully.',
+        ]);
+    }
 }

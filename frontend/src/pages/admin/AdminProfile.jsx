@@ -10,33 +10,59 @@ import {
 } from "lucide-react";
 import api from "../../axious/api";
 import { useAuth } from "../../context/AuthContext";
-
+import Toast from "../../components/toast";
 export const AdminProfile = () => {
   const { user } = useAuth();
-
-  // State to manage which view is currently active: 'dashboard', 'email', 'password', 'name'
   const [activeView, setActiveView] = useState("dashboard");
+  const [toast, setToast] = useState({
+    show: false,
+    message: "",
+    type: "success",
+  });
+
+  const showToast = (message, type = "success") => {
+    setToast({ show: true, message, type });
+    setTimeout(() => setToast((t) => ({ ...t, show: false })), 3500);
+  };
 
   return (
     <div className="p-4 md:p-6 bg-gray-50 min-h-full">
+      <Toast
+        show={toast.show}
+        message={toast.message}
+        type={toast.type}
+        onClose={() => setToast((t) => ({ ...t, show: false }))}
+      />
+
       {activeView === "dashboard" && (
         <ProfileDashboard setActiveView={setActiveView} user={user} />
       )}
       {activeView === "email" && (
-        <ChangeEmailPage setActiveView={setActiveView} user={user} />
+        <ChangeEmailPage
+          setActiveView={setActiveView}
+          user={user}
+          showToast={showToast}
+        />
       )}
       {activeView === "password" && (
-        <ChangePasswordPage setActiveView={setActiveView} user={user} />
+        <ChangePasswordPage
+          setActiveView={setActiveView}
+          showToast={showToast}
+        />
       )}
       {activeView === "name" && (
-        <ChangeNamePage setActiveView={setActiveView} user={user} />
+        <ChangeNamePage
+          setActiveView={setActiveView}
+          user={user}
+          showToast={showToast}
+        />
       )}
     </div>
   );
 };
 
 // ==========================================
-// 1. MAIN PROFILE DASHBOARD (Minimal Column)
+// 1. MAIN PROFILE DASHBOARD
 // ==========================================
 const ProfileDashboard = ({ setActiveView, user }) => {
   const options = [
@@ -71,7 +97,6 @@ const ProfileDashboard = ({ setActiveView, user }) => {
         </p>
       </div>
 
-      {/* Column Layout */}
       <div className="space-y-3">
         {options.map((option) => (
           <button
@@ -99,7 +124,7 @@ const ProfileDashboard = ({ setActiveView, user }) => {
 };
 
 // ==========================================
-// 2. FORM COMPONENTS (Minimal Column)
+// 2. FORM COMPONENTS
 // ==========================================
 
 const FormWrapper = ({ children, title, setActiveView }) => (
@@ -116,12 +141,11 @@ const FormWrapper = ({ children, title, setActiveView }) => (
 );
 
 // --- Change Name ---
-const ChangeNamePage = ({ setActiveView, user }) => {
+const ChangeNamePage = ({ setActiveView, user, showToast }) => {
   const { setUser } = useAuth();
   const [firstName, setFirstName] = useState(user?.first_name || "");
   const [lastName, setLastName] = useState(user?.last_name || "");
   const [isLoading, setIsLoading] = useState(false);
-  const [message, setMessage] = useState({ type: "", text: "" });
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -131,11 +155,11 @@ const ChangeNamePage = ({ setActiveView, user }) => {
         first_name: firstName,
         last_name: lastName,
       });
-      setMessage({ type: "success", text: "Name updated successfully!" });
       setUser({ ...user, first_name: firstName, last_name: lastName });
+      showToast("Name updated successfully!");
       setTimeout(() => setActiveView("dashboard"), 1500);
     } catch (error) {
-      setMessage({ type: "error", text: "Failed to update name." });
+      showToast("Failed to update name. Please try again.", "error");
     } finally {
       setIsLoading(false);
     }
@@ -180,20 +204,11 @@ const ChangeNamePage = ({ setActiveView, user }) => {
             />
           </div>
         </div>
-        {message.text && (
-          <p
-            className={`text-sm ${
-              message.type === "success" ? "text-emerald-600" : "text-red-600"
-            }`}
-          >
-            {message.text}
-          </p>
-        )}
         <div className="flex justify-end gap-3 pt-3">
           <button
             type="submit"
             disabled={isLoading}
-            className="bg-emerald-500 text-white px-4 py-2 rounded text-sm font-medium hover:bg-emerald-600 flex items-center gap-2"
+            className="bg-emerald-500 text-white px-4 py-2 rounded text-sm font-medium hover:bg-emerald-600 flex items-center gap-2 disabled:opacity-60"
           >
             {isLoading ? (
               <Loader2 size={16} className="animate-spin" />
@@ -209,22 +224,25 @@ const ChangeNamePage = ({ setActiveView, user }) => {
 };
 
 // --- Change Email ---
-const ChangeEmailPage = ({ setActiveView, user }) => {
+const ChangeEmailPage = ({ setActiveView, user, showToast }) => {
   const { setUser } = useAuth();
   const [email, setEmail] = useState(user?.email || "");
   const [isLoading, setIsLoading] = useState(false);
-  const [message, setMessage] = useState({ type: "", text: "" });
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     setIsLoading(true);
     try {
       await api.post("/auth/update-email", { email });
-      setMessage({ type: "success", text: "Email updated successfully!" });
       setUser({ ...user, email });
+      showToast("Email updated successfully!");
       setTimeout(() => setActiveView("dashboard"), 1500);
     } catch (error) {
-      setMessage({ type: "error", text: "Failed to update email." });
+      const serverMessage = error?.response?.data?.message;
+      showToast(
+        serverMessage || "Failed to update email. Please try again.",
+        "error",
+      );
     } finally {
       setIsLoading(false);
     }
@@ -233,35 +251,28 @@ const ChangeEmailPage = ({ setActiveView, user }) => {
   return (
     <FormWrapper title="Change Email Address" setActiveView={setActiveView}>
       <form onSubmit={handleSubmit} className="space-y-4">
-        <label
-          htmlFor="email"
-          className="block text-sm font-medium text-gray-700 mb-1"
-        >
-          Email Address
-        </label>
-        <input
-          id="email"
-          type="email"
-          value={email}
-          onChange={(e) => setEmail(e.target.value)}
-          placeholder="New Email"
-          className="w-full border border-gray-200 rounded px-3 py-2 text-sm"
-          required
-        />
-        {message.text && (
-          <p
-            className={`text-sm ${
-              message.type === "success" ? "text-emerald-600" : "text-red-600"
-            }`}
+        <div>
+          <label
+            htmlFor="email"
+            className="block text-sm font-medium text-gray-700 mb-1"
           >
-            {message.text}
-          </p>
-        )}
+            Email Address
+          </label>
+          <input
+            id="email"
+            type="email"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            placeholder="New Email"
+            className="w-full border border-gray-200 rounded px-3 py-2 text-sm"
+            required
+          />
+        </div>
         <div className="flex justify-end gap-3 pt-3">
           <button
             type="submit"
             disabled={isLoading}
-            className="bg-emerald-500 text-white px-4 py-2 rounded text-sm font-medium hover:bg-emerald-600 flex items-center gap-2"
+            className="bg-emerald-500 text-white px-4 py-2 rounded text-sm font-medium hover:bg-emerald-600 flex items-center gap-2 disabled:opacity-60"
           >
             {isLoading ? (
               <Loader2 size={16} className="animate-spin" />
@@ -277,9 +288,8 @@ const ChangeEmailPage = ({ setActiveView, user }) => {
 };
 
 // --- Change Password ---
-const ChangePasswordPage = ({ setActiveView }) => {
+const ChangePasswordPage = ({ setActiveView, showToast }) => {
   const [isLoading, setIsLoading] = useState(false);
-  const [message, setMessage] = useState({ type: "", text: "" });
   const [formData, setFormData] = useState({
     currentPassword: "",
     newPassword: "",
@@ -292,7 +302,7 @@ const ChangePasswordPage = ({ setActiveView }) => {
   const handleSubmit = async (e) => {
     e.preventDefault();
     if (formData.newPassword !== formData.confirmPassword) {
-      setMessage({ type: "error", text: "Passwords do not match." });
+      showToast("Passwords do not match.", "error");
       return;
     }
     setIsLoading(true);
@@ -301,56 +311,64 @@ const ChangePasswordPage = ({ setActiveView }) => {
         currentPassword: formData.currentPassword,
         newPassword: formData.newPassword,
       });
-      setMessage({ type: "success", text: "Password updated successfully!" });
+      showToast("Password updated successfully!");
       setTimeout(() => setActiveView("dashboard"), 1500);
     } catch (error) {
-      setMessage({ type: "error", text: "Failed to update password." });
+      const serverMessage = error?.response?.data?.message;
+      showToast(
+        serverMessage || "Failed to update password. Please try again.",
+        "error",
+      );
     } finally {
       setIsLoading(false);
     }
   };
 
+  const fields = [
+    {
+      name: "currentPassword",
+      label: "Current Password",
+      placeholder: "Enter current password",
+    },
+    {
+      name: "newPassword",
+      label: "New Password",
+      placeholder: "Enter new password",
+    },
+    {
+      name: "confirmPassword",
+      label: "Confirm New Password",
+      placeholder: "Re-enter new password",
+    },
+  ];
+
   return (
     <FormWrapper title="Change Password" setActiveView={setActiveView}>
       <form onSubmit={handleSubmit} className="space-y-4">
-        <input
-          type="password"
-          name="currentPassword"
-          placeholder="Current Password"
-          onChange={handleChange}
-          className="w-full border border-gray-200 rounded px-3 py-2 text-sm"
-          required
-        />
-        <input
-          type="password"
-          name="newPassword"
-          placeholder="New Password"
-          onChange={handleChange}
-          className="w-full border border-gray-200 rounded px-3 py-2 text-sm"
-          required
-        />
-        <input
-          type="password"
-          name="confirmPassword"
-          placeholder="Confirm New Password"
-          onChange={handleChange}
-          className="w-full border border-gray-200 rounded px-3 py-2 text-sm"
-          required
-        />
-        {message.text && (
-          <p
-            className={`text-sm ${
-              message.type === "success" ? "text-emerald-600" : "text-red-600"
-            }`}
-          >
-            {message.text}
-          </p>
-        )}
+        {fields.map(({ name, label, placeholder }) => (
+          <div key={name}>
+            <label
+              htmlFor={name}
+              className="block text-sm font-medium text-gray-700 mb-1"
+            >
+              {label}
+            </label>
+            <input
+              id={name}
+              type="password"
+              name={name}
+              placeholder={placeholder}
+              onChange={handleChange}
+              className="w-full border border-gray-200 rounded px-3 py-2 text-sm"
+              required
+            />
+          </div>
+        ))}
         <div className="flex justify-end gap-3 pt-3">
           <button
             type="submit"
             disabled={isLoading}
-            className="bg-emerald-500 text-white px-4 py-2 rounded text-sm font-medium hover:bg-emerald-600 flex items-center gap-2"
+            className="bg-emerald-500 text-white px-4 py-2 rounded text-sm font-medium hover:bg-emerald-600 flex items-center gap-2 disabled:opacity-60"
           >
             {isLoading ? (
               <Loader2 size={16} className="animate-spin" />

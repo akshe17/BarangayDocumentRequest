@@ -29,6 +29,9 @@ Route::middleware('custom.auth')->get('/user', function (Request $request) {
   Route::put('/resident/resubmit-id', [ResidentController::class, 'resubmitID']);
 
 Route::middleware(['custom.auth'])->group(function () {
+     Route::post('/auth/update-name',     [AuthController::class, 'updateName']);
+    Route::post('/auth/update-email',    [AuthController::class, 'updateEmail']);
+    Route::post('/auth/change-password', [AuthController::class, 'changePassword']);
    
     // Profile Management Routes
     Route::post('/resident/profile/update', [ResidentController::class, 'updateProfile']);
