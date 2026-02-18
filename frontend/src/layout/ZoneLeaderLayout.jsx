@@ -1,6 +1,13 @@
 import React, { useState } from "react";
 import { Outlet, Link, useLocation } from "react-router-dom";
-import { LayoutDashboard, FileText, LogOut, Menu, X } from "lucide-react";
+import {
+  LayoutDashboard,
+  FileText,
+  LogOut,
+  Menu,
+  X,
+  UserCog,
+} from "lucide-react";
 import logo from "../assets/logo.png";
 import { useAuth } from "../context/AuthContext";
 
@@ -82,13 +89,22 @@ const ZoneLeaderLayout = () => {
           })}
         </nav>
 
-        <div className="p-4 border-t border-gray-700">
+        {/* BOTTOM SECTION: PROFILE & LOGOUT */}
+        <div className="p-4 border-t border-gray-700 space-y-2">
+          <Link
+            to="/zone-leader/profile"
+            onClick={() => setIsOpen(false)}
+            className={`flex items-center gap-3 px-4 py-2 rounded-lg ${location.pathname === "/zone-leader/profile" ? "bg-gray-800 text-white" : "text-gray-400 hover:text-white hover:bg-gray-800"}`}
+          >
+            <UserCog size={18} />
+            <span className="text-sm">Profile Settings</span>
+          </Link>
           <button
             onClick={logout}
             className="w-full flex items-center gap-3 px-4 py-2 rounded-lg text-gray-400 hover:text-red-400 hover:bg-red-500/10"
           >
             <LogOut size={18} />
-            <span>Logout</span>
+            <span className="text-sm">Logout</span>
           </button>
         </div>
       </aside>

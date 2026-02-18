@@ -35,6 +35,7 @@ import ZoneLeaderDashboard from "./pages/zoneLeader/ZoneLeaderDashboard";
 import ZoneLeaderLogs from "./pages/zoneLeader/ZoneLeaderLogs";
 import CaptainDashboard from "./pages/barangayCaptain/CaptainDashboard";
 import CaptainDocumentRequests from "./pages/barangayCaptain/CaptainDocumentRequest";
+import { ZoneLeaaderProfile } from "./pages/zoneLeader/ZoneLeaderProfile";
 import { AdminProfile } from "./pages/admin/AdminProfile";
 const App = () => {
   const { isAuthenticated, loading, user } = useAuth();
@@ -54,7 +55,7 @@ const App = () => {
     if (role === 1) return "/dashboard";
     if (role === 2) return "/resident";
     if (role === 3) return "/clerk/dashboard";
-    if (role === 4) return "/zone-leader/dashboard";
+    if (role === 4) return "/zone-leader/residents";
     if (role === 5) return "/captain/dashboard";
 
     return "/login";
@@ -89,7 +90,7 @@ const App = () => {
           <Route path="residents" element={<AdminResidents />} />
           <Route path="documents" element={<Documents />} />
           <Route path="logs" element={<AuditLogs />} />
-          <Route path="profile/*" element={<AdminProfile />} />
+          <Route path="profile" element={<AdminProfile />} />
         </Route>
 
         {/* Resident Routes (role_id: 2) */}
@@ -132,11 +133,11 @@ const App = () => {
             </ProtectedRoute>
           }
         >
-          <Route index element={<Navigate to="dashboard" replace />} />
-          <Route path="dashboard" element={<ZoneLeaderDashboard />} />
+          <Route index element={<Navigate to="residents" replace />} />
           <Route path="residents" element={<ZoneResidentDirectory />} />
           <Route path="logs" element={<ZoneLeaderLogs />} />
           <Route path="zone-map" element={<ZoneMap />} />
+          <Route path="profile" element={<ZoneLeaaderProfile />} />
         </Route>
 
         {/* Captain Routes (role_id: 5) */}
