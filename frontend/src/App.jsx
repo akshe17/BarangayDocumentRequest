@@ -39,6 +39,7 @@ import { ZoneLeaaderProfile } from "./pages/zoneLeader/ZoneLeaderProfile";
 import { AdminProfile } from "./pages/admin/AdminProfile";
 import { ClerkProfile } from "./pages/clerk/ClerkProfile";
 import { CaptainProfile } from "./pages/barangayCaptain/CaptainProfile";
+import ResidentManagement from "./pages/admin/ResidentManagement";
 const App = () => {
   const { isAuthenticated, loading, user } = useAuth();
 
@@ -89,7 +90,7 @@ const App = () => {
           <Route index element={<Overview />} />
           <Route path="requests" element={<RequestTable />} />
           <Route path="users-staff" element={<UserManagement />} />
-          <Route path="residents" element={<AdminResidents />} />
+          <Route path="residents" element={<ResidentManagement />} />
           <Route path="documents" element={<Documents />} />
           <Route path="logs" element={<AuditLogs />} />
           <Route path="profile" element={<AdminProfile />} />
