@@ -18,6 +18,8 @@ use App\Http\Controllers\ResidentNotificationController;
 use App\Http\Controllers\AdminUserController;
 use App\Http\Controllers\ZoneLeaderController;
 use App\Http\Controllers\AdminResidentController;
+use App\Http\Controllers\AdminDocumentController;
+
 
 
 Route::middleware('custom.auth')->get('/user', function (Request $request) {
@@ -35,10 +37,23 @@ Route::middleware(['custom.auth'])->group(function () {
     Route::post('/auth/update-email',    [AuthController::class, 'updateEmail']);
     Route::post('/auth/change-password', [AuthController::class, 'changePassword']);
 
+    //admin resident
+
+
     Route::get('/admin/residents', [AdminResidentController::class, 'index']);
     Route::put('/admin/residents/{id}/verify', [AdminResidentController::class, 'verify']);
     Route::delete('/admin/residents/{id}', [AdminResidentController::class, 'destroy']);
-   
+
+    //admin document
+  Route::get('document-types',         [AdminDocumentController::class, 'index']);
+    Route::post('document-types',         [AdminDocumentController::class, 'store']);
+    Route::get('document-types/{id}',     [AdminDocumentController::class, 'show']);
+
+    // POST with _method=PUT inside FormData — supports file upload
+    Route::post('document-types/{id}',    [AdminDocumentController::class,'update']);
+
+    Route::patch('document-types/{id}',    [AdminDocumentController::class, 'patch']);
+    Route::delete('document-types/{id}',   [AdminDocumentController::class,'destroy']);
     // Profile Management Routes
     Route::post('/resident/profile/update', [ResidentController::class, 'updateProfile']);
       
