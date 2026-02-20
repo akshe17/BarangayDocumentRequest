@@ -208,8 +208,8 @@ const Documents = () => {
       };
 
       if (selectedDoc) {
-        // Laravel doesn't support PUT with FormData — use POST + _method spoofing
-        formData.append("_method", "PUT");
+        // Always POST for updates — route registered as both POST and PUT
+        // so multipart/form-data works correctly (PUT + multipart is unreliable)
         await api.post(
           `/document-types/${selectedDoc.document_id}`,
           formData,

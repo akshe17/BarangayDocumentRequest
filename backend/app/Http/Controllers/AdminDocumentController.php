@@ -112,9 +112,9 @@ class AdminDocumentController extends Controller
     }
 
     // ─────────────────────────────────────────────────────────────────────
-    // POST /api/document-types/{id}  (with _method=PUT spoofing)
+    // POST|PUT /api/document-types/{id}
     // Full update — syncs requirements, form fields, and optional file.
-    // We use POST because browsers/axios can't send multipart PUT.
+    // Route accepts both POST and PUT so multipart/form-data works correctly.
     // ─────────────────────────────────────────────────────────────────────
     public function update(Request $request, int $id): JsonResponse
     {

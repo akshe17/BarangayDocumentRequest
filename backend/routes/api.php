@@ -50,8 +50,8 @@ Route::middleware(['custom.auth'])->group(function () {
     Route::get('document-types/{id}',     [AdminDocumentController::class, 'show']);
 
     // POST with _method=PUT inside FormData — supports file upload
-    Route::post('document-types/{id}',    [AdminDocumentController::class,'update']);
-
+  Route::post('document-types/{id}', [AdminDocumentController::class,  'update']);
+Route::put('document-types/{id}',  [AdminDocumentController::class, 'update']);
     Route::patch('document-types/{id}',    [AdminDocumentController::class, 'patch']);
     Route::delete('document-types/{id}',   [AdminDocumentController::class,'destroy']);
     // Profile Management Routes
