@@ -1,583 +1,536 @@
-import React, { useState, useEffect, useMemo } from "react";
-import api from "../axious/api";
-import Toast from "../components/toast"; // --- ADDED: Import Toast component ---
+import React, { useState } from "react";
 import {
-  Search,
   Plus,
-  Edit2,
   Trash2,
+  ArrowLeft,
+  Save,
   FileText,
-  Coins,
-  AlertTriangle,
+  ListChecks,
+  Settings,
   X,
-  Check,
-  Package,
-  TrendingUp,
-  Clock,
+  ChevronRight,
   CheckCircle2,
-  ListPlus,
-  Loader2,
+  Sparkles,
+  Power,
+  Search,
 } from "lucide-react";
 
 const Documents = () => {
-  const [searchTerm, setSearchTerm] = useState("");
-  const [modalType, setModalType] = useState(null);
-  const [selectedDocument, setSelectedDocument] = useState(null);
-  const [isLoading, setIsLoading] = useState(false);
-  const [error, setError] = useState(null);
+  const [view, setView] = useState("list");
+  const [selectedDoc, setSelectedDoc] = useState(null);
+  const [search, setSearch] = useState("");
+  const [filter, setFilter] = useState("all"); // "all" | "active" | "inactive"
 
-  // --- ADDED: Toast state ---
-  const [toast, setToast] = useState({
-    show: false,
-    message: "",
-    type: "success",
-  });
+  const [docName, setDocName] = useState("");
+  const [docFee, setDocFee] = useState("");
+  const [docStatus, setDocStatus] = useState(true);
+  const [documentFile, setDocumentFile] = useState(null);
+  const [requirements, setRequirements] = useState([
+    { name: "", description: "" },
+  ]);
+  const [fields, setFields] = useState([
+    { label: "", type: "text", is_required: true },
+  ]);
+  const [toast, setToast] = useState({ show: false, message: "" });
 
-  const [formData, setFormData] = useState({
-    name: "",
-    fee: "",
-    requirements: [],
-  });
-
-  const [documents, setDocuments] = useState([]);
-
-  useEffect(() => {
-    fetchDocuments();
-  }, []);
-
-  // --- ADDED: Toast helper function ---
-  const showToast = (message, type = "success") => {
-    setToast({ show: true, message, type });
-    setTimeout(() => {
-      setToast({ show: false, message: "", type: "success" });
-    }, 3000);
-  };
-
-  const fetchDocuments = async () => {
-    setIsLoading(true);
-    try {
-      const response = await api.get("/documents");
-      setDocuments(response.data);
-      setError(null);
-    } catch (err) {
-      console.error("Error fetching documents:", err);
-      setError("Failed to fetch documents.");
-      showToast("Failed to fetch documents.", "error"); // --- ADDED ---
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  const filteredDocuments = useMemo(() => {
-    return documents.filter((doc) => {
-      const docName = doc.document_name || "";
-      return docName.toLowerCase().includes(searchTerm.toLowerCase());
-    });
-  }, [documents, searchTerm]);
-
-  const stats = {
-    total: documents.length,
-    active: documents.filter((d) => d.in_use).length,
-    inactive: documents.filter((d) => !d.in_use).length,
-    totalRevenue: documents.reduce(
-      (sum, doc) => sum + (parseFloat(doc.fee) || 0),
-      0,
-    ),
-  };
-
-  const openModal = (type, document = null) => {
-    setModalType(type);
-    setSelectedDocument(document);
-
-    if (document && type === "edit") {
-      setFormData({
-        name: document.document_name || "",
-        fee: document.fee || "",
-        requirements: document.requirements || [],
-      });
-    } else {
-      setFormData({ name: "", fee: "", requirements: [] });
-    }
-  };
-  const closeModal = () => {
-    setModalType(null);
-    setSelectedDocument(null);
-    setFormData({ name: "", fee: "", requirements: [] });
-  };
-
-  const addRequirementField = () => {
-    setFormData({
-      ...formData,
+  const [documentTypes, setDocumentTypes] = useState([
+    {
+      id: 1,
+      name: "Barangay Clearance",
+      fee: "50.00",
+      active: true,
       requirements: [
-        ...formData.requirements,
-        { requirement_name: "", description: "" },
+        { name: "Cedula", description: "Current year cedula" },
+        { name: "ID", description: "Valid Government ID" },
       ],
-    });
+      fields: [{ label: "Purpose", type: "text", is_required: true }],
+    },
+    {
+      id: 2,
+      name: "Certificate of Indigency",
+      fee: "0.00",
+      active: false,
+      requirements: [{ name: "Voter's ID", description: "Proof of residency" }],
+      fields: [{ label: "Reason", type: "textarea", is_required: true }],
+    },
+    {
+      id: 3,
+      name: "Business Permit",
+      fee: "200.00",
+      active: true,
+      requirements: [
+        { name: "DTI Certificate", description: "Business registration" },
+      ],
+      fields: [{ label: "Business Name", type: "text", is_required: true }],
+    },
+  ]);
+
+  const showNotification = (msg) => {
+    setToast({ show: true, message: msg });
+    setTimeout(() => setToast({ show: false, message: "" }), 3000);
   };
 
-  const updateRequirement = (index, field, value) => {
-    const newRequirements = [...formData.requirements];
-    newRequirements[index][field] = value;
-    setFormData({ ...formData, requirements: newRequirements });
+  const handleEditDoc = (doc) => {
+    setSelectedDoc(doc);
+    setDocName(doc.name);
+    setDocFee(doc.fee);
+    setDocStatus(doc.active);
+    setRequirements(doc.requirements || [{ name: "", description: "" }]);
+    setFields(doc.fields || [{ label: "", type: "text", is_required: true }]);
+    setView("add");
   };
 
-  const removeRequirement = (index) => {
-    const newRequirements = formData.requirements.filter((_, i) => i !== index);
-    setFormData({ ...formData, requirements: newRequirements });
+  const resetForm = () => {
+    setSelectedDoc(null);
+    setDocName("");
+    setDocFee("");
+    setDocStatus(true);
+    setDocumentFile(null);
+    setRequirements([{ name: "", description: "" }]);
+    setFields([{ label: "", type: "text", is_required: true }]);
   };
 
-  const handleSave = async () => {
-    // Validation
-    if (!formData.name.trim() || formData.fee === "") {
-      showToast("Please fill in Document Name and Fee", "error"); // --- UPDATED ---
-      return;
-    }
-
-    const docData = {
-      name: formData.name.trim(),
-      fee: parseFloat(formData.fee),
-      requirements: formData.requirements,
-    };
-
-    try {
-      if (modalType === "add") {
-        const response = await api.post("/documents", docData);
-        setDocuments([...documents, response.data]);
-        showToast("Document added successfully!"); // --- ADDED ---
-      } else if (modalType === "edit") {
-        if (!selectedDocument || !selectedDocument.document_id) {
-          showToast("Error: Document ID not found.", "error"); // --- UPDATED ---
-          return;
-        }
-
-        const response = await api.put(
-          `/documents/${selectedDocument.document_id}`,
-          docData,
-        );
-
-        setDocuments(
-          documents.map((doc) =>
-            doc.document_id === selectedDocument.document_id
-              ? response.data
-              : doc,
-          ),
-        );
-        showToast("Document updated successfully!"); // --- ADDED ---
-      }
-      closeModal();
-    } catch (err) {
-      console.error("Error saving document:", err);
-      showToast(
-        `Failed to save document: ${err.response?.data?.message || err.message}`,
-        "error",
-      ); // --- UPDATED ---
-    }
+  const addField = () =>
+    setFields([...fields, { label: "", type: "text", is_required: true }]);
+  const addReq = () =>
+    setRequirements([...requirements, { name: "", description: "" }]);
+  const removeField = (i) => setFields(fields.filter((_, idx) => idx !== i));
+  const removeReq = (i) =>
+    setRequirements(requirements.filter((_, idx) => idx !== i));
+  const updateReq = (i, k, v) => {
+    const n = [...requirements];
+    n[i][k] = v;
+    setRequirements(n);
+  };
+  const updateField = (i, k, v) => {
+    const n = [...fields];
+    n[i][k] = v;
+    setFields(n);
   };
 
-  const handleDelete = async () => {
-    if (!selectedDocument || !selectedDocument.document_id) {
-      showToast("Error: Document ID not found.", "error"); // --- UPDATED ---
-      return;
-    }
+  const filteredDocs = documentTypes.filter((doc) => {
+    const matchesSearch = doc.name.toLowerCase().includes(search.toLowerCase());
+    const matchesFilter =
+      filter === "all" ||
+      (filter === "active" && doc.active) ||
+      (filter === "inactive" && !doc.active);
+    return matchesSearch && matchesFilter;
+  });
 
-    if (selectedDocument.in_use) {
-      setModalType("warning");
-      return;
-    }
+  const icons = [FileText, Sparkles, FileText];
 
-    try {
-      await api.delete(`/documents/${selectedDocument.document_id}`);
-
-      setDocuments(
-        documents.filter(
-          (doc) => doc.document_id !== selectedDocument.document_id,
-        ),
-      );
-      showToast("Document deleted successfully!"); // --- ADDED ---
-      closeModal();
-    } catch (err) {
-      console.error("Error deleting document:", err);
-      showToast("Failed to delete document.", "error"); // --- UPDATED ---
-    }
-  };
-
-  return (
-    <div className="space-y-6 p-6 bg-gradient-to-br from-gray-50 to-gray-100 min-h-screen">
-      {/* --- ADDED: Toast component implementation --- */}
-      <Toast
-        show={toast.show}
-        message={toast.message}
-        type={toast.type}
-        onClose={() => setToast({ ...toast, show: false })}
-      />
-
-      {/* HEADER */}
-      <div className="mb-8">
-        <h1 className="text-3xl font-black text-gray-900 mb-2">
-          Document Management
-        </h1>
-      </div>
-
-      {/* ERROR DISPLAY */}
-      {error && (
-        <div className="bg-red-50 text-red-700 p-4 rounded-xl border border-red-200 font-medium text-sm">
-          {error}
-        </div>
-      )}
-
-      {/* STATS CARDS */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
-        <div className="bg-white p-5 rounded-xl border border-gray-200 shadow-sm">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide">
-                Total Documents
-              </p>
-              <h3 className="text-2xl font-black text-gray-900 mt-1">
-                {isLoading ? <Loader2 className="animate-spin" /> : stats.total}
-              </h3>
-            </div>
-            <div className="w-12 h-12 bg-gradient-to-br from-blue-500 to-blue-600 rounded-xl flex items-center justify-center text-white shadow-lg">
-              <Package size={24} strokeWidth={2.5} />
-            </div>
-          </div>
-        </div>
-        <div className="bg-white p-5 rounded-xl border border-gray-200 shadow-sm">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide">
-                Active
-              </p>
-              <h3 className="text-2xl font-black text-emerald-600 mt-1">
-                {isLoading ? (
-                  <Loader2 className="animate-spin" />
-                ) : (
-                  stats.active
-                )}
-              </h3>
-            </div>
-            <div className="w-12 h-12 bg-gradient-to-br from-emerald-500 to-green-600 rounded-xl flex items-center justify-center text-white shadow-lg">
-              <CheckCircle2 size={24} strokeWidth={2.5} />
-            </div>
-          </div>
-        </div>
-        <div className="bg-white p-5 rounded-xl border border-gray-200 shadow-sm">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide">
-                Inactive
-              </p>
-              <h3 className="text-2xl font-black text-gray-600 mt-1">
-                {isLoading ? (
-                  <Loader2 className="animate-spin" />
-                ) : (
-                  stats.inactive
-                )}
-              </h3>
-            </div>
-            <div className="w-12 h-12 bg-gradient-to-br from-gray-400 to-gray-500 rounded-xl flex items-center justify-center text-white shadow-lg">
-              <Clock size={24} strokeWidth={2.5} />
-            </div>
-          </div>
-        </div>
-        <div className="bg-white p-5 rounded-xl border border-gray-200 shadow-sm">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide">
-                Total Fees (Type)
-              </p>
-              <h3 className="text-2xl font-black text-amber-600 mt-1">
-                {isLoading ? (
-                  <Loader2 className="animate-spin" />
-                ) : (
-                  `₱${stats.totalRevenue.toLocaleString()}`
-                )}
-              </h3>
-            </div>
-            <div className="w-12 h-12 bg-gradient-to-br from-amber-500 to-orange-500 rounded-xl flex items-center justify-center text-white shadow-lg">
-              <TrendingUp size={24} strokeWidth={2.5} />
-            </div>
-          </div>
-        </div>
-      </div>
-
-      {/* SEARCH & ADD */}
-      <div className="bg-white p-5 rounded-xl border border-gray-200 shadow-sm">
-        <div className="flex flex-col md:flex-row justify-between items-center gap-4">
-          <div className="relative w-full md:w-96">
-            <Search
-              className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400"
-              size={18}
-            />
-            <input
-              className="w-full pl-11 pr-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-emerald-500 focus:border-transparent outline-none transition-all text-sm"
-              placeholder="Search documents..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-            />
-          </div>
-          <button
-            onClick={() => openModal("add")}
-            className="bg-gradient-to-r from-emerald-600 to-green-600 text-white px-6 py-3 rounded-xl font-bold text-sm hover:shadow-lg transition-all flex items-center gap-2 shadow-md whitespace-nowrap"
-          >
-            <Plus size={18} /> Add Document
-          </button>
-        </div>
-      </div>
-
-      {/* DOCUMENTS GRID */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-        {isLoading ? (
-          <div className="col-span-full text-center py-12 text-gray-500">
-            <Loader2 className="animate-spin mx-auto mb-2" size={32} />
-            Loading documents...
-          </div>
-        ) : filteredDocuments.length === 0 ? (
-          <div className="col-span-full bg-white p-12 rounded-xl border border-gray-200 shadow-sm text-center">
-            <Search size={48} className="mx-auto mb-3 text-gray-300" />
-            <p className="font-semibold text-sm text-gray-500">
-              No documents found.
-            </p>
-          </div>
-        ) : (
-          filteredDocuments.map((doc) => (
-            <div
-              key={doc.document_id}
-              className="bg-white rounded-xl border border-gray-200 shadow-sm hover:shadow-md transition-all overflow-hidden group"
+  // ── ADD / EDIT VIEW ──────────────────────────────────────────
+  if (view === "add") {
+    return (
+      <div className="min-h-screen bg-gray-50">
+        <div className="sticky top-0 z-20 bg-white border-b border-gray-100 shadow-sm">
+          <div className="px-6 py-4 flex items-center justify-between">
+            <button
+              onClick={() => {
+                setView("list");
+                resetForm();
+              }}
+              className="flex items-center gap-1.5 rounded-xl border border-gray-200 px-3 py-2 text-sm text-gray-400 hover:text-emerald-600 hover:border-emerald-200 hover:bg-emerald-50 transition-all"
             >
-              <div className="p-5 border-b border-gray-100 bg-gradient-to-r from-gray-50 to-white">
-                <div className="flex items-start justify-between gap-3">
-                  <div className="flex items-start gap-3 flex-1">
-                    <div className="w-12 h-12 bg-gradient-to-br from-emerald-500 to-green-600 rounded-xl flex items-center justify-center text-white shadow-md flex-shrink-0">
-                      <FileText size={24} strokeWidth={2.5} />
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <h3 className="font-bold text-gray-900 text-base mb-1 truncate">
-                        {doc.document_name}
-                      </h3>
-                      <div className="flex items-center gap-2">
-                        <span
-                          className={`px-2 py-1 rounded text-[10px] font-bold uppercase ${doc.in_use ? "bg-emerald-100 text-emerald-700" : "bg-gray-100 text-gray-600"}`}
-                        >
-                          {doc.in_use ? "Active" : "Inactive"}
-                        </span>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              </div>
-              <div className="p-5">
-                <div className="bg-amber-50 border border-amber-200 rounded-xl p-4 mb-4">
-                  <div className="flex items-center justify-between">
-                    <span className="text-xs font-bold text-gray-600 uppercase tracking-wide">
-                      Processing Fee
-                    </span>
-                    <div className="flex items-center gap-2">
-                      <Coins size={18} className="text-amber-600" />
-                      <span className="text-2xl font-black text-amber-700">
-                        ₱{doc.fee}
-                      </span>
-                    </div>
-                  </div>
-                </div>
-                <div className="mb-4">
-                  <h4 className="text-xs font-bold text-gray-500 uppercase tracking-wide mb-2">
-                    Requirements
-                  </h4>
-                  {doc.requirements && doc.requirements.length > 0 ? (
-                    <ul className="text-sm text-gray-700 space-y-1 list-disc list-inside">
-                      {doc.requirements.map((req, i) => (
-                        <li key={i}>{req.requirement_name}</li>
-                      ))}
-                    </ul>
-                  ) : (
-                    <p className="text-sm text-gray-400 italic">
-                      No requirements
-                    </p>
-                  )}
-                </div>
-                <div className="flex gap-2">
-                  <button
-                    onClick={() => openModal("edit", doc)}
-                    className="flex-1 px-4 py-2.5 bg-blue-100 text-blue-700 rounded-lg hover:bg-blue-200 transition-all font-bold text-sm flex items-center justify-center gap-2"
-                  >
-                    <Edit2 size={16} /> Edit
-                  </button>
-                  <button
-                    onClick={() => openModal("delete", doc)}
-                    className="flex-1 px-4 py-2.5 bg-red-100 text-red-700 rounded-lg hover:bg-red-200 transition-all font-bold text-sm flex items-center justify-center gap-2"
-                  >
-                    <Trash2 size={16} /> Delete
-                  </button>
-                </div>
-              </div>
-            </div>
-          ))
-        )}
-      </div>
+              <ArrowLeft size={15} />
+              Back
+            </button>
 
-      {/* MODALS */}
-      {modalType && (
-        <div className="fixed inset-0 bg-black/70 backdrop-blur-sm z-[100] flex items-center justify-center p-4 overflow-y-auto">
-          <div className="bg-white rounded-2xl w-full max-w-lg shadow-2xl my-8">
-            <div className="sticky top-0 z-10 p-5 border-b border-gray-200 flex justify-between items-center bg-white rounded-t-2xl">
-              <h3 className="font-black text-gray-900 text-base flex items-center gap-3">
-                {modalType === "add" && "Add New Document"}
-                {modalType === "edit" && "Edit Document"}
-                {modalType === "delete" && "Delete Document"}
-              </h3>
+            <div className="absolute left-1/2 -translate-x-1/2 text-center">
+              <p className="text-sm font-semibold text-gray-800 leading-tight">
+                {selectedDoc
+                  ? `Edit ${selectedDoc.name}`
+                  : "New Document Template"}
+              </p>
+              <p className="text-xs text-gray-400 leading-tight mt-0.5">
+                {selectedDoc
+                  ? "Update existing configuration"
+                  : "Fill in the details below"}
+              </p>
+            </div>
+
+            <button
+              onClick={() => {
+                showNotification(
+                  selectedDoc ? "Template updated" : "Template saved",
+                );
+                setView("list");
+                resetForm();
+              }}
+              className="flex items-center gap-2 bg-emerald-500 hover:bg-emerald-600 text-white text-sm font-medium px-5 py-2.5 rounded-xl transition-colors shadow-sm"
+            >
+              <Save size={15} />
+              {selectedDoc ? "Update Template" : "Save Template"}
+            </button>
+          </div>
+        </div>
+
+        <div className="max-w-3xl mx-auto px-6 py-10 space-y-4">
+          {selectedDoc && (
+            <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6 flex items-center justify-between">
+              <div>
+                <p className="text-sm font-semibold text-gray-700">
+                  Document Status
+                </p>
+                <p className="text-xs text-gray-400">
+                  Enable or disable this document for residents
+                </p>
+              </div>
               <button
-                onClick={closeModal}
-                className="text-gray-400 hover:text-red-600 hover:bg-red-50 p-2 rounded-lg transition-all"
+                onClick={() => setDocStatus(!docStatus)}
+                className={`flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-medium transition-all ${
+                  docStatus
+                    ? "bg-emerald-50 text-emerald-600 border border-emerald-100"
+                    : "bg-red-50 text-red-600 border border-red-100"
+                }`}
               >
-                <X size={20} />
+                <Power size={14} />
+                {docStatus ? "Active" : "Disabled"}
               </button>
             </div>
-            <div className="p-5">
-              {(modalType === "add" || modalType === "edit") && (
-                <div className="space-y-4">
-                  <div>
-                    <label className="text-xs font-bold text-gray-700 uppercase tracking-wide block mb-2">
-                      Document Name
-                    </label>
-                    <input
-                      type="text"
-                      value={formData.name}
-                      onChange={(e) =>
-                        setFormData({ ...formData, name: e.target.value })
-                      }
-                      className="w-full px-4 py-2.5 rounded-xl border-2 border-gray-200 bg-white outline-none focus:border-emerald-500 transition-all font-medium text-sm"
-                    />
-                  </div>
-                  <div>
-                    <label className="text-xs font-bold text-gray-700 uppercase tracking-wide block mb-2">
-                      Processing Fee (₱)
-                    </label>
-                    <input
-                      type="number"
-                      value={formData.fee}
-                      onChange={(e) =>
-                        setFormData({ ...formData, fee: e.target.value })
-                      }
-                      className="w-full px-4 py-2.5 rounded-xl border-2 border-gray-200 bg-white outline-none focus:border-emerald-500 transition-all font-medium text-sm"
-                    />
-                  </div>
-                  <div className="border-t border-gray-100 pt-4">
-                    <div className="flex justify-between items-center mb-3">
-                      <label className="text-xs font-bold text-gray-700 uppercase tracking-wide block">
-                        Requirements
-                      </label>
-                      <button
-                        type="button"
-                        onClick={addRequirementField}
-                        className="text-xs text-emerald-600 font-bold flex items-center gap-1 hover:text-emerald-700"
-                      >
-                        <ListPlus size={14} /> Add Requirement
-                      </button>
-                    </div>
-                    <div className="space-y-3">
-                      {formData.requirements.map((req, index) => (
-                        <div
-                          key={index}
-                          className="flex items-center gap-2 bg-gray-50 p-3 rounded-lg border border-gray-200"
-                        >
-                          <div className="flex-1 space-y-2">
-                            <input
-                              type="text"
-                              placeholder="Requirement Name (e.g., Valid ID)"
-                              value={req.requirement_name}
-                              onChange={(e) =>
-                                updateRequirement(
-                                  index,
-                                  "requirement_name",
-                                  e.target.value,
-                                )
-                              }
-                              className="w-full text-sm px-3 py-2 rounded-lg border border-gray-300"
-                            />
-                            <input
-                              type="text"
-                              placeholder="Description (e.g., Photocopy of...)"
-                              value={req.description}
-                              onChange={(e) =>
-                                updateRequirement(
-                                  index,
-                                  "description",
-                                  e.target.value,
-                                )
-                              }
-                              className="w-full text-xs px-3 py-2 rounded-lg border border-gray-300"
-                            />
-                          </div>
-                          <button
-                            type="button"
-                            onClick={() => removeRequirement(index)}
-                            className="text-red-400 hover:text-red-600 p-1"
-                          >
-                            <Trash2 size={16} />
-                          </button>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                </div>
-              )}
-              {modalType === "delete" && (
-                <div className="text-center py-4">
-                  <div className="w-16 h-16 bg-red-100 text-red-600 rounded-2xl flex items-center justify-center mx-auto mb-4 shadow-lg">
-                    <Trash2 size={32} strokeWidth={2} />
-                  </div>
-                  <p className="text-base font-bold text-gray-900 mb-2">
-                    Delete "{selectedDocument?.document_name}"?
-                  </p>
-                  <p className="text-sm text-gray-500">
-                    This action cannot be undone.
-                  </p>
-                </div>
-              )}
-              {modalType === "warning" && (
-                <div className="text-center py-4">
-                  <div className="w-16 h-16 bg-amber-100 text-amber-600 rounded-2xl flex items-center justify-center mx-auto mb-4 shadow-lg">
-                    <AlertTriangle size={32} strokeWidth={2} />
-                  </div>
-                  <p className="text-base font-bold text-gray-900 mb-2">
-                    Cannot Delete Document
-                  </p>
-                  <p className="text-sm text-gray-500">
-                    This document is currently in use or has active requests.
-                  </p>
-                </div>
-              )}
-            </div>
-            <div className="sticky bottom-0 p-5 border-t border-gray-200 bg-white rounded-b-2xl">
-              <div className="flex gap-3">
-                <button
-                  onClick={closeModal}
-                  className="flex-1 px-4 py-2.5 rounded-xl font-bold text-gray-700 bg-gray-100 hover:bg-gray-200 transition-all text-sm"
-                >
-                  Cancel
-                </button>
-                {modalType !== "warning" && (
-                  <button
-                    onClick={modalType === "delete" ? handleDelete : handleSave}
-                    className={`flex-1 px-4 py-2.5 rounded-xl font-bold text-white transition-all text-sm shadow-lg flex items-center justify-center gap-2 ${modalType === "delete" ? "bg-gradient-to-r from-red-600 to-red-700" : "bg-gradient-to-r from-emerald-600 to-green-600"}`}
-                  >
-                    {modalType === "delete" ? (
-                      <>
-                        <Trash2 size={16} /> Delete Document
-                      </>
-                    ) : (
-                      <>
-                        <Check size={16} /> Save Changes
-                      </>
-                    )}
-                  </button>
-                )}
+          )}
+
+          <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6 space-y-5">
+            <p className="text-xs font-semibold text-gray-500 uppercase tracking-widest">
+              Basic Info
+            </p>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div className="space-y-1.5">
+                <label className="text-xs font-medium text-gray-500">
+                  Document Name
+                </label>
+                <input
+                  type="text"
+                  value={docName}
+                  onChange={(e) => setDocName(e.target.value)}
+                  placeholder="e.g. Barangay Clearance"
+                  className="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm text-gray-700 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-emerald-400 focus:border-transparent transition-all"
+                />
+              </div>
+              <div className="space-y-1.5">
+                <label className="text-xs font-medium text-gray-500">
+                  Processing Fee (PHP)
+                </label>
+                <input
+                  type="number"
+                  value={docFee}
+                  onChange={(e) => setDocFee(e.target.value)}
+                  placeholder="0.00"
+                  className="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm text-gray-700 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-emerald-400 focus:border-transparent transition-all"
+                />
               </div>
             </div>
           </div>
+
+          <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6 space-y-4">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2.5">
+                <div className="w-8 h-8 rounded-lg bg-emerald-50 flex items-center justify-center text-emerald-500">
+                  <ListChecks size={16} />
+                </div>
+                <p className="text-sm font-semibold text-gray-700">
+                  Entry Requirements
+                </p>
+              </div>
+              <button
+                onClick={addReq}
+                className="text-xs font-semibold text-emerald-600 bg-emerald-50 hover:bg-emerald-100 px-3 py-1.5 rounded-lg transition-colors"
+              >
+                + Add
+              </button>
+            </div>
+            <div className="space-y-3">
+              {requirements.map((req, i) => (
+                <div
+                  key={i}
+                  className="group relative p-4 bg-gray-50 rounded-xl border border-gray-100 space-y-2.5"
+                >
+                  <button
+                    onClick={() => removeReq(i)}
+                    className="absolute top-3.5 right-3.5 text-gray-400 hover:text-red-400 transition-colors opacity-0 group-hover:opacity-100"
+                  >
+                    <Trash2 size={14} />
+                  </button>
+                  <input
+                    value={req.name}
+                    onChange={(e) => updateReq(i, "name", e.target.value)}
+                    placeholder="Requirement name (e.g. Cedula)"
+                    className="w-full bg-transparent border-b border-gray-200 pb-2 text-sm font-medium text-gray-700 placeholder:text-gray-400 focus:outline-none focus:border-emerald-400 transition-colors"
+                  />
+                  <textarea
+                    value={req.description}
+                    onChange={(e) =>
+                      updateReq(i, "description", e.target.value)
+                    }
+                    placeholder="Additional instructions for residents..."
+                    rows={2}
+                    className="w-full bg-transparent text-xs text-gray-600 placeholder:text-gray-400 focus:outline-none resize-none"
+                  />
+                </div>
+              ))}
+            </div>
+          </div>
+
+          <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6 space-y-4">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2.5">
+                <div className="w-8 h-8 rounded-lg bg-emerald-50 flex items-center justify-center text-emerald-500">
+                  <Settings size={16} />
+                </div>
+                <p className="text-sm font-semibold text-gray-700">
+                  Digital Form Fields
+                </p>
+              </div>
+              <button
+                onClick={addField}
+                className="text-xs font-semibold text-emerald-600 bg-emerald-50 hover:bg-emerald-100 px-3 py-1.5 rounded-lg transition-colors"
+              >
+                + Add
+              </button>
+            </div>
+            <div className="space-y-3">
+              {fields.map((field, i) => (
+                <div
+                  key={i}
+                  className="p-4 border border-gray-100 rounded-xl bg-white hover:border-emerald-100 transition-colors space-y-3"
+                >
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-1">
+                      <label className="text-[10px] font-semibold uppercase tracking-wider text-gray-400">
+                        Label
+                      </label>
+                      <input
+                        value={field.label}
+                        onChange={(e) =>
+                          updateField(i, "label", e.target.value)
+                        }
+                        placeholder="e.g. Purpose"
+                        className="w-full bg-transparent border-b border-gray-100 pb-1.5 text-sm text-gray-700 placeholder:text-gray-400 focus:outline-none focus:border-emerald-400 transition-colors"
+                      />
+                    </div>
+                    <div className="space-y-1">
+                      <label className="text-[10px] font-semibold uppercase tracking-wider text-gray-400">
+                        Type
+                      </label>
+                      <select
+                        value={field.type}
+                        onChange={(e) => updateField(i, "type", e.target.value)}
+                        className="w-full bg-transparent border-b border-gray-100 pb-1.5 text-sm text-gray-700 focus:outline-none focus:border-emerald-400 transition-colors appearance-none cursor-pointer"
+                      >
+                        <option value="text">Short Text</option>
+                        <option value="textarea">Long Text</option>
+                        <option value="date">Date</option>
+                        <option value="number">Number</option>
+                      </select>
+                    </div>
+                  </div>
+                  <div className="flex items-center justify-between pt-1">
+                    <label className="flex items-center gap-2 cursor-pointer">
+                      <input
+                        type="checkbox"
+                        checked={field.is_required}
+                        onChange={(e) =>
+                          updateField(i, "is_required", e.target.checked)
+                        }
+                        className="w-3.5 h-3.5 accent-emerald-500 cursor-pointer"
+                      />
+                      <span className="text-[10px] font-semibold uppercase tracking-wider text-gray-400">
+                        Required
+                      </span>
+                    </label>
+                    <button
+                      onClick={() => removeField(i)}
+                      className="text-gray-300 hover:text-red-400 transition-colors"
+                    >
+                      <Trash2 size={14} />
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // ── LIST VIEW ────────────────────────────────────────────────
+  return (
+    <div className="min-h-screen bg-gray-50">
+      {toast.show && (
+        <div className="fixed top-6 right-6 z-50 flex items-center gap-2.5 bg-gray-900 text-white text-sm font-medium px-5 py-3 rounded-2xl shadow-lg">
+          <CheckCircle2 size={16} className="text-emerald-400" />
+          {toast.message}
         </div>
       )}
+
+      <div className="max-w-5xl mx-auto px-6 py-12">
+        {/* Header */}
+        <div className="flex items-end justify-between mb-8">
+          <div>
+            <h1 className="text-2xl font-bold text-gray-900 tracking-tight">
+              Document Types
+            </h1>
+            <p className="text-sm text-gray-400 mt-1">
+              Configure requirements and fees for barangay services.
+            </p>
+          </div>
+          <button
+            onClick={() => {
+              resetForm();
+              setView("add");
+            }}
+            className="flex items-center gap-2 bg-emerald-500 hover:bg-emerald-600 text-white text-sm font-medium px-5 py-2.5 rounded-xl transition-colors shadow-sm"
+          >
+            <Plus size={17} />
+            New Template
+          </button>
+        </div>
+
+        {/* Search + Filter bar */}
+        <div className="flex bg-white rounded-xl shadow-md p-4 justify-between w-full gap-3 mb-6">
+          <div className="relative  flex-1 w-full">
+            <Search
+              size={14}
+              className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-500 pointer-events-none"
+            />
+            <input
+              type="text"
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              placeholder="Search documents..."
+              className="w-full pl-9 pr-8 py-2.5 bg-white border border-gray-200 rounded-xl text-sm text-gray-700 placeholder:text-gray-500 focus:outline-none focus:ring-2 focus:ring-emerald-400 focus:border-transparent transition-all "
+            />
+            {search && (
+              <button
+                onClick={() => setSearch("")}
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-300 hover:text-gray-500 transition-colors"
+              >
+                <X size={13} />
+              </button>
+            )}
+          </div>
+
+          {/* Filter pills */}
+          <div className="flex items-center gap-1 bg-gray-100 border border-gray-200 rounded-xl p-1 shadow-sm">
+            {[
+              { key: "all", label: "All" },
+              { key: "active", label: "Active" },
+              { key: "inactive", label: "Inactive" },
+            ].map(({ key, label }) => (
+              <button
+                key={key}
+                onClick={() => setFilter(key)}
+                className={`px-3.5 py-1.5 rounded-lg cursor-pointer text-xs font-semibold transition-all ${
+                  filter === key
+                    ? key === "inactive"
+                      ? "bg-red-50 text-red-500"
+                      : key === "active"
+                        ? "bg-emerald-500 text-white shadow-sm"
+                        : "bg-gray-100 text-gray-600"
+                    : "text-gray-400 hover:text-gray-600"
+                }`}
+              >
+                {label}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {/* Cards */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+          {filteredDocs.length === 0 && (
+            <div className="col-span-full flex flex-col items-center justify-center py-16 text-center">
+              <div className="w-12 h-12 rounded-2xl bg-gray-100 flex items-center justify-center mb-3">
+                <FileText size={20} className="text-gray-300" />
+              </div>
+              <p className="text-sm font-medium text-gray-400">
+                No documents found
+              </p>
+              <p className="text-xs text-gray-300 mt-1">
+                Try adjusting your search or filter
+              </p>
+            </div>
+          )}
+
+          {filteredDocs.map((doc, idx) => {
+            const Icon = idx % 2 === 1 ? Sparkles : FileText;
+            return (
+              <div
+                key={doc.id}
+                onClick={() => handleEditDoc(doc)}
+                className="group bg-white border border-gray-300 rounded-2xl p-6 cursor-pointer hover:border-emerald-200 hover:shadow-md transition-all duration-200"
+              >
+                <div className="flex items-start justify-between mb-6">
+                  <div
+                    className={`w-11 h-11 rounded-xl flex items-center justify-center transition-all duration-200 ${
+                      doc.active
+                        ? "bg-emerald-50 text-emerald-500 group-hover:bg-emerald-500 group-hover:text-white"
+                        : "bg-gray-100 text-gray-400"
+                    }`}
+                  >
+                    <Icon size={20} />
+                  </div>
+                  <span
+                    className={`text-[10px] font-bold uppercase tracking-wider px-2.5 py-1 rounded-full ${
+                      doc.active
+                        ? "text-emerald-600 bg-emerald-50"
+                        : "text-red-400 bg-red-50"
+                    }`}
+                  >
+                    {doc.active ? "Active" : "Inactive"}
+                  </span>
+                </div>
+                <h3 className="text-base font-semibold text-gray-800 mb-1">
+                  {doc.name}
+                </h3>
+                <p className="text-sm text-gray-400">Fee: ₱ {doc.fee}</p>
+                <div className="mt-6 pt-4 border-t border-gray-50 flex items-center justify-between">
+                  <div className="flex gap-5">
+                    <div>
+                      <p className="text-[9px] font-bold uppercase tracking-wider text-gray-300">
+                        Requirements
+                      </p>
+                      <p className="text-sm font-medium text-gray-600 mt-0.5">
+                        {doc.requirements.length} items
+                      </p>
+                    </div>
+                    <div>
+                      <p className="text-[9px] font-bold uppercase tracking-wider text-gray-300">
+                        Form Fields
+                      </p>
+                      <p className="text-sm font-medium text-gray-600 mt-0.5">
+                        {doc.fields.length} fields
+                      </p>
+                    </div>
+                  </div>
+                  <div className="w-8 h-8 rounded-lg flex items-center justify-center text-gray-300 group-hover:text-emerald-500 group-hover:bg-emerald-50 transition-all">
+                    <ChevronRight size={17} />
+                  </div>
+                </div>
+              </div>
+            );
+          })}
+
+          {/* Only show add card when not filtering/searching */}
+          {filter === "all" && !search && (
+            <button
+              onClick={() => {
+                resetForm();
+                setView("add");
+              }}
+              className="group border-2 border-dashed border-gray-200 rounded-2xl p-6 min-h-[220px] flex flex-col items-center justify-center gap-3 hover:border-emerald-300 hover:bg-emerald-50/30 transition-all duration-200"
+            >
+              <div className="w-10 h-10 rounded-full border-2 border-gray-200 flex items-center justify-center text-gray-300 group-hover:border-emerald-400 group-hover:text-emerald-500 transition-all">
+                <Plus size={20} />
+              </div>
+              <span className="text-sm font-medium text-gray-400 group-hover:text-emerald-600 transition-colors">
+                Add Document Type
+              </span>
+            </button>
+          )}
+        </div>
+      </div>
     </div>
   );
 };
