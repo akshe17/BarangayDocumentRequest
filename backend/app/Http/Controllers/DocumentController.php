@@ -116,34 +116,25 @@ class DocumentController extends Controller
     }
 
     public function getHistory()
-{
-    $user = auth()->user();
+    {
+        try {
+            $user = Auth::user();
+            if (!$user || !$user->resident) {
+                return response()->json(['message' => 'Resident profile not found.'], 404);
+            }
 
-    // 1. Safety check for resident profile
-    if (!$user || !$user->resident) {
-        return response()->json(['message' => 'Resident profile not found.'], 404);
+            $history = DocumentRequest::where('resident_id', $user->resident->resident_id)
+                ->with(['status', 'documentType'])
+                ->orderBy('request_date', 'desc')
+                ->get();
+
+            return response()->json($history, 200);
+        } catch (\Exception $e) {
+            return response()->json(['error' => $e->getMessage()], 500);
+        }
     }
 
-    // 2. Fetch requests with relationships matching your 'storeRequest' load
-    $history = DocumentRequest::where('resident_id', $user->resident->resident_id)
-        ->with([
-            'status', 
-            'documentType', 
-            'formData.fieldDefinition'
-        ])
-        ->orderBy('request_date', 'desc')
-        ->get();
-
-    // 3. Return as a clean array (React's fetchAll will handle the mapping)
-    return response()->json($history, 200);
-}
-
-// In a Controller (e.g., ActionLogController)
-public function getResidentLogs() {
-    return ActionLog::where('user_id', auth()->id())
-        ->orderBy('created_at', 'desc')
-        ->get();
-}
+    
 public function getResidentDashboard()
     {
         try {
