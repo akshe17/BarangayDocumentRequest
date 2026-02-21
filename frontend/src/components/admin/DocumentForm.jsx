@@ -15,6 +15,8 @@ import {
   FileType,
   File,
   RefreshCw,
+  Lock,
+  Plus,
 } from "lucide-react";
 
 // Picks icon + accent color based on file extension
@@ -397,6 +399,57 @@ const DocumentForm = ({
           </div>
         </div>
 
+        {/* Auto-generated Fields (read-only preview) */}
+        <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-4 sm:p-6 space-y-4">
+          <div className="flex items-start gap-2.5">
+            <div className="w-8 h-8 rounded-lg bg-gray-100 flex items-center justify-center text-gray-400 shrink-0">
+              <Lock size={15} />
+            </div>
+            <div>
+              <p className="text-sm font-semibold text-gray-700">
+                Auto-generated Fields
+              </p>
+              <p className="text-xs text-gray-400 mt-0.5 leading-relaxed">
+                These fields are automatically pulled from the resident's
+                profile. You don't need to add them — they will always be
+                included in every request.
+              </p>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 gap-3">
+            {[
+              { label: "Resident Name", placeholder: "e.g. Juan Dela Cruz" },
+              { label: "Birthdate", placeholder: "e.g. October 18, 2004" },
+              { label: "Civil Status", placeholder: "e.g. Single" },
+              { label: "Gender", placeholder: "e.g. Male" },
+              { label: "Reason", placeholder: "e.g. For school Purposes" },
+            ].map(({ label, placeholder }) => (
+              <div key={label} className="space-y-1.5">
+                <label className="text-sm font-semibold text-gray-500 flex items-center gap-1.5">
+                  {label}
+                  <span className="text-[10px] font-normal text-gray-500 bg-gray-50 border border-gray-100 px-1.5 py-0.5 rounded-md">
+                    auto-filled
+                  </span>
+                </label>
+                <div className="relative">
+                  <input
+                    type="text"
+                    value={placeholder}
+                    readOnly
+                    disabled
+                    className="w-full px-4 py-2.5 bg-gray-50 border border-gray-300 rounded-xl text-sm text-gray-500 cursor-not-allowed select-none italic"
+                  />
+                  <Lock
+                    size={12}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500"
+                  />
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+
         {/* Digital Form Fields */}
         <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-4 sm:p-6 space-y-4">
           <div className="flex items-center justify-between">
@@ -404,9 +457,15 @@ const DocumentForm = ({
               <div className="w-8 h-8 rounded-lg bg-emerald-50 flex items-center justify-center text-emerald-500 shrink-0">
                 <Settings size={16} />
               </div>
-              <p className="text-sm font-semibold text-gray-700">
-                Digital Form Fields
-              </p>
+              <div>
+                <p className="text-sm font-semibold text-gray-700">
+                  Additional Form Fields
+                </p>
+                <p className="text-xs text-gray-400 mt-0.5">
+                  Extra fields residents must fill in when requesting this
+                  document
+                </p>
+              </div>
             </div>
             <button
               onClick={addField}
@@ -419,7 +478,8 @@ const DocumentForm = ({
           <div className="space-y-3">
             {fields.length === 0 && (
               <p className="text-xs text-gray-300 text-center py-3">
-                No form fields added yet.
+                No additional fields added yet. The auto-generated fields above
+                are always included.
               </p>
             )}
             {fields.map((field, i) => (
@@ -475,7 +535,7 @@ const DocumentForm = ({
                   </label>
                   <button
                     onClick={() => removeField(i)}
-                    className="text-gray-300 hover:text-red-400 transition-colors p-1"
+                    className="text-gray-600 cursor-pointer hover:text-red-400 transition-colors p-1"
                   >
                     <Trash2 size={14} />
                   </button>

@@ -56,7 +56,7 @@ const DocumentCard = ({ doc, idx, onEdit, onToggleStatus, onOpenFile }) => {
       <div className="mt-5 sm:mt-6 pt-4 border-t border-gray-50 flex items-center justify-between">
         <div className="flex gap-4 sm:gap-5 flex-wrap">
           <div>
-            <p className="text-[9px] font-bold uppercase tracking-wider text-gray-300">
+            <p className="text-[9px] font-bold uppercase tracking-wider text-gray-500">
               Requirements
             </p>
             <p className="text-sm font-medium text-gray-600 mt-0.5">
@@ -64,8 +64,8 @@ const DocumentCard = ({ doc, idx, onEdit, onToggleStatus, onOpenFile }) => {
             </p>
           </div>
           <div>
-            <p className="text-[9px] font-bold uppercase tracking-wider text-gray-300">
-              Form Fields
+            <p className="text-[9px] font-bold uppercase tracking-wider text-gray-500">
+              Additional Form Fields
             </p>
             <p className="text-sm font-medium text-gray-600 mt-0.5">
               {fieldCount} {fieldCount === 1 ? "field" : "fields"}
@@ -73,7 +73,7 @@ const DocumentCard = ({ doc, idx, onEdit, onToggleStatus, onOpenFile }) => {
           </div>
           {hasFile && (
             <div>
-              <p className="text-[9px] font-bold uppercase tracking-wider text-gray-300">
+              <p className="text-[9px] font-bold uppercase tracking-wider text-gray-500">
                 Template
               </p>
               <button
@@ -81,7 +81,7 @@ const DocumentCard = ({ doc, idx, onEdit, onToggleStatus, onOpenFile }) => {
                   e.stopPropagation();
                   onOpenFile(doc);
                 }}
-                className="text-sm font-medium text-emerald-500 mt-0.5 flex items-center gap-1 hover:text-emerald-700 transition-colors"
+                className="text-sm font-medium cursor-pointer text-emerald-500 mt-0.5 flex items-center gap-1 hover:text-emerald-700 transition-colors"
                 title="Open attached document"
               >
                 <Paperclip size={11} />

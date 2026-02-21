@@ -62,14 +62,13 @@ Route::put('document-types/{id}',  [AdminDocumentController::class, 'update']);
     Route::post('/resident/profile/upload-id', [ResidentController::class, 'uploadValidId']);
 
 
+//resident document
 
-    Route::get('/documents', [DocumentController::class, 'index']);
-Route::post('/documents', [DocumentController::class, 'store']);
-Route::put('/documents/{id}', [DocumentController::class, 'update']);
-Route::delete('/documents/{id}', [DocumentController::class, 'destroy']);
+     Route::get('/documents',         [DocumentController::class, 'index']);
+    Route::get('/current-request',   [DocumentController::class, 'residentCurrentRequest']);
+    Route::post('/submit-document', [DocumentController::class, 'storeRequest']);
 
-   Route::get('/current-request', [DocumentController::class, 'residentCurrentRequest']);
-
+ 
   Route::post('/request-document', [DocumentRequestController::class, 'store']);
   Route::get('/request-document/history', [DocumentRequestController::class, 'getHistory']);
   Route::get('/resident/dashboard', [DocumentRequestController::class, 'getDashboardStats']);

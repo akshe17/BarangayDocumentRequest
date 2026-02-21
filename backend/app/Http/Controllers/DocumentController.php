@@ -2,102 +2,116 @@
 namespace App\Http\Controllers;
 
 use App\Models\DocumentType;
-use App\Models\DocumentRequirement;
 use App\Models\DocumentRequest;
+use App\Models\RequestFormData;
+use App\Models\RequestStatus;
+use App\Models\ActionLog;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 
 class DocumentController extends Controller
 {
-   public function index()
-{
-    // Fetch active documents with their requirements AND form fields
-    return DocumentType::where('in_use', true)
-        ->with(['requirements', 'formFields']) 
-        ->get();
-}
-public function residentCurrentRequest()
+    /**
+     * GET /documents
+     */
+    public function index()
+    {
+        return DocumentType::where('in_use', true)
+            ->with(['requirements', 'formFields'])
+            ->get();
+    }
+
+    /**
+     * GET /current-request
+     */
+    public function residentCurrentRequest()
 {
     $user = auth()->user();
-    if (!$user || !$user->resident) {
-        return response()->json(['error' => 'Resident profile not found'], 404);
-    }
 
-    $residentId = $user->resident->resident_id;
-    return DocumentRequest::where('resident_id', $residentId)
-            ->with(['status', 'formData'])
-            ->orderBy('created_at', 'desc')
-            ->get();
+    return DocumentRequest::where('resident_id', $user->resident->resident_id)
+        ->with(['status', 'documentType', 'formData.fieldDefinition'])  // ✅ correct place
+        ->orderBy('created_at', 'desc')
+        ->get();
 }
-    public function store(Request $request)
+
+    /**
+     * POST /request-document
+     */
+     public function storeRequest(Request $request)
     {
+      $user = auth()->user();
+
+    // ── Guard ──────────────────────────────────────────────────────────
+    if (!$user || !$user->resident) {
+        return response()->json(['message' => 'Resident profile not found.'], 404);
+    }
         $validated = $request->validate([
-            'name' => 'required|string|max:255',
-            'fee' => 'required|numeric',
-            'requirements' => 'array',
+            'document_id' => 'required|integer|exists:document_types,document_id',
+            'purpose'     => 'required|string|max:1000',
         ]);
 
-        return DB::transaction(function () use ($validated) {
-            $docType = DocumentType::create([
-                'document_name' => $validated['name'],
-                'fee' => $validated['fee'],
-                'in_use' => true,
-            ]);
+        $formData = is_array($request->input('form_data')) ? $request->input('form_data') : [];
 
-            if (!empty($validated['requirements'])) {
-                foreach ($validated['requirements'] as $req) {
-                    $docType->requirements()->create([
-                        'requirement_name' => $req['requirement_name'],
-                        'description' => $req['description'] ?? null,
-                    ]);
-                }
-            }
+        $docType = DocumentType::where('document_id', $validated['document_id'])
+            ->where('in_use', true)
+            ->first();
 
-            return $docType->load('requirements');
-        });
-    }
-
-    public function update(Request $request, $id)
-    {
-        $docType = DocumentType::findOrFail($id);
-
-        $validated = $request->validate([
-            'name' => 'required|string|max:255',
-            'fee' => 'required|numeric',
-            'requirements' => 'array',
-        ]);
-
-        return DB::transaction(function () use ($validated, $docType) {
-            $docType->update([
-                'document_name' => $validated['name'],
-                'fee' => $validated['fee'],
-            ]);
-
-            // Sync requirements: delete old, add new
-            $docType->requirements()->delete();
-            if (!empty($validated['requirements'])) {
-                foreach ($validated['requirements'] as $req) {
-                    $docType->requirements()->create([
-                        'requirement_name' => $req['requirement_name'],
-                        'description' => $req['description'] ?? null,
-                    ]);
-                }
-            }
-
-            return $docType->load('requirements');
-        });
-    }
-
-    public function destroy($id)
-    {
-        $docType = DocumentType::findOrFail($id);
-        
-        // Optional: check if in_use before deleting
-        if (!$docType->in_use) {
-            $docType->delete();
-            return response()->json(['message' => 'Deleted successfully']);
+        if (!$docType) {
+            return response()->json(['message' => 'Document not found or no longer available.'], 404);
         }
-        
-        return response()->json(['message' => 'Cannot delete active document'], 400);
+
+        $alreadyActive = DocumentRequest::where('resident_id', $user->resident->resident_id)
+            ->where('document_id', $docType->document_id)
+            ->whereHas('status', function ($q) {
+                $q->whereIn(DB::raw('LOWER(status_name)'), ['pending', 'processing', 'approved']);
+            })
+            ->exists();
+
+        if ($alreadyActive) {
+            return response()->json(['message' => 'You already have an active request for this document.'], 422);
+        }
+
+        $pendingStatus = RequestStatus::whereRaw('LOWER(status_name) = ?', ['pending'])->first();
+
+        if (!$pendingStatus) {
+            return response()->json(['message' => 'Server misconfiguration: pending status not found.'], 500);
+        }
+
+        return DB::transaction(function () use ($validated, $formData, $user, $docType, $pendingStatus) {
+
+            $docRequest = DocumentRequest::create([
+                'resident_id'    => $user->resident->resident_id,
+                'document_id'    => $docType->document_id,
+                'status_id'      => $pendingStatus->status_id,
+                'purpose'        => $validated['purpose'],
+                'request_date'   => now(),
+                'payment_status' => false,
+            ]);
+
+            if (!empty($formData)) {
+                $validFieldIds = $docType->formFields()->pluck('field_id')->toArray();
+                foreach ($formData as $entry) {
+                    $fieldId = (int) ($entry['field_id'] ?? 0);
+                    if (!in_array($fieldId, $validFieldIds)) continue;
+                    RequestFormData::create([
+                        'request_id'  => $docRequest->request_id,
+                        'field_id'    => $fieldId,
+                        'field_value' => $entry['field_value'] ?? '',
+                    ]);
+                }
+            }
+
+            ActionLog::create([
+                'user_id'    => $user->user_id,
+                'request_id' => $docRequest->request_id,
+                'action'     => 'submitted_request',
+                'details'    => "Submitted request for: {$docType->document_name} (Request ID: {$docRequest->request_id})",
+            ]);
+
+            return response()->json(
+                $docRequest->load(['status', 'documentType', 'formData.fieldDefinition']),
+                201
+            );
+        });
     }
 }

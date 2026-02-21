@@ -75,12 +75,14 @@ function formatDate(dateStr) {
 
 function getBlockedStatus(doc, existingRequests) {
   if (!existingRequests?.length) return null;
-  const match = existingRequests.find(
-    (r) =>
-      r.document_id === doc.document_id &&
-      STATUS_BLOCKED.includes(r.status?.toLowerCase()),
-  );
-  return match ? match.status?.toLowerCase() : null;
+  const match = existingRequests.find((r) => {
+    if (r.document_id !== doc.document_id) return false;
+    // status is a relation object: { status_id, status_name, ... }
+    const statusName = (r.status?.status_name ?? "").toLowerCase();
+    return STATUS_BLOCKED.includes(statusName);
+  });
+  if (!match) return null;
+  return (match.status?.status_name ?? "").toLowerCase();
 }
 
 // ─── Read-only input field ────────────────────────────────────────────────────
@@ -552,18 +554,23 @@ const NewRequest = () => {
     setIsSubmitting(true);
     try {
       const payload = {
-        resident_id: user.resident.resident_id,
         document_id: selectedDoc.document_id,
         purpose,
-        form_data: Object.entries(formValues).map(([field_id, value]) => ({
-          field_id: parseInt(field_id),
-          value,
-        })),
+        // field_value is what the controller and RequestFormData model expect
+        form_data: Object.entries(formValues)
+          .filter(([, value]) => value !== "") // skip blank optional fields
+          .map(([field_id, field_value]) => ({
+            field_id: parseInt(field_id),
+            field_value,
+          })),
       };
 
-      await api.post("/request-document", payload);
+      await api.post("/submit-document", payload, {
+        headers: { "Content-Type": "application/json" },
+      });
 
-      const reqsRes = await api.get("/request-document");
+      // Refresh using the correct endpoint
+      const reqsRes = await api.get("/current-request");
       setExistingRequests(
         Array.isArray(reqsRes.data) ? reqsRes.data : (reqsRes.data?.data ?? []),
       );

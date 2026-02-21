@@ -44,6 +44,10 @@ class DocumentRequest extends Model
     {
         return $this->belongsTo(User::class, 'last_updated_by', 'user_id');
     }
+    public function documentType()
+{
+    return $this->belongsTo(DocumentType::class, 'document_id', 'document_id');
+}
     public function formData()
     {
         return $this->hasMany(RequestFormData::class, 'request_id', 'request_id');
