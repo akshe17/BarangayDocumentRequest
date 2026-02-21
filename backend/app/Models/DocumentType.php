@@ -9,7 +9,7 @@ class DocumentType extends Model
     protected $table = 'document_types';
     protected $primaryKey = 'document_id';
     
-    protected $fillable = ['document_name', 'fee', 'in_use'];
+    protected $fillable = ['document_name', 'fee', 'in_use',   'template_path'];
 
     public function requirements()
     {
