@@ -23,9 +23,13 @@ const ResidentHistory = () => {
     setIsLoading(true);
     setError(null);
     try {
-      const response = await api.get("/request-document/history");
-      console.log("API Response:", response.data);
-      setHistoryData(response.data);
+      // Points to the history endpoint in your DocumentController
+      const response = await api.get("/request-history");
+      // If your backend wraps data in a 'data' property, use response.data.data
+      const data = Array.isArray(response.data)
+        ? response.data
+        : (response.data?.data ?? []);
+      setHistoryData(data);
     } catch (err) {
       console.error("Error fetching history:", err);
       setError("Failed to load request history.");
@@ -55,7 +59,7 @@ const ResidentHistory = () => {
           </p>
         </div>
 
-        {/* REFINED TAB FILTER */}
+        {/* TAB FILTER */}
         <div className="flex bg-white p-1 rounded-xl border border-gray-200 shadow-sm">
           {["All", "Pending", "Approved", "Completed", "Rejected"].map(
             (tab) => (
@@ -75,7 +79,7 @@ const ResidentHistory = () => {
         </div>
       </div>
 
-      {/* LOADING STATE */}
+      {/* CONTENT */}
       {isLoading ? (
         <div className="text-center py-20">
           <Loader2
@@ -87,7 +91,6 @@ const ResidentHistory = () => {
           </p>
         </div>
       ) : error ? (
-        /* ERROR STATE */
         <div className="py-20 text-center bg-red-50 border border-red-200 rounded-3xl">
           <AlertCircle size={40} className="mx-auto text-red-400 mb-4" />
           <p className="text-sm font-medium text-red-600">{error}</p>
@@ -99,20 +102,13 @@ const ResidentHistory = () => {
           </button>
         </div>
       ) : (
-        /* HISTORY CARDS */
         <div className="space-y-4">
           {filteredData.length > 0 ? (
             filteredData.map((req) => {
-              const items = req.items || [];
-              const itemCount = items.length;
-
-              // Calculate total fee from items
-              const totalFee = items.reduce(
-                (acc, item) =>
-                  acc +
-                  parseFloat(item.document?.fee || 0) * (item.quantity || 1),
-                0,
-              );
+              // FIX: Access documentType directly from the Laravel 'with' relation
+              const docName =
+                req.document_type?.document_name || "Unknown Document";
+              const docFee = parseFloat(req.document_type?.fee || 0);
 
               return (
                 <div
@@ -128,7 +124,6 @@ const ResidentHistory = () => {
                         <FileText size={24} />
                       </div>
                       <div className="flex-1">
-                        {/* Request ID and Date */}
                         <div className="flex items-center gap-3 mb-2">
                           <span className="text-xs font-bold text-gray-400 uppercase tracking-wider">
                             Request #{req.request_id}
@@ -147,45 +142,17 @@ const ResidentHistory = () => {
                           </span>
                         </div>
 
-                        {/* Document List */}
-                        <div className="space-y-1">
-                          {itemCount === 0 ? (
-                            <p className="text-sm text-gray-400 italic">
-                              No documents
-                            </p>
-                          ) : (
-                            items.map((item, idx) => (
-                              <div
-                                key={idx}
-                                className="flex items-center gap-2 text-sm"
-                              >
-                                <span className="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
-                                <span className="font-semibold text-gray-900">
-                                  {item.document?.document_name ||
-                                    "Unknown Document"}
-                                </span>
-                                {item.quantity > 1 && (
-                                  <span className="text-xs text-gray-400 font-medium">
-                                    (x{item.quantity})
-                                  </span>
-                                )}
-                              </div>
-                            ))
-                          )}
-                        </div>
-
-                        {/* Document count badge */}
-                        <div className="mt-2">
-                          <span className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-gray-100 rounded-full text-[10px] font-bold text-gray-600 uppercase tracking-wider">
-                            <FileText size={10} />
-                            {itemCount}{" "}
-                            {itemCount === 1 ? "Document" : "Documents"}
-                          </span>
+                        {/* DISPLAY DOCUMENT NAME */}
+                        <div className="flex items-center gap-2">
+                          <span className="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
+                          <h3 className="font-bold text-gray-900 text-base leading-tight">
+                            {docName}
+                          </h3>
                         </div>
                       </div>
                     </div>
 
-                    {/* PURPOSE */}
+                    {/* PURPOSE (Desktop Only) */}
                     <div className="hidden lg:block flex-1 border-l border-gray-100 pl-6">
                       <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1">
                         Purpose
@@ -199,10 +166,14 @@ const ResidentHistory = () => {
                     <div className="flex items-center justify-between lg:justify-end gap-6 border-t lg:border-t-0 border-gray-50 pt-4 lg:pt-0">
                       <div className="text-right">
                         <p className="text-[10px] font-bold text-gray-400 uppercase">
-                          Total Fee
+                          Processing Fee
                         </p>
                         <p className="text-lg font-black text-gray-900">
-                          ₱{totalFee.toFixed(2)}
+                          ₱
+                          {docFee.toLocaleString(undefined, {
+                            minimumFractionDigits: 2,
+                            maximumFractionDigits: 2,
+                          })}
                         </p>
                       </div>
 

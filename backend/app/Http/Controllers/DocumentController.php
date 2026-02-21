@@ -63,7 +63,7 @@ class DocumentController extends Controller
         $alreadyActive = DocumentRequest::where('resident_id', $user->resident->resident_id)
             ->where('document_id', $docType->document_id)
             ->whereHas('status', function ($q) {
-                $q->whereIn(DB::raw('LOWER(status_name)'), ['pending', 'processing', 'approved']);
+                $q->whereIn(DB::raw('LOWER(status_name)'), ['pending',  'approved', 'ready for pickup', ]);
             })
             ->exists();
 
@@ -114,4 +114,27 @@ class DocumentController extends Controller
             );
         });
     }
+
+    public function getHistory()
+{
+    $user = auth()->user();
+
+    // 1. Safety check for resident profile
+    if (!$user || !$user->resident) {
+        return response()->json(['message' => 'Resident profile not found.'], 404);
+    }
+
+    // 2. Fetch requests with relationships matching your 'storeRequest' load
+    $history = DocumentRequest::where('resident_id', $user->resident->resident_id)
+        ->with([
+            'status', 
+            'documentType', 
+            'formData.fieldDefinition'
+        ])
+        ->orderBy('request_date', 'desc')
+        ->get();
+
+    // 3. Return as a clean array (React's fetchAll will handle the mapping)
+    return response()->json($history, 200);
+}
 }

@@ -67,10 +67,11 @@ Route::put('document-types/{id}',  [AdminDocumentController::class, 'update']);
      Route::get('/documents',         [DocumentController::class, 'index']);
     Route::get('/current-request',   [DocumentController::class, 'residentCurrentRequest']);
     Route::post('/submit-document', [DocumentController::class, 'storeRequest']);
-
+Route::get('/request-history', [DocumentController::class, 'getHistory']); // Add this
  
   Route::post('/request-document', [DocumentRequestController::class, 'store']);
-  Route::get('/request-document/history', [DocumentRequestController::class, 'getHistory']);
+
+
   Route::get('/resident/dashboard', [DocumentRequestController::class, 'getDashboardStats']);
 //ADMIN
 Route::get('/admin/users', [AdminUserController::class, 'index']);
