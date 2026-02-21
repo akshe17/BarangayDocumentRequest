@@ -68,6 +68,7 @@ Route::post('/documents', [DocumentController::class, 'store']);
 Route::put('/documents/{id}', [DocumentController::class, 'update']);
 Route::delete('/documents/{id}', [DocumentController::class, 'destroy']);
 
+   Route::get('/current-request', [DocumentController::class, 'residentCurrentRequest']);
 
   Route::post('/request-document', [DocumentRequestController::class, 'store']);
   Route::get('/request-document/history', [DocumentRequestController::class, 'getHistory']);

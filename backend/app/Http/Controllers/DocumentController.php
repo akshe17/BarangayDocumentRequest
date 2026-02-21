@@ -3,17 +3,32 @@ namespace App\Http\Controllers;
 
 use App\Models\DocumentType;
 use App\Models\DocumentRequirement;
+use App\Models\DocumentRequest;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 
 class DocumentController extends Controller
 {
-    public function index()
-    {
-        // Fetch all documents with their requirements
-        return DocumentType::with('requirements')->get();
+   public function index()
+{
+    // Fetch active documents with their requirements AND form fields
+    return DocumentType::where('in_use', true)
+        ->with(['requirements', 'formFields']) 
+        ->get();
+}
+public function residentCurrentRequest()
+{
+    $user = auth()->user();
+    if (!$user || !$user->resident) {
+        return response()->json(['error' => 'Resident profile not found'], 404);
     }
 
+    $residentId = $user->resident->resident_id;
+    return DocumentRequest::where('resident_id', $residentId)
+            ->with(['status', 'formData'])
+            ->orderBy('created_at', 'desc')
+            ->get();
+}
     public function store(Request $request)
     {
         $validated = $request->validate([
