@@ -134,7 +134,12 @@ class DocumentController extends Controller
         }
     }
 
-    
+    // In a Controller (e.g., ActionLogController)
+public function getResidentLogs() {
+    return ActionLog::where('user_id', auth()->id())
+        ->orderBy('created_at', 'desc')
+        ->get();
+}
 public function getResidentDashboard()
     {
         try {
