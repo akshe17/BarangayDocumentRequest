@@ -8,7 +8,7 @@ use App\Models\RequestStatus;
 use App\Models\ActionLog;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
-
+use Illuminate\Support\Facades\Auth;
 class DocumentController extends Controller
 {
     /**
@@ -144,4 +144,49 @@ public function getResidentLogs() {
         ->orderBy('created_at', 'desc')
         ->get();
 }
+public function getResidentDashboard()
+    {
+        try {
+            $user = Auth::user();
+
+            if (!$user || !$user->resident) {
+                return response()->json(['message' => 'Resident profile not found.'], 404);
+            }
+
+            $residentId = $user->resident->resident_id;
+
+            // Aggregate Stats - Includes the new status ID 5
+            $stats = DocumentRequest::where('resident_id', $residentId)
+                ->selectRaw("
+                    COUNT(*) as total,
+                    SUM(CASE WHEN status_id = 1 THEN 1 ELSE 0 END) as pending,
+                    SUM(CASE WHEN status_id = 2 THEN 1 ELSE 0 END) as approved,
+                    SUM(CASE WHEN status_id = 3 THEN 1 ELSE 0 END) as completed,
+                    SUM(CASE WHEN status_id = 4 THEN 1 ELSE 0 END) as rejected,
+                    SUM(CASE WHEN status_id = 5 THEN 1 ELSE 0 END) as ready
+                ")
+                ->first();
+
+            // Fetch 5 Most Recent Requests with correct relationships
+            $recentRequests = DocumentRequest::with(['status', 'documentType'])
+                ->where('resident_id', $residentId)
+                ->orderBy('created_at', 'desc')
+                ->take(5)
+                ->get();
+
+            return response()->json([
+                'stats' => [
+                    'total'     => (int)($stats->total ?? 0),
+                    'pending'   => (int)($stats->pending ?? 0),
+                    'approved'  => (int)($stats->approved ?? 0),
+                    'completed' => (int)($stats->completed ?? 0),
+                    'rejected'  => (int)($stats->rejected ?? 0),
+                    'ready'     => (int)($stats->ready ?? 0),
+                ],
+                'recent_requests' => $recentRequests
+            ]);
+        } catch (\Exception $e) {
+            return response()->json(['message' => 'Server Error', 'error' => $e->getMessage()], 500);
+        }
+    }
 }

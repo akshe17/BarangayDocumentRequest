@@ -10,7 +10,8 @@ import {
   Loader2,
   TrendingUp,
   CalendarDays,
-  XCircle, // ADDED ICON
+  XCircle,
+  PackageCheck,
 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../../context/AuthContext";
@@ -20,7 +21,6 @@ const ResidentDashboard = () => {
   const navigate = useNavigate();
   const { user } = useAuth();
   const [videoError, setVideoError] = useState(false);
-
   const [dashboardData, setDashboardData] = useState({
     stats: {
       total: 0,
@@ -28,261 +28,193 @@ const ResidentDashboard = () => {
       approved: 0,
       completed: 0,
       rejected: 0,
+      ready: 0,
     },
     recent_requests: [],
   });
-
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState(null);
 
   useEffect(() => {
-    if (user) {
-      fetchDashboardData();
-    }
+    if (user) fetchDashboardData();
   }, [user]);
 
   const fetchDashboardData = async () => {
-    setIsLoading(true);
-    setError(null);
     try {
-      const response = await api.get("/resident/dashboard");
-      setDashboardData(response.data);
+      setIsLoading(true);
+      const { data } = await api.get("/resident/dashboard");
+      setDashboardData(data);
     } catch (err) {
-      console.error("Error fetching dashboard data:", err);
-      setError("Failed to load dashboard data.");
+      setError("Unable to sync dashboard data.");
     } finally {
       setIsLoading(false);
     }
   };
 
-  if (!user) {
-    return (
-      <div className="flex items-center justify-center min-h-[400px]">
-        <Loader2 className="w-8 h-8 animate-spin text-emerald-600" />
-      </div>
-    );
-  }
-
-  // Define status mapping for icons and colors
   const statusConfig = {
-    Completed: {
-      icon: CheckCircle2,
-      color: "text-emerald-700",
-      bg: "bg-emerald-50",
-      border: "border-emerald-100",
-    },
-    Approved: {
-      icon: CheckCircle2,
-      color: "text-blue-700",
-      bg: "bg-blue-50",
-      border: "border-blue-100",
-    },
     Pending: {
       icon: Clock,
-      color: "text-amber-700",
+      color: "text-amber-600",
       bg: "bg-amber-50",
       border: "border-amber-100",
     },
+    Approved: {
+      icon: CheckCircle2,
+      color: "text-blue-600",
+      bg: "bg-blue-50",
+      border: "border-blue-100",
+    },
+    Completed: {
+      icon: CheckCircle2,
+      color: "text-emerald-600",
+      bg: "bg-emerald-50",
+      border: "border-emerald-100",
+    },
     Rejected: {
-      icon: XCircle, // Updated Icon
-      color: "text-red-700",
+      icon: XCircle,
+      color: "text-red-600",
       bg: "bg-red-50",
       border: "border-red-100",
     },
-  };
-
-  const formatDate = (dateString) => {
-    return new Date(dateString).toLocaleDateString("en-US", {
-      month: "short",
-      day: "numeric",
-      year: "numeric",
-    });
+    "Ready for Pickup": {
+      icon: PackageCheck,
+      color: "text-indigo-600",
+      bg: "bg-indigo-50",
+      border: "border-indigo-100",
+    },
   };
 
   return (
-    <div className="space-y-8 bg-white animate-in fade-in duration-500">
-      {/* HERO SECTION WITH VIDEO BACKGROUND */}
-      <div className="relative bg-gradient-to-br from-emerald-600 to-emerald-700 rounded-3xl p-10 text-white overflow-hidden">
-        {/* Video Background */}
+    <div className="max-w-7xl mx-auto space-y-6 p-4 md:p-8 animate-in fade-in slide-in-from-bottom-4 duration-700">
+      {/* HERO SECTION */}
+      <div className="relative overflow-hidden rounded-[2rem] shadow-xl">
         {!videoError && (
           <video
             autoPlay
             loop
             muted
             playsInline
-            onError={() => {
-              console.error("Video failed to load");
-              setVideoError(true);
-            }}
             className="absolute inset-0 w-full h-full object-cover"
+            onError={() => setVideoError(true)}
           >
             <source src={bonbonVideo} type="video/mp4" />
           </video>
         )}
+        <div className="absolute inset-0 bg-gradient-to-r from-emerald-950 via-emerald-900/80 to-transparent"></div>
 
-        {/* Gradient Overlay */}
-        <div className="absolute inset-0 bg-gradient-to-br from-emerald-600/90 via-emerald-700/85 to-emerald-800/90"></div>
-
-        {/* Content */}
-        <div className="relative z-10">
-          <div className="flex items-center gap-2 mb-4">
-            <CalendarDays size={18} className="text-emerald-200" />
-            <p className="text-emerald-100 font-semibold text-sm">
-              {new Date().toLocaleDateString("en-US", {
-                weekday: "long",
-                year: "numeric",
-                month: "long",
-                day: "numeric",
-              })}
-            </p>
+        <div className="relative z-10 p-8 md:p-14">
+          <div className="flex items-center gap-2 mb-4 text-emerald-200/80 text-xs font-bold uppercase tracking-widest">
+            <CalendarDays size={14} />
+            {new Date().toLocaleDateString("en-US", {
+              month: "long",
+              day: "numeric",
+              year: "numeric",
+            })}
           </div>
-          <h1 className="text-4xl font-bold tracking-tight mb-2">
-            Welcome back, {user.resident.first_name}!
+          <h1 className="text-3xl md:text-5xl font-black text-white mb-3">
+            Mabuhay, {user?.first_name}!
           </h1>
-          <p className="text-emerald-50 text-base font-medium max-w-2xl leading-relaxed">
-            Track your document requests, check application status, and submit
-            new requests all in one place.
+          <p className="text-emerald-50/70 text-sm md:text-base max-w-lg mb-8">
+            Manage your document requests and track barangay clearances in
+            real-time.
           </p>
           <button
             onClick={() => navigate("/resident/new-request")}
-            className="mt-6 bg-white text-emerald-700 px-6 py-3 rounded-xl font-semibold text-sm hover:bg-emerald-50 transition-all flex items-center gap-2 shadow-lg hover:shadow-xl"
+            className="bg-white text-emerald-900 px-6 py-3.5 rounded-xl font-bold text-sm hover:scale-105 transition-all flex items-center gap-2 shadow-lg"
           >
             <PlusCircle size={18} />
-            Request New Document
+            New Request
           </button>
         </div>
       </div>
 
-      {/* STATS SECTION */}
-      {isLoading ? (
-        <div className="flex justify-center py-10">
-          <Loader2 className="w-8 h-8 animate-spin text-emerald-600" />
-        </div>
-      ) : (
-        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-6">
-          <StatCard
-            icon={<TrendingUp size={22} className="text-gray-600" />}
-            label="Total"
-            value={dashboardData.stats.total.toString().padStart(2, "0")}
-            bgColor="bg-gray-50"
-            borderColor="border-gray-100"
-          />
-          <StatCard
-            icon={<Clock size={22} className="text-amber-600" />}
-            label="Pending"
-            value={dashboardData.stats.pending.toString().padStart(2, "0")}
-            bgColor="bg-amber-50"
-            borderColor="border-amber-100"
-          />
-          <StatCard
-            icon={<CheckCircle2 size={22} className="text-blue-600" />}
-            label="Approved"
-            value={dashboardData.stats.approved.toString().padStart(2, "0")}
-            bgColor="bg-blue-50"
-            borderColor="border-blue-100"
-          />
-          <StatCard
-            icon={<CheckCircle2 size={22} className="text-emerald-600" />}
-            label="Completed"
-            value={dashboardData.stats.completed.toString().padStart(2, "0")}
-            bgColor="bg-emerald-50"
-            borderColor="border-emerald-100"
-          />
-          <StatCard
-            icon={<XCircle size={22} className="text-red-600" />}
-            label="Rejected"
-            value={dashboardData.stats.rejected.toString().padStart(2, "0")}
-            bgColor="bg-red-50"
-            borderColor="border-red-100"
-          />
-        </div>
-      )}
+      {/* STATS GRID - COMPACT 5-COL */}
+      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
+        <StatCard
+          icon={<TrendingUp />}
+          label="Total"
+          value={dashboardData.stats.total}
+          color="gray"
+        />
+        <StatCard
+          icon={<Clock />}
+          label="Pending"
+          value={dashboardData.stats.pending}
+          color="amber"
+        />
+        <StatCard
+          icon={<PackageCheck />}
+          label="Pick-up"
+          value={dashboardData.stats.ready}
+          color="indigo"
+        />
+        <StatCard
+          icon={<CheckCircle2 />}
+          label="Completed"
+          value={dashboardData.stats.completed}
+          color="emerald"
+        />
+        <StatCard
+          icon={<XCircle />}
+          label="Rejected"
+          value={dashboardData.stats.rejected}
+          color="red"
+        />
+      </div>
 
-      {/* RECENT ACTIVITY SECTION */}
-      <div className="bg-white rounded-2xl border border-gray-100 overflow-hidden">
-        <div className="p-6 border-b border-gray-100 flex justify-between items-center">
-          <div>
-            <h3 className="text-lg font-bold text-gray-900">
-              Recent Applications
-            </h3>
-            <p className="text-sm text-gray-500 mt-1">
-              Track your latest document requests
-            </p>
-          </div>
+      {/* RECENT ACTIVITY */}
+      <div className="bg-white rounded-3xl border border-gray-100 shadow-sm overflow-hidden">
+        <div className="px-8 py-6 border-b border-gray-50 flex justify-between items-center">
+          <h3 className="font-black text-gray-900 tracking-tight">
+            Recent Applications
+          </h3>
           <button
             onClick={() => navigate("/resident/history")}
-            className="text-sm font-semibold text-emerald-600 hover:text-emerald-700 hover:underline"
+            className="text-xs font-bold text-emerald-600 hover:underline"
           >
-            View All →
+            VIEW ALL
           </button>
         </div>
 
-        <div className="divide-y divide-gray-100">
+        <div className="divide-y divide-gray-50">
           {isLoading ? (
-            <div className="p-10 text-center">
-              <Loader2 className="w-8 h-8 animate-spin text-emerald-600 mx-auto mb-2" />
-              <p className="text-sm text-gray-500">
-                Loading recent requests...
-              </p>
-            </div>
-          ) : error ? (
-            <div className="p-10 text-center text-red-500">
-              <AlertTriangle className="w-8 h-8 mx-auto mb-2" />
-              <p className="text-sm">{error}</p>
-            </div>
-          ) : dashboardData.recent_requests.length === 0 ? (
-            <div className="p-10 text-center text-gray-400">
-              <FileText className="w-12 h-12 mx-auto mb-3 text-gray-300" />
-              <p className="text-sm font-medium">No requests yet</p>
-              <p className="text-xs mt-1">
-                Start by requesting your first document
-              </p>
+            <div className="p-20 flex justify-center">
+              <Loader2 className="animate-spin text-emerald-500" />
             </div>
           ) : (
             dashboardData.recent_requests.map((req) => {
-              const statusName = req.status?.status_name || "Pending";
-              const statusInfo =
-                statusConfig[statusName] || statusConfig.Pending;
-              const StatusIcon = statusInfo.icon;
-
-              const items = req.items || [];
-              const documentName =
-                items.length === 1
-                  ? items[0].document?.document_name
-                  : `${items.length} Documents`;
-
+              const status = req.status?.status_name || "Pending";
+              const config = statusConfig[status] || statusConfig.Pending;
               return (
                 <div
                   key={req.request_id}
-                  onClick={() => navigate("/resident/history")}
-                  className="p-5 flex items-center justify-between hover:bg-gray-50 transition-colors cursor-pointer group"
+                  className="p-5 flex items-center justify-between hover:bg-gray-50/50 transition-all group"
                 >
                   <div className="flex items-center gap-4">
                     <div
-                      className={`w-12 h-12 rounded-xl ${statusInfo.bg} flex items-center justify-center ${statusInfo.color} border ${statusInfo.border} transition-transform group-hover:scale-105`}
+                      className={`w-12 h-12 rounded-xl ${config.bg} ${config.color} flex items-center justify-center border ${config.border}`}
                     >
-                      <FileText size={22} strokeWidth={2} />
+                      <FileText size={20} />
                     </div>
                     <div>
-                      <p className="text-sm font-semibold text-gray-900">
-                        {documentName}
-                      </p>
-                      <p className="text-xs text-gray-500 font-medium mt-1">
-                        REQ-{req.request_id} • {formatDate(req.request_date)}
+                      <h4 className="font-bold text-sm text-gray-900">
+                        {req.document_type?.document_name}
+                      </h4>
+                      <p className="text-[10px] font-bold text-gray-400 uppercase tracking-tighter">
+                        REQ-{req.request_id} •{" "}
+                        {new Date(req.created_at).toLocaleDateString()}
                       </p>
                     </div>
                   </div>
-
                   <div className="flex items-center gap-4">
                     <span
-                      className={`px-3 py-1.5 rounded-full text-xs font-bold flex items-center gap-1.5 ${statusInfo.bg} ${statusInfo.color} border ${statusInfo.border}`}
+                      className={`px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-tighter ${config.bg} ${config.color} border ${config.border}`}
                     >
-                      <StatusIcon size={14} />
-                      {statusName}
+                      {status}
                     </span>
                     <ChevronRight
                       size={18}
-                      className="text-gray-300 group-hover:text-gray-400 transition-colors"
+                      className="text-gray-300 group-hover:translate-x-1 transition-all"
                     />
                   </div>
                 </div>
@@ -295,20 +227,29 @@ const ResidentDashboard = () => {
   );
 };
 
-const StatCard = ({ icon, label, value, bgColor, borderColor }) => (
-  <div className="bg-white p-6 rounded-2xl border border-gray-100 flex flex-col gap-4 hover:border-gray-200 transition-all">
-    <div
-      className={`w-12 h-12 rounded-xl ${bgColor} border ${borderColor} flex items-center justify-center`}
-    >
-      {icon}
-    </div>
-    <div>
-      <p className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-1">
+const StatCard = ({ icon, label, value, color }) => {
+  const themes = {
+    emerald: "bg-emerald-50 text-emerald-600 border-emerald-100",
+    amber: "bg-amber-50 text-amber-600 border-amber-100",
+    indigo: "bg-indigo-50 text-indigo-600 border-indigo-100",
+    red: "bg-red-50 text-red-600 border-red-100",
+    gray: "bg-gray-50 text-gray-600 border-gray-100",
+  };
+  return (
+    <div className="bg-white p-4 rounded-2xl border border-gray-100 hover:border-emerald-200 transition-all group">
+      <div
+        className={`w-10 h-10 rounded-xl mb-3 flex items-center justify-center ${themes[color]}`}
+      >
+        {React.cloneElement(icon, { size: 20 })}
+      </div>
+      <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1">
         {label}
       </p>
-      <p className="text-3xl font-bold text-gray-950">{value}</p>
+      <p className="text-2xl font-black text-gray-950">
+        {value.toString().padStart(2, "0")}
+      </p>
     </div>
-  </div>
-);
+  );
+};
 
 export default ResidentDashboard;

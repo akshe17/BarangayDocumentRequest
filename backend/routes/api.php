@@ -65,6 +65,7 @@ Route::put('document-types/{id}',  [AdminDocumentController::class, 'update']);
 //resident document
 
      Route::get('/documents',         [DocumentController::class, 'index']);
+       Route::get('/resident/dashboard',         [DocumentController::class, 'getResidentDashboard']);
          Route::get('/resident-logs', [DocumentController::class, 'getResidentLogs']);
     Route::get('/current-request',   [DocumentController::class, 'residentCurrentRequest']);
     Route::post('/submit-document', [DocumentController::class, 'storeRequest']);
@@ -74,7 +75,6 @@ Route::get('/request-history', [DocumentController::class, 'getHistory']); // Ad
   Route::post('/request-document', [DocumentRequestController::class, 'store']);
 
 
-  Route::get('/resident/dashboard', [DocumentRequestController::class, 'getDashboardStats']);
 //ADMIN
 Route::get('/admin/users', [AdminUserController::class, 'index']);
     Route::post('/admin/users', [AdminUserController::class, 'store']);
