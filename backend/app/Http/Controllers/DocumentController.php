@@ -137,4 +137,11 @@ class DocumentController extends Controller
     // 3. Return as a clean array (React's fetchAll will handle the mapping)
     return response()->json($history, 200);
 }
+
+// In a Controller (e.g., ActionLogController)
+public function getResidentLogs() {
+    return ActionLog::where('user_id', auth()->id())
+        ->orderBy('created_at', 'desc')
+        ->get();
+}
 }
