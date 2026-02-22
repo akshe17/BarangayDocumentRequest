@@ -38,7 +38,7 @@ const todayStr = () => new Date().toISOString().split("T")[0];
 
 const openDoc = (p) =>
   window.open(
-    `${window.location.origin}/storage/${p}`,
+    `http://127.0.0.1:8000/storage/${p}`,
     "_blank",
     "noopener,noreferrer",
   );
