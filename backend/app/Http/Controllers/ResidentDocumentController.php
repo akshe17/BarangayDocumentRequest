@@ -60,12 +60,22 @@ class ResidentDocumentController extends Controller
             return response()->json(['message' => 'Document not found or no longer available.'], 404);
         }
 
-        $alreadyActive = DocumentRequest::where('resident_id', $user->resident->resident_id)
-            ->where('document_id', $docType->document_id)
-            ->whereHas('status', function ($q) {
-                $q->whereIn(DB::raw('LOWER(status_name)'), ['pending',  'approved', 'ready for pickup', ]);
-            })
-            ->exists();
+    $alreadyActive = DocumentRequest::where('resident_id', $user->resident->resident_id)
+    ->where('document_id', $docType->document_id)
+    ->whereHas('status', function ($q) {
+        $q->where(function ($sub) {
+            // 1. Check by IDs (Most reliable)
+            // Based on your dashboard method: 1=pending, 2=approved, 5=ready
+            $sub->whereIn('status_id', [1, 2, 5]) 
+                // 2. OR Check by Name (Backup in case IDs change)
+                ->orWhereIn(DB::raw('LOWER(TRIM(status_name))'), [
+                    'pending', 
+                    'approved', 
+                    'ready for pickup'
+                ]);
+        });
+    })
+    ->exists();
 
         if ($alreadyActive) {
             return response()->json(['message' => 'You already have an active request for this document.'], 422);

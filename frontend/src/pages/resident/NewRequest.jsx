@@ -17,7 +17,13 @@ import { useAuth } from "../../context/AuthContext";
 
 // ─── helpers ────────────────────────────────────────────────────────────────
 
-const STATUS_BLOCKED = ["pending", "processing", "approved"];
+// Change this line (around line 19)
+const STATUS_BLOCKED = [
+  "pending",
+  "processing",
+  "approved",
+  "ready for pickup",
+];
 const STATUS_ALLOWED = ["rejected", "completed"];
 
 const statusMeta = {

@@ -162,6 +162,9 @@ Route::get('/resident/notifications', [ResidentNotificationController::class, 'i
         // (Typically called by a scheduler, but exposed here for manual trigger / testing)
         Route::post('/process-scheduled', [ClerkController::class, 'processScheduled']);
     });
+
+    Route::get('/clerk/template', [ClerkController::class, 'serveTemplate']);
+
 });
 
 

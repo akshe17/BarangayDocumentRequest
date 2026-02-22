@@ -21,6 +21,8 @@ import {
   ChevronDown,
 } from "lucide-react";
 import api from "../../axious/api";
+// 1. Import the hook
+import { useFillDocument } from "../../utils/UseFillDocument";
 
 /* ─────────────────────────────────────────────────────────────
    HELPERS
@@ -36,23 +38,6 @@ const fmt = (d) =>
 
 const todayStr = () => new Date().toISOString().split("T")[0];
 
-const openDoc = (p) =>
-  window.open(
-    `http://127.0.0.1:8000/storage/${p}`,
-    "_blank",
-    "noopener,noreferrer",
-  );
-
-const downloadDoc = (p, name) => {
-  const a = document.createElement("a");
-  a.href = `${window.location.origin}/storage/${p}`;
-  a.download = name || p.split("/").pop();
-  a.target = "_blank";
-  document.body.appendChild(a);
-  a.click();
-  document.body.removeChild(a);
-};
-
 /* ─────────────────────────────────────────────────────────────
    STATUS
 ───────────────────────────────────────────────────────────── */
@@ -64,6 +49,10 @@ const STATUS = {
     cls: "bg-emerald-50 text-emerald-700 border-emerald-200",
   },
   4: { label: "Rejected", cls: "bg-red-50 text-red-700 border-red-200" },
+  5: {
+    label: "Ready for Pickup",
+    cls: "bg-emerald-50 text-emerald-700 border-emerald-200",
+  },
 };
 
 const StatusPill = ({ statusId }) => {
@@ -118,7 +107,7 @@ const Toast = ({ toast }) => {
   if (!toast) return null;
   return (
     <div
-      className={`fixed top-5 right-5 z-50 flex items-center gap-2.5 px-5 py-3 rounded-2xl text-sm font-bold shadow-lg
+      className={`fixed top-5 right-5 z-[100] flex items-center gap-2.5 px-5 py-3 rounded-2xl text-sm font-bold shadow-lg
       ${toast.type === "error" ? "bg-red-500 text-white" : "bg-emerald-500 text-white"}`}
     >
       {toast.type === "error" ? (
@@ -196,6 +185,9 @@ const DetailView = ({ requestId, onBack }) => {
   const [showReject, setShowReject] = useState(false);
   const [toast, setToast] = useState(null);
 
+  // 2. Initialize the PDF filling hook
+  const { fill, filling } = useFillDocument();
+
   const notify = (msg, type = "success") => {
     setToast({ msg, type });
     setTimeout(() => setToast(null), 3500);
@@ -254,7 +246,7 @@ const DetailView = ({ requestId, onBack }) => {
   const zone = user?.zone;
   const doc = data.document_type;
   const isPending = data.status_id === 1;
-  const isApprovedOrReady = data.status_id === 2 || data.status_id === 3;
+  const isApprovedOrReady = data.status_id === 2 || data.status_id === 5;
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -289,9 +281,7 @@ const DetailView = ({ requestId, onBack }) => {
 
       {/* Body */}
       <div className="max-w-2xl mx-auto px-6 py-12 space-y-0">
-        {/* ── 1. Resident ── */}
         <section>
-          {/* Name + avatar */}
           <div className="flex items-center gap-5 mb-10">
             <div className="w-14 h-14 rounded-2xl bg-emerald-500 flex items-center justify-center shrink-0">
               <span className="text-white font-black text-xl select-none tracking-tight">
@@ -312,7 +302,6 @@ const DetailView = ({ requestId, onBack }) => {
             </div>
           </div>
 
-          {/* ── 5. Summary ── */}
           <div className="flex flex-col">
             <SectionTitle>Request Information</SectionTitle>
             <div className="grid grid-cols-3 gap-5 pt-2">
@@ -352,7 +341,6 @@ const DetailView = ({ requestId, onBack }) => {
 
         <Divider />
 
-        {/* ── 2. Form answers ── */}
         <section>
           <div className="flex items-baseline justify-between mb-6">
             <SectionTitle>{doc?.document_name ?? "Document"}</SectionTitle>
@@ -388,12 +376,9 @@ const DetailView = ({ requestId, onBack }) => {
 
         <Divider />
 
-        {/* ── 3. Clerk actions ── */}
         {isPending && (
           <section>
             <SectionTitle>Clerk Decision</SectionTitle>
-
-            {/* Info box */}
             <div className="bg-amber-50 border border-amber-100 rounded-2xl p-4 mb-6">
               <p className="text-[10px] font-black text-amber-700 tracking-widest uppercase mb-2">
                 Pickup Date Behavior
@@ -407,7 +392,6 @@ const DetailView = ({ requestId, onBack }) => {
               </p>
             </div>
 
-            {/* Date + approve row */}
             <div className="grid grid-cols-1 gap-3 mb-3">
               <div>
                 <Label>Pickup Date (optional)</Label>
@@ -443,7 +427,6 @@ const DetailView = ({ requestId, onBack }) => {
               </div>
             </div>
 
-            {/* Reject */}
             <button
               onClick={() => setShowReject(true)}
               disabled={busy}
@@ -456,11 +439,11 @@ const DetailView = ({ requestId, onBack }) => {
           </section>
         )}
 
-        {/* ── 4. Post-approval ── */}
+        {/* ── 3. Post-approval Action Area ── */}
         {isApprovedOrReady && (
           <>
             <section>
-              <SectionTitle>Status & Document</SectionTitle>
+              <SectionTitle>Print & Issuance</SectionTitle>
 
               <div className="flex gap-4 mb-6">
                 <div className="flex-1 bg-white border border-gray-100 rounded-2xl px-5 py-4">
@@ -486,30 +469,35 @@ const DetailView = ({ requestId, onBack }) => {
                         {doc.document_name}
                       </p>
                       <p className="text-[10px] text-gray-400 font-mono truncate mt-0.5">
-                        {doc.template_path}
+                        Template: {doc.template_path}
                       </p>
                     </div>
                   </div>
-                  <div className="flex gap-3">
-                    <button
-                      onClick={() => openDoc(doc.template_path)}
-                      className="flex-1 py-3 bg-emerald-500 hover:bg-emerald-600 text-white rounded-xl
-                                 text-sm font-black transition-colors flex items-center justify-center gap-2"
-                    >
-                      <Printer size={14} /> Open & Print
-                    </button>
-                    <button
-                      onClick={() =>
-                        downloadDoc(doc.template_path, doc.document_name)
-                      }
-                      className="px-5 py-3 border border-gray-200 rounded-xl text-sm font-bold
-                                 text-gray-500 hover:bg-gray-50 transition-colors flex items-center gap-2"
-                    >
-                      <Download size={14} /> Save
-                    </button>
-                  </div>
+
+                  {/* Automated PDF Fill Button */}
+                  <button
+                    onClick={() => fill(data)} // 4. Passing the current 'data' object
+                    disabled={filling}
+                    className="w-full py-4 bg-emerald-500 hover:bg-emerald-600 text-white rounded-2xl
+                               text-sm font-black transition-all flex items-center justify-center gap-3
+                               shadow-lg shadow-emerald-100 disabled:opacity-50"
+                  >
+                    {filling ? (
+                      <>
+                        <Loader2 size={18} className="animate-spin" />
+                        Generating Document...
+                      </>
+                    ) : (
+                      <>
+                        <Printer size={18} />
+                        Fill & Open Document
+                      </>
+                    )}
+                  </button>
+
                   <p className="text-[10px] text-gray-300 text-center">
-                    Opens in new tab · Ctrl+P / ⌘+P to print
+                    Uses automated form fields. Make sure PDF text boxes are
+                    named correctly.
                   </p>
                 </div>
               ) : (
@@ -564,10 +552,8 @@ const IncomingQueue = () => {
 
   return (
     <div className="min-h-screen bg-gray-50">
-      {/* ── Header ── */}
       <div className=" border-b border-gray-100 px-8 py-6">
         <div className="max-w-4xl mx-auto">
-          {/* Title row */}
           <div className="mb-5">
             <p className="text-[10px] font-black tracking-[0.14em] uppercase text-emerald-500 mb-1">
               Document Requests
@@ -582,9 +568,7 @@ const IncomingQueue = () => {
             </p>
           </div>
 
-          {/* Search + filter — full width row, search 80%, filter 20% */}
           <div className="flex gap-3">
-            {/* Search — 80% */}
             <div className="relative flex-[4]">
               <Search
                 size={14}
@@ -601,7 +585,6 @@ const IncomingQueue = () => {
               />
             </div>
 
-            {/* Zone filter — 20% */}
             <div className="relative flex-1">
               <MapPin
                 size={13}
@@ -630,7 +613,6 @@ const IncomingQueue = () => {
         </div>
       </div>
 
-      {/* ── Table ── */}
       <div className="max-w-4xl mx-auto px-8 py-8">
         <div className="bg-white border border-gray-100 rounded-2xl overflow-hidden">
           <table className="w-full">
@@ -682,7 +664,6 @@ const IncomingQueue = () => {
                       key={req.request_id}
                       className="hover:bg-gray-50/60 transition-colors group"
                     >
-                      {/* Resident */}
                       <td className="px-6 py-4">
                         <div className="flex items-center gap-3">
                           <div className="w-9 h-9 rounded-xl bg-emerald-500 flex items-center justify-center shrink-0">
@@ -701,15 +682,11 @@ const IncomingQueue = () => {
                           </div>
                         </div>
                       </td>
-
-                      {/* Zone */}
                       <td className="px-6 py-4">
                         <span className="text-xs font-medium text-gray-500 bg-gray-100 px-3 py-1 rounded-full">
                           {u?.zone?.zone_name ?? "—"}
                         </span>
                       </td>
-
-                      {/* Document */}
                       <td className="px-6 py-4">
                         <p className="text-sm font-semibold text-gray-800">
                           {req.document_type?.document_name}
@@ -720,15 +697,11 @@ const IncomingQueue = () => {
                           </p>
                         )}
                       </td>
-
-                      {/* Date */}
                       <td className="px-6 py-4">
                         <p className="text-sm text-gray-500">
                           {fmt(req.request_date)}
                         </p>
                       </td>
-
-                      {/* Action */}
                       <td className="px-6 py-4 text-right">
                         <button
                           onClick={() => setSelectedId(req.request_id)}

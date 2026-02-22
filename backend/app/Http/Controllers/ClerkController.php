@@ -71,7 +71,7 @@ class ClerkController extends Controller
 
         $hasDate     = !empty($request->pickup_date);
         $pickupDate  = $hasDate ? $request->pickup_date : Carbon::today()->toDateString();
-        $newStatusId = $hasDate ? 2 : 3;
+        $newStatusId = $hasDate ? 2 : 5;
         $actionLabel = $hasDate ? 'APPROVE_REQUEST' : 'MARK_READY_FOR_PICKUP';
         $detail      = $hasDate
             ? "Approved. Pickup scheduled for {$pickupDate}."
@@ -103,6 +103,34 @@ class ClerkController extends Controller
     /**
      * POST /api/clerk/requests/{id}/reject
      */
+    
+public function serveTemplate(Request $request)
+{
+    $path = $request->query('path');
+
+    if (!$path) {
+        return response()->json(['error' => 'No path provided.'], 400);
+    }
+
+    // Prevent path traversal attacks
+    $fullPath = storage_path('app/public/' . $path);
+    $realPath = realpath($fullPath);
+    $storagePath = realpath(storage_path('app/public'));
+
+    if (!$realPath || !str_starts_with($realPath, $storagePath)) {
+        return response()->json(['error' => 'Invalid file path.'], 403);
+    }
+
+    if (!file_exists($realPath)) {
+        return response()->json(['error' => 'Template file not found.'], 404);
+    }
+
+    return response()->file($realPath, [
+        'Content-Type'                => 'application/pdf',
+        'Access-Control-Allow-Origin' => '*', // or your frontend URL
+    ]);
+}
+
     public function reject(Request $request, $id)
     {
         $request->validate(['reason' => 'required|string|max:1000']);
@@ -141,7 +169,7 @@ class ClerkController extends Controller
             ->get();
 
         foreach ($due as $doc) {
-            $doc->update(['status_id' => 3]);
+            $doc->update(['status_id' => 5]);
 
             ActionLog::create([
                 'user_id'    => null,
