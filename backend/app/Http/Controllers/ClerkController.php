@@ -5,24 +5,21 @@ namespace App\Http\Controllers;
 use App\Http\Controllers\Controller;
 use App\Models\DocumentRequest;
 use App\Models\ActionLog;
+use App\Mail\DocumentRequestStatusMail;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Mail;
 use Carbon\Carbon;
 
 class ClerkController extends Controller
 {
     /**
      * Centralized eager-load chain.
-     *
-     * Zone lives on User, not Resident:
-     *   DocumentRequest → resident → user → zone
-     *                             → gender
-     *                             → civilStatus
      */
     private function baseQuery()
     {
         return DocumentRequest::with([
-            'resident.user.zone',   // zone_id is on users table
+            'resident.user.zone',
             'resident.gender',
             'resident.civilStatus',
             'documentType',
@@ -57,9 +54,6 @@ class ClerkController extends Controller
 
     /**
      * POST /api/clerk/requests/{id}/approve
-     *
-     * pickup_date absent/null → Ready for Pickup (status 3) today
-     * pickup_date present     → Approved (status 2), auto-flips via scheduler
      */
     public function approve(Request $request, $id)
     {
@@ -67,13 +61,15 @@ class ClerkController extends Controller
             'pickup_date' => 'nullable|date|after_or_equal:today',
         ]);
 
-        $docRequest = DocumentRequest::with('documentType')->findOrFail($id);
+        $docRequest = DocumentRequest::with(['documentType', 'resident.user'])->findOrFail($id);
 
         $hasDate     = !empty($request->pickup_date);
         $pickupDate  = $hasDate ? $request->pickup_date : Carbon::today()->toDateString();
-        $newStatusId = $hasDate ? 2 : 5;
+        $newStatusId = $hasDate ? 2 : 5; // 2: Approved, 5: Ready for Pickup
         $actionLabel = $hasDate ? 'APPROVE_REQUEST' : 'MARK_READY_FOR_PICKUP';
-        $detail      = $hasDate
+        $statusKey   = $hasDate ? 'approved' : 'ready';
+        
+        $detail = $hasDate
             ? "Approved. Pickup scheduled for {$pickupDate}."
             : "Marked Ready for Pickup immediately (today).";
 
@@ -90,6 +86,12 @@ class ClerkController extends Controller
             'details'    => $detail . ' Document: ' . $docRequest->documentType->document_name,
         ]);
 
+        // Notify Resident via Email
+        if ($docRequest->resident->user->email) {
+            Mail::to($docRequest->resident->user->email)
+                ->send(new DocumentRequestStatusMail($docRequest, $statusKey));
+        }
+
         return response()->json([
             'message' => $hasDate
                 ? "Request approved. Pickup set for {$pickupDate}."
@@ -103,42 +105,14 @@ class ClerkController extends Controller
     /**
      * POST /api/clerk/requests/{id}/reject
      */
-    
-public function serveTemplate(Request $request)
-{
-    $path = $request->query('path');
-
-    if (!$path) {
-        return response()->json(['error' => 'No path provided.'], 400);
-    }
-
-    // Prevent path traversal attacks
-    $fullPath = storage_path('app/public/' . $path);
-    $realPath = realpath($fullPath);
-    $storagePath = realpath(storage_path('app/public'));
-
-    if (!$realPath || !str_starts_with($realPath, $storagePath)) {
-        return response()->json(['error' => 'Invalid file path.'], 403);
-    }
-
-    if (!file_exists($realPath)) {
-        return response()->json(['error' => 'Template file not found.'], 404);
-    }
-
-    return response()->file($realPath, [
-        'Content-Type'                => 'application/pdf',
-        'Access-Control-Allow-Origin' => '*', // or your frontend URL
-    ]);
-}
-
     public function reject(Request $request, $id)
     {
         $request->validate(['reason' => 'required|string|max:1000']);
 
-        $docRequest = DocumentRequest::with('documentType')->findOrFail($id);
+        $docRequest = DocumentRequest::with(['documentType', 'resident.user'])->findOrFail($id);
 
         $docRequest->update([
-            'status_id'        => 4,
+            'status_id'        => 4, // 4: Rejected
             'rejection_reason' => $request->reason,
             'last_updated_by'  => Auth::id(),
         ]);
@@ -150,6 +124,12 @@ public function serveTemplate(Request $request)
             'details'    => "Rejected. Reason: {$request->reason}. Document: {$docRequest->documentType->document_name}",
         ]);
 
+        // Notify Resident via Email
+        if ($docRequest->resident->user->email) {
+            Mail::to($docRequest->resident->user->email)
+                ->send(new DocumentRequestStatusMail($docRequest, 'rejected', $request->reason));
+        }
+
         return response()->json([
             'message' => 'Request rejected.',
             'request' => $this->baseQuery()
@@ -159,12 +139,38 @@ public function serveTemplate(Request $request)
     }
 
     /**
-     * POST /api/clerk/requests/process-scheduled
-     * Wire to a daily Artisan schedule to auto-flip Approved → Ready for Pickup.
+     * Helper for PDF template serving
+     */
+    public function serveTemplate(Request $request)
+    {
+        $path = $request->query('path');
+        if (!$path) return response()->json(['error' => 'No path provided.'], 400);
+
+        $fullPath = storage_path('app/public/' . $path);
+        $realPath = realpath($fullPath);
+        $storagePath = realpath(storage_path('app/public'));
+
+        if (!$realPath || !str_starts_with($realPath, $storagePath)) {
+            return response()->json(['error' => 'Invalid file path.'], 403);
+        }
+
+        if (!file_exists($realPath)) {
+            return response()->json(['error' => 'Template file not found.'], 404);
+        }
+
+        return response()->file($realPath, [
+            'Content-Type'                => 'application/pdf',
+            'Access-Control-Allow-Origin' => '*',
+        ]);
+    }
+
+    /**
+     * Daily Scheduler logic: Approved (2) -> Ready for Pickup (5)
      */
     public function processScheduled()
     {
-        $due = DocumentRequest::where('status_id', 2)
+        $due = DocumentRequest::with(['documentType', 'resident.user'])
+            ->where('status_id', 2)
             ->whereDate('pickup_date', '<=', Carbon::today())
             ->get();
 
@@ -177,6 +183,12 @@ public function serveTemplate(Request $request)
                 'action'     => 'AUTO_READY_FOR_PICKUP',
                 'details'    => 'Automatically set to Ready for Pickup on scheduled date.',
             ]);
+
+            // Notify Resident via Email
+            if ($doc->resident->user->email) {
+                Mail::to($doc->resident->user->email)
+                    ->send(new DocumentRequestStatusMail($doc, 'ready'));
+            }
         }
 
         return response()->json([
