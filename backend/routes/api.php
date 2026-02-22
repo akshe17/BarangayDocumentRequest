@@ -9,7 +9,7 @@ use App\Http\Controllers\CivilStatusController;
 use App\Http\Controllers\ResidentController;
 use App\Http\Controllers\ResidentDocumentController;
 use App\Http\Controllers\DocumentRequestController;
-
+use App\Http\Controllers\ClerkController;
 use App\Http\Controllers\AdminDashboardController;
 use App\Http\Controllers\AdminRequestController;
 use App\Http\Controllers\ResidentVerificationController;
@@ -141,6 +141,27 @@ Route::get('/resident/notifications', [ResidentNotificationController::class, 'i
     Route::get('/zone-leader/residents', [ZoneLeaderController::class, 'getZoneResidents']);
     Route::post('/zone-leader/residents/{id}/verify', [ZoneLeaderController::class, 'verifyResident']);
     Route::post('/zone-leader/residents/{id}/reject', [ZoneLeaderController::class, 'rejectResident']);
+
+
+
+    Route::prefix('clerk/requests')->group(function () {
+
+        // GET  /api/clerk/requests/pending      → queue list
+        Route::get('/pending', [ClerkController::class, 'getPending']);
+
+        // GET  /api/clerk/requests/{id}         → single request detail
+        Route::get('/{id}', [ClerkController::class, 'show']);
+
+        // POST /api/clerk/requests/{id}/approve → approve or mark ready
+        Route::post('/{id}/approve', [ClerkController::class, 'approve']);
+
+        // POST /api/clerk/requests/{id}/reject  → reject with reason
+        Route::post('/{id}/reject', [ClerkController::class, 'reject']);
+
+        // POST /api/clerk/requests/process-scheduled
+        // (Typically called by a scheduler, but exposed here for manual trigger / testing)
+        Route::post('/process-scheduled', [ClerkController::class, 'processScheduled']);
+    });
 });
 
 

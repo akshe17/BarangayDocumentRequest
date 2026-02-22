@@ -41,6 +41,10 @@ import { ClerkProfile } from "./pages/clerk/ClerkProfile";
 import { CaptainProfile } from "./pages/barangayCaptain/CaptainProfile";
 import ResidentManagement from "./pages/admin/ResidentManagement";
 import DocumentsManagement from "./pages/admin/DocumentsManagement";
+import PickupQueue from "./pages/clerk/PickupQueue";
+import ResidentDirectory from "./pages/clerk/ResidentDirectory";
+import CompletedRequests from "./pages/clerk/CompletedRequest";
+import IncomingQueue from "./pages/clerk/IncomingQueue";
 const App = () => {
   const { isAuthenticated, loading, user } = useAuth();
 
@@ -123,6 +127,10 @@ const App = () => {
           }
         >
           <Route index element={<Navigate to="dashboard" replace />} />
+          <Route path="pending" element={<IncomingQueue />} />
+          <Route path="pickup" element={<PickupQueue />} />
+          <Route path="completed" element={<CompletedRequests />} />
+          <Route path="residents" element={<ResidentDirectory />} />
           <Route path="dashboard" element={<ClerkDashboard />} />
           <Route path="requests" element={<RequestTable />} />
           <Route path="logs" element={<AuditLogs />} />
