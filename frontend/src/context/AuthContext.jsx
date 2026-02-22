@@ -11,25 +11,35 @@ const AuthContext = createContext(null);
 
 export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null);
-  const [loading, setLoading] = useState(true);
+
+  // FIX: Start loading as TRUE if a token exists, so we don't flash
+  // the login page or a white screen while the API is fetching.
+  const [loading, setLoading] = useState(!!localStorage.getItem("token"));
+
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const hasCheckedAuth = useRef(false);
 
-  // --- CROSS-TAB LOGOUT LOGIC ---
+  // --- HELPER FUNCTIONS (DEFINED HERE SO THEY CAN BE EXPORTED) ---
+  const isAdmin = () => user?.role_id && Number(user.role_id) === 1;
+  const isResident = () => user?.role_id && Number(user.role_id) === 2;
+  const isClerk = () => user?.role_id && Number(user.role_id) === 3;
+  const isZoneLeader = () => user?.role_id && Number(user.role_id) === 4;
+  const isCaptain = () => user?.role_id && Number(user.role_id) === 5;
+
+  // --- CROSS-TAB SYNC LOGIC ---
   useEffect(() => {
-    const syncLogout = (event) => {
-      // If the 'token' is removed from another tab, logout this tab too
-      if (event.key === "token" && !event.newValue) {
-        console.log("Logout detected in another tab. Refreshing...");
-        // Force redirect to login or home to clear all memory state
-        window.location.href = "/login";
+    const handleSync = (event) => {
+      if (event.key === "token" || event.key === "auth_action_logout") {
+        console.log("Auth change detected. Synchronizing tabs...");
+        window.location.reload();
       }
     };
 
-    window.addEventListener("storage", syncLogout);
-    return () => window.removeEventListener("storage", syncLogout);
+    window.addEventListener("storage", handleSync);
+    return () => window.removeEventListener("storage", handleSync);
   }, []);
 
+  // --- INITIAL CHECK ON MOUNT ---
   useEffect(() => {
     if (hasCheckedAuth.current) return;
     hasCheckedAuth.current = true;
@@ -38,8 +48,9 @@ export const AuthProvider = ({ children }) => {
       const token = localStorage.getItem("token");
 
       if (!token) {
-        setLoading(false);
+        setUser(null);
         setIsAuthenticated(false);
+        setLoading(false);
         return;
       }
 
@@ -51,10 +62,8 @@ export const AuthProvider = ({ children }) => {
         setUser(userData);
         setIsAuthenticated(true);
       } catch (error) {
-        if (error.response?.status === 401) {
-          localStorage.removeItem("token");
-          localStorage.removeItem("user");
-        }
+        console.error("Auth check failed:", error);
+        localStorage.removeItem("token");
         setUser(null);
         setIsAuthenticated(false);
       } finally {
@@ -65,6 +74,17 @@ export const AuthProvider = ({ children }) => {
     checkAuth();
   }, []);
 
+  const getHomeRoute = (targetUser = user) => {
+    if (!targetUser) return "/login";
+    const role = Number(targetUser.role_id);
+    if (role === 1) return "/dashboard";
+    if (role === 2) return "/resident";
+    if (role === 3) return "/clerk/dashboard";
+    if (role === 4) return "/zone-leader/residents";
+    if (role === 5) return "/captain/dashboard";
+    return "/login";
+  };
+
   const login = async (email, password) => {
     try {
       const response = await api.post("/login", { email, password });
@@ -72,66 +92,61 @@ export const AuthProvider = ({ children }) => {
       const userData = response.data.user ?? response.data;
 
       localStorage.setItem("token", token);
-      setUser(userData);
-      setIsAuthenticated(true);
 
-      return { success: true, user: userData };
+      // We use the direct userData here so we don't have to wait for state updates
+      window.location.href = getHomeRoute(userData);
+
+      return { success: true };
     } catch (error) {
-      if (error.response) {
-        const data = error.response.data;
-        if (
-          data.status === "rejected" ||
-          data.status === "pending_verification"
-        ) {
-          if (data.access_token) {
-            localStorage.setItem("token", data.access_token);
-          }
-        }
-        return {
-          success: false,
-          ...data,
-          error: data.message || "Login failed",
-        };
-      }
-      return { success: false, error: "Network error" };
+      return {
+        success: false,
+        error: error.response?.data?.message || "Login failed",
+      };
     }
   };
 
   const logout = async () => {
     try {
       await api.post("/logout");
-    } catch (error) {
-      console.error("Server logout failed:", error);
+    } catch (err) {
+      console.error("Server logout failed", err);
     } finally {
-      // 1. Clear local data
       localStorage.removeItem("token");
-      localStorage.removeItem("user");
-
-      // 2. Clear state
-      setUser(null);
-      setIsAuthenticated(false);
-
-      // 3. HARD REFRESH: This ensures all React state is wiped
-      // and the user is redirected to the entry point.
+      localStorage.setItem("auth_action_logout", Date.now().toString());
       window.location.href = "/login";
     }
   };
 
-  const isAdmin = () => user?.role_id && Number(user.role_id) === 1;
-  const isResident = () => user?.role_id && Number(user.role_id) === 2;
-
-  const value = {
-    user,
-    isAuthenticated,
-    loading,
-    setUser,
-    login,
-    logout,
-    isAdmin,
-    isResident,
-  };
-
-  return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
+  return (
+    <AuthContext.Provider
+      value={{
+        user,
+        isAuthenticated,
+        loading,
+        login,
+        logout,
+        isAdmin, // Now correctly defined above
+        isResident, // Now correctly defined above
+        isClerk, // Now correctly defined above
+        isZoneLeader,
+        isCaptain,
+        getHomeRoute,
+      }}
+    >
+      {!loading ? (
+        children
+      ) : (
+        <div className="flex h-screen items-center justify-center bg-white">
+          <div className="flex flex-col items-center gap-4">
+            <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-emerald-500"></div>
+            <p className="text-xs font-black uppercase tracking-widest text-slate-400">
+              Verifying Session...
+            </p>
+          </div>
+        </div>
+      )}
+    </AuthContext.Provider>
+  );
 };
 
 export const useAuth = () => {
