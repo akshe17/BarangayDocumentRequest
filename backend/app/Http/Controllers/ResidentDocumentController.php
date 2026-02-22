@@ -9,7 +9,7 @@ use App\Models\ActionLog;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Auth;
-class DocumentController extends Controller
+class ResidentDocumentController extends Controller
 {
     /**
      * GET /documents

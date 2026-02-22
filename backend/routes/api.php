@@ -7,7 +7,7 @@ use App\Http\Controllers\GenderController;
 use App\Http\Controllers\ZoneController;
 use App\Http\Controllers\CivilStatusController;
 use App\Http\Controllers\ResidentController;
-use App\Http\Controllers\DocumentController;
+use App\Http\Controllers\ResidentDocumentController;
 use App\Http\Controllers\DocumentRequestController;
 
 use App\Http\Controllers\AdminDashboardController;
@@ -64,13 +64,13 @@ Route::put('document-types/{id}',  [AdminDocumentController::class, 'update']);
 
 //resident document
 
-     Route::get('/documents',         [DocumentController::class, 'index']);
-       Route::get('/resident/dashboard',         [DocumentController::class, 'getResidentDashboard']);
-         Route::get('/resident-logs', [DocumentController::class, 'getResidentLogs']);
-    Route::get('/current-request',   [DocumentController::class, 'residentCurrentRequest']);
-    Route::post('/submit-document', [DocumentController::class, 'storeRequest']);
+     Route::get('/documents',         [ResidentDocumentController::class, 'index']);
+       Route::get('/resident/dashboard',          [ResidentDocumentController::class, 'getResidentDashboard']);
+         Route::get('/resident-logs',   [ResidentDocumentController::class, 'getResidentLogs']);
+    Route::get('/current-request',    [ResidentDocumentController::class, 'residentCurrentRequest']);
+    Route::post('/submit-document',   [ResidentDocumentController::class, 'storeRequest']);
   
-Route::get('/request-history', [DocumentController::class, 'getHistory']); // Add this
+Route::get('/request-history',  [ResidentDocumentController::class,'getHistory']); // Add this
  
   Route::post('/request-document', [DocumentRequestController::class, 'store']);
 
