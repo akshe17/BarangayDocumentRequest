@@ -11,49 +11,50 @@ const AuthContext = createContext(null);
 
 export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null);
-
   const [loading, setLoading] = useState(true);
-  const [passkey, setPasskey] = useState(null); // ✅ CORRECT
-  const [isAuthenticated, setIsAuthenticated] = useState(false); // ✅ CORRECT
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
   const hasCheckedAuth = useRef(false);
 
+  // --- CROSS-TAB LOGOUT LOGIC ---
   useEffect(() => {
-    // Only run once on mount
+    const syncLogout = (event) => {
+      // If the 'token' is removed from another tab, logout this tab too
+      if (event.key === "token" && !event.newValue) {
+        console.log("Logout detected in another tab. Refreshing...");
+        // Force redirect to login or home to clear all memory state
+        window.location.href = "/login";
+      }
+    };
+
+    window.addEventListener("storage", syncLogout);
+    return () => window.removeEventListener("storage", syncLogout);
+  }, []);
+
+  useEffect(() => {
     if (hasCheckedAuth.current) return;
     hasCheckedAuth.current = true;
+
     const checkAuth = async () => {
-      // 1. Check if token exists before even trying to call the API
       const token = localStorage.getItem("token");
 
       if (!token) {
-        console.log("No token found, skipping auth check.");
         setLoading(false);
         setIsAuthenticated(false);
         return;
       }
 
       try {
-        console.log("Token found. Checking authentication...");
-
         const response = await api.get("/user");
-
-        console.log("✅ AUTH SUCCESS:", response.data);
-
-        // Adjust based on your custom middleware/route response structure
         const userData =
           response.data.data || response.data.user || response.data;
 
         setUser(userData);
         setIsAuthenticated(true);
       } catch (error) {
-        console.error("❌ AUTH FAILED");
-
-        // If the token is invalid/expired, clean up localStorage
         if (error.response?.status === 401) {
           localStorage.removeItem("token");
           localStorage.removeItem("user");
         }
-
         setUser(null);
         setIsAuthenticated(false);
       } finally {
@@ -62,12 +63,11 @@ export const AuthProvider = ({ children }) => {
     };
 
     checkAuth();
-  }, []); // Empty dependency array - runs once
+  }, []);
+
   const login = async (email, password) => {
     try {
       const response = await api.post("/login", { email, password });
-
-      // Successful login (status 200)
       const token = response.data.access_token;
       const userData = response.data.user ?? response.data;
 
@@ -77,11 +77,8 @@ export const AuthProvider = ({ children }) => {
 
       return { success: true, user: userData };
     } catch (error) {
-      // 1. Check if the server responded (403, 401, etc.)
       if (error.response) {
         const data = error.response.data;
-
-        // --- CRITICAL FIX: SAVE TOKEN FOR REJECTED/PENDING USERS ---
         if (
           data.status === "rejected" ||
           data.status === "pending_verification"
@@ -90,46 +87,38 @@ export const AuthProvider = ({ children }) => {
             localStorage.setItem("token", data.access_token);
           }
         }
-        // -----------------------------------------------------------
-
         return {
           success: false,
           ...data,
           error: data.message || "Login failed",
         };
       }
-
-      // 2. Network error or other unexpected issues
-      return {
-        success: false,
-        error: "Network error or server unreachable",
-      };
+      return { success: false, error: "Network error" };
     }
   };
+
   const logout = async () => {
     try {
-      // This will now find the route correctly
       await api.post("/logout");
     } catch (error) {
-      // Changed 'err' to 'error' to match the catch variable
       console.error("Server logout failed:", error);
     } finally {
-      // ALWAYS clear these, even if the server is offline
+      // 1. Clear local data
       localStorage.removeItem("token");
       localStorage.removeItem("user");
+
+      // 2. Clear state
       setUser(null);
       setIsAuthenticated(false);
-      console.log("Logged out locally.");
+
+      // 3. HARD REFRESH: This ensures all React state is wiped
+      // and the user is redirected to the entry point.
+      window.location.href = "/login";
     }
   };
 
-  const isAdmin = () => {
-    return user?.role_id && Number(user.role_id) === 1;
-  };
-
-  const isResident = () => {
-    return user?.role_id && Number(user.role_id) === 2;
-  };
+  const isAdmin = () => user?.role_id && Number(user.role_id) === 1;
+  const isResident = () => user?.role_id && Number(user.role_id) === 2;
 
   const value = {
     user,
