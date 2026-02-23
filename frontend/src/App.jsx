@@ -38,6 +38,7 @@ import CaptainDocumentRequests from "./pages/barangayCaptain/CaptainDocumentRequ
 import { ZoneLeaaderProfile } from "./pages/zoneLeader/ZoneLeaderProfile";
 import { AdminProfile } from "./pages/admin/AdminProfile";
 import { ClerkProfile } from "./pages/clerk/ClerkProfile";
+import RejectedRequests from "./pages/clerk/RejectedRequests";
 import { CaptainProfile } from "./pages/barangayCaptain/CaptainProfile";
 import ResidentManagement from "./pages/admin/ResidentManagement";
 import DocumentsManagement from "./pages/admin/DocumentsManagement";
@@ -46,6 +47,7 @@ import ResidentDirectory from "./pages/clerk/ResidentDirectory";
 import ApprovedQueue from "./pages/clerk/ApprovedQueue";
 import CompletedRequests from "./pages/clerk/CompletedRequest";
 import IncomingQueue from "./pages/clerk/IncomingQueue";
+
 const App = () => {
   const { isAuthenticated, loading, user } = useAuth();
 
@@ -132,6 +134,7 @@ const App = () => {
           <Route path="approved" element={<ApprovedQueue />} />
           <Route path="pickup" element={<PickupQueue />} />
           <Route path="completed" element={<CompletedRequests />} />
+          <Route path="rejected" element={<RejectedRequests />} />
           <Route path="residents" element={<ResidentDirectory />} />
           <Route path="dashboard" element={<ClerkDashboard />} />
           <Route path="requests" element={<RequestTable />} />

@@ -5,12 +5,15 @@ import {
   LogOut,
   Menu,
   X,
-  ClipboardList, // New: For Pending
-  Truck, // New: For Pickup
-  Users, // New: For Directory
+  Inbox, // For Incoming/New requests
+  FileCheck, // For Approved (Process started)
+  PackageCheck, // For Ready for Pickup (Item waiting)
+  CheckCircle2, // For Completed (Success)
+  FileX, // For Rejected (Error/Stop)
+  Users,
   History,
   UserCog,
-  CheckCircle,
+  ShieldCheck, // For Audit Logs/Security
 } from "lucide-react";
 import logo from "../assets/logo.png";
 import { useAuth } from "../context/AuthContext";
@@ -31,22 +34,27 @@ const ClerkLayout = () => {
     {
       path: "/clerk/pending",
       label: "Incoming Queue",
-      icon: <ClipboardList size={20} />,
+      icon: <Inbox size={20} />, // Visualizes a mailbox of new requests
     },
     {
       path: "/clerk/approved",
       label: "Approved Queue",
-      icon: <ClipboardList size={20} />,
+      icon: <FileCheck size={20} />, // Indicates a document that passed verification
     },
     {
       path: "/clerk/pickup",
       label: "Ready for Pickup",
-      icon: <Truck size={20} />,
+      icon: <PackageCheck size={20} />, // Better than 'Truck'; signifies the item is ready at the desk
     },
     {
       path: "/clerk/completed",
       label: "Completed",
-      icon: <CheckCircle size={20} />,
+      icon: <CheckCircle2 size={20} />, // The double circle feels more "finalized"
+    },
+    {
+      path: "/clerk/rejected", // Fixed path string
+      label: "Rejected",
+      icon: <FileX size={20} />, // Distinct "X" for errors
     },
     {
       path: "/clerk/residents",
@@ -56,7 +64,7 @@ const ClerkLayout = () => {
     {
       path: "/clerk/logs",
       label: "Audit Logs",
-      icon: <History size={20} />,
+      icon: <ShieldCheck size={20} />, // Represents secure, verified records
     },
   ];
 
