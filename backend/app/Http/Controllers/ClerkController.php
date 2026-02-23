@@ -337,9 +337,10 @@ class ClerkController extends Controller
         ]);
     }
 
-    public function getLogs()
+public function getLogs()
 {
     $logs = \App\Models\ActionLog::with(['user'])
+        ->where('user_id', Auth::id())
         ->orderBy('created_at', 'desc')
         ->get();
 
