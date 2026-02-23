@@ -276,7 +276,7 @@ public function resubmitID(Request $request)
             ActionLog::create([
                 'user_id' => $leader->user_id, // Logged for the zone leader
                 'request_id' => null, 
-                'action' => 'ID Resubmission',
+                'action' => 'Resident ID Resubmission',
                 'details' => "Resident {$user->first_name} {$user->last_name} in Zone {$user->zone_id} has resubmitted their ID for review.",
             ]);
         }

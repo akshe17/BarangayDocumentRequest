@@ -114,10 +114,12 @@ class ResidentDocumentController extends Controller
             ActionLog::create([
                 'user_id'    => $user->user_id,
                 'request_id' => $docRequest->request_id,
-                'action'     => 'submitted_request',
+                'action'     => 'Resident Submit Request',
                 'details'    => "Submitted request for: {$docType->document_name} (Request ID: {$docRequest->request_id})",
             ]);
 
+
+            
             return response()->json(
                 $docRequest->load(['status', 'documentType', 'formData.fieldDefinition']),
                 201

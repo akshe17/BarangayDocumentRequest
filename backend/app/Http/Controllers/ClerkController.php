@@ -68,7 +68,7 @@ class ClerkController extends Controller
         $hasDate     = !empty($request->pickup_date);
         $pickupDate  = $hasDate ? $request->pickup_date : Carbon::today()->toDateString();
         $newStatusId = $hasDate ? 2 : 5; // 2: Approved, 5: Ready for Pickup
-        $actionLabel = $hasDate ? 'APPROVE REQUEST' : 'MARKED READY FOR PICKUP';
+        $actionLabel = $hasDate ? 'Approve Document Request' : 'Document Ready for Pickup';
         $statusKey   = $hasDate ? 'approved' : 'ready';
         
         $detail = $hasDate
@@ -122,7 +122,7 @@ class ClerkController extends Controller
         ActionLog::create([
             'user_id'    => Auth::id(),
             'request_id' => $id,
-            'action'     => 'REJECT REQUEST',
+            'action'     => 'Document Reject Request',
             'details'    => "Rejected. Reason: {$request->reason}. Document: {$docRequest->documentType->document_name}",
         ]);
 
@@ -244,7 +244,7 @@ class ClerkController extends Controller
         ActionLog::create([
             'user_id'    => Auth::id(),
             'request_id' => $id,
-            'action'     => 'CONFIRM COLLECTION',
+            'action'     => 'Document Confirm Collection Fee',
             'details'    => 'Payment confirmed and document collected. Document: '
                             . $docRequest->documentType->document_name,
         ]);
@@ -284,7 +284,7 @@ class ClerkController extends Controller
     ActionLog::create([
         'user_id'    => Auth::id(),
         'request_id' => $id,
-        'action'     => $isToday ? 'MARKED READY FOR PICKUP' : 'RESCHEDULE PICKUP',
+        'action'     => $isToday ?  'Approve Document Request' : 'Document Ready for Pickup',
         'details'    => $isToday
             ? "Set to Ready for Pickup (pickup date is today). Document: " . $docRequest->documentType->document_name
             : "Pickup date updated to {$request->pickup_date}. Document: " . $docRequest->documentType->document_name,
@@ -320,7 +320,7 @@ class ClerkController extends Controller
             ActionLog::create([
                 'user_id'    => null,
                 'request_id' => $doc->request_id,
-                'action'     => 'AUTO_READY_FOR_PICKUP',
+                'action'     => 'Document is Scheduled for Pickup',
                 'details'    => 'Automatically set to Ready for Pickup on scheduled date.',
             ]);
 
