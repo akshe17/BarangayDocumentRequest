@@ -50,12 +50,6 @@ const PickupQueue = () => {
       Icon: PackageCheck,
       status: STATUS_READY,
     },
-    {
-      key: "done",
-      label: "Done / Collected",
-      Icon: History,
-      status: STATUS_DONE,
-    },
   ];
 
   return (

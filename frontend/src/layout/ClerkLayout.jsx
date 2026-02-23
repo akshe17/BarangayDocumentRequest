@@ -34,6 +34,11 @@ const ClerkLayout = () => {
       icon: <ClipboardList size={20} />,
     },
     {
+      path: "/clerk/approved",
+      label: "Approved Queue",
+      icon: <ClipboardList size={20} />,
+    },
+    {
       path: "/clerk/pickup",
       label: "Ready for Pickup",
       icon: <Truck size={20} />,

@@ -43,6 +43,7 @@ import ResidentManagement from "./pages/admin/ResidentManagement";
 import DocumentsManagement from "./pages/admin/DocumentsManagement";
 import PickupQueue from "./pages/clerk/PickupQueue";
 import ResidentDirectory from "./pages/clerk/ResidentDirectory";
+import ApprovedQueue from "./pages/clerk/ApprovedQueue";
 import CompletedRequests from "./pages/clerk/CompletedRequest";
 import IncomingQueue from "./pages/clerk/IncomingQueue";
 const App = () => {
@@ -128,6 +129,7 @@ const App = () => {
         >
           <Route index element={<Navigate to="dashboard" replace />} />
           <Route path="pending" element={<IncomingQueue />} />
+          <Route path="approved" element={<ApprovedQueue />} />
           <Route path="pickup" element={<PickupQueue />} />
           <Route path="completed" element={<CompletedRequests />} />
           <Route path="residents" element={<ResidentDirectory />} />

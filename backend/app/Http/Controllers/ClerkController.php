@@ -265,30 +265,44 @@ class ClerkController extends Controller
      * Updates the pickup date to today (from the Done tab).
      * Body: { pickup_date: "YYYY-MM-DD" }
      */
+   
     public function rescheduleToday(Request $request, $id)
-    {
-        $request->validate(['pickup_date' => 'required|date']);
+{
+    $request->validate(['pickup_date' => 'required|date']);
 
-        $docRequest = DocumentRequest::with(['documentType'])->findOrFail($id);
+    $docRequest = DocumentRequest::with(['documentType', 'resident.user'])->findOrFail($id);
 
-        $docRequest->update([
-            'pickup_date'     => $request->pickup_date,
-            'last_updated_by' => Auth::id(),
-        ]);
+    $isToday   = $request->pickup_date === Carbon::today()->toDateString();
+    $newStatus = $isToday ? 5 : 2; // 5=Ready for Pickup, 2=Approved (still scheduled)
 
-        ActionLog::create([
-            'user_id'    => Auth::id(),
-            'request_id' => $id,
-            'action'     => 'RESCHEDULE PICKUP',
-            'details'    => "Pickup date updated to {$request->pickup_date}. Document: "
-                            . $docRequest->documentType->document_name,
-        ]);
+    $docRequest->update([
+        'pickup_date'     => $request->pickup_date,
+        'status_id'       => $newStatus,
+        'last_updated_by' => Auth::id(),
+    ]);
 
-        return response()->json([
-            'message' => 'Pickup date updated.',
-            'request' => $this->baseQuery()->find($id),
-        ]);
+    ActionLog::create([
+        'user_id'    => Auth::id(),
+        'request_id' => $id,
+        'action'     => $isToday ? 'MARKED READY FOR PICKUP' : 'RESCHEDULE PICKUP',
+        'details'    => $isToday
+            ? "Set to Ready for Pickup (pickup date is today). Document: " . $docRequest->documentType->document_name
+            : "Pickup date updated to {$request->pickup_date}. Document: " . $docRequest->documentType->document_name,
+    ]);
+
+    // Email resident if moved to Ready
+    if ($isToday && $docRequest->resident->user->email) {
+        Mail::to($docRequest->resident->user->email)
+            ->send(new DocumentRequestStatusMail($docRequest, 'ready'));
     }
+
+    return response()->json([
+        'message' => $isToday
+            ? 'Pickup date is today — request marked as Ready for Pickup.'
+            : 'Pickup date updated.',
+        'request' => $this->baseQuery()->find($id),
+    ]);
+}
 
     /**
      * Daily Scheduler logic: Approved (2) -> Ready for Pickup (5)

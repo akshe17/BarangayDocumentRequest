@@ -72,7 +72,9 @@ export function DocumentRequestProvider({ children }) {
     (id) => requests.find((r) => r.request_id === id) ?? null,
     [requests],
   );
-
+  useEffect(() => {
+    api.post("/clerk/requests/process-scheduled").catch(() => {});
+  }, [requests]);
   return (
     <DocumentRequestContext.Provider
       value={{
@@ -90,6 +92,7 @@ export function DocumentRequestProvider({ children }) {
     </DocumentRequestContext.Provider>
   );
 }
+// In your main clerk layout or DocumentRequestContext, add this once on mount:
 
 /* ─────────────────────────────────────────────────────────────
    HOOK
