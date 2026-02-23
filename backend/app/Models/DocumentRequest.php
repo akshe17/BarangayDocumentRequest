@@ -23,6 +23,7 @@ class DocumentRequest extends Model
     protected $casts = [
         'request_date' => 'datetime',
         'pickup_date' => 'datetime',
+         'payment_status' => 'boolean',
     ];
 
     public function items()

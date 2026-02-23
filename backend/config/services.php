@@ -21,6 +21,9 @@ return [
     'resend' => [
         'key' => env('RESEND_API_KEY'),
     ],
+    'stripe' => [
+    'secret' => env('STRIPE_SECRET'),
+],
 
     'ses' => [
         'key' => env('AWS_ACCESS_KEY_ID'),

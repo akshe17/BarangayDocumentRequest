@@ -144,24 +144,18 @@ Route::get('/resident/notifications', [ResidentNotificationController::class, 'i
 
 
 
-    Route::prefix('clerk/requests')->group(function () {
+    // ── Static named routes first ──────────────────────────────
+    Route::get ('/clerk/requests/pending',                  [ClerkController::class, 'getPending']);
+    Route::get ('/clerk/requests/all',                      [ClerkController::class, 'getAll']);
+    Route::post('/clerk/requests/process-scheduled',        [ClerkController::class, 'processScheduled']);
 
-        // GET  /api/clerk/requests/pending      → queue list
-        Route::get('/pending', [ClerkController::class, 'getPending']);
-
-        // GET  /api/clerk/requests/{id}         → single request detail
-        Route::get('/{id}', [ClerkController::class, 'show']);
-
-        // POST /api/clerk/requests/{id}/approve → approve or mark ready
-        Route::post('/{id}/approve', [ClerkController::class, 'approve']);
-
-        // POST /api/clerk/requests/{id}/reject  → reject with reason
-        Route::post('/{id}/reject', [ClerkController::class, 'reject']);
-
-        // POST /api/clerk/requests/process-scheduled
-        // (Typically called by a scheduler, but exposed here for manual trigger / testing)
-        Route::post('/process-scheduled', [ClerkController::class, 'processScheduled']);
-    });
+    // ── Per-request routes ─────────────────────────────────────
+    Route::get ('/clerk/requests/{id}',                     [ClerkController::class, 'show']);
+    Route::post('/clerk/requests/{id}/approve',             [ClerkController::class, 'approve']);
+    Route::post('/clerk/requests/{id}/reject',              [ClerkController::class, 'reject']);
+    Route::post('/clerk/requests/{id}/create-payment-intent',[ClerkController::class, 'createPaymentIntent']); // NEW
+    Route::post('/clerk/requests/{id}/collect',             [ClerkController::class, 'collect']);
+    Route::post('/clerk/requests/{id}/reschedule',          [ClerkController::class, 'rescheduleToday']);
 
     Route::get('/clerk/template', [ClerkController::class, 'serveTemplate']);
 

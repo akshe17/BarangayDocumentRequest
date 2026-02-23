@@ -10,6 +10,8 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Mail;
 use Carbon\Carbon;
+use Stripe\Stripe;
+use Stripe\PaymentIntent;
 
 class ClerkController extends Controller
 {
@@ -161,6 +163,130 @@ class ClerkController extends Controller
         return response()->file($realPath, [
             'Content-Type'                => 'application/pdf',
             'Access-Control-Allow-Origin' => '*',
+        ]);
+    }
+
+    /**
+     * GET /api/clerk/requests/all
+     * Returns every request (all statuses) for the global context.
+     * The frontend filters by status_id client-side — no extra queries needed.
+     */
+    public function getAll()
+    {
+        $requests = $this->baseQuery()
+            ->orderBy('request_date', 'desc')
+            ->get();
+
+        return response()->json($requests);
+    }
+
+    /**
+     * POST /api/clerk/requests/{id}/create-payment-intent
+     * Creates a Stripe PaymentIntent and returns the client_secret.
+     * The frontend uses this to render the Stripe card form.
+     */
+
+    public function createPaymentIntent(Request $request, $id)
+{
+    $docRequest = DocumentRequest::with(['documentType'])->findOrFail($id);
+
+    $fee = (float) ($docRequest->documentType->fee ?? 0);
+
+    if ($fee <= 0) {
+        return response()->json(['error' => 'This document has no fee.'], 422);
+    }
+
+    Stripe::setApiKey(config('services.stripe.secret'));
+
+    if (app()->environment('local')) {
+        $curlClient = new \Stripe\HttpClient\CurlClient([
+            CURLOPT_SSL_VERIFYPEER => false,
+            CURLOPT_SSL_VERIFYHOST => false,
+        ]);
+        \Stripe\ApiRequestor::setHttpClient($curlClient);
+    }
+
+    // Dev only: convert PHP to USD so Stripe minimum is met.
+    // ₱1 ≈ $0.017 — we floor at $0.50 so any small fee clears.
+    // The resident still sees the peso amount in the UI; Stripe just
+    // processes a hidden USD equivalent behind the scenes.
+    $usdAmount = max(round(($fee / 58) * 100), 50); // centavos → cents, floor $0.50
+
+    $paymentIntent = PaymentIntent::create([
+        'amount'   => (int) $usdAmount,
+        'currency' => 'usd',
+        'metadata' => [
+            'request_id'      => $id,
+            'document_name'   => $docRequest->documentType->document_name,
+            'display_amount'  => '₱' . number_format($fee, 2), // real amount for records
+        ],
+    ]);
+
+    return response()->json([
+        'client_secret' => $paymentIntent->client_secret,
+    ]);
+}
+    /**
+     * POST /api/clerk/requests/{id}/collect
+     * Confirms payment and marks request as Done (status 6).
+     * Body: { payment_status: true }  ← boolean
+     */
+    public function collect(Request $request, $id)
+    {
+        $docRequest = DocumentRequest::with(['documentType', 'resident.user'])->findOrFail($id);
+
+        $docRequest->update([
+            'status_id'       => 3,    // Done / Collected
+            'payment_status'  => true, // boolean — cast in model
+            'last_updated_by' => Auth::id(),
+        ]);
+
+        ActionLog::create([
+            'user_id'    => Auth::id(),
+            'request_id' => $id,
+            'action'     => 'CONFIRM COLLECTION',
+            'details'    => 'Payment confirmed and document collected. Document: '
+                            . $docRequest->documentType->document_name,
+        ]);
+
+        if ($docRequest->resident->user->email) {
+            Mail::to($docRequest->resident->user->email)
+                ->send(new DocumentRequestStatusMail($docRequest, 'collected'));
+        }
+
+        return response()->json([
+            'message' => 'Collection confirmed. Request marked as Done.',
+            'request' => $this->baseQuery()->find($id),
+        ]);
+    }
+
+    /**
+     * POST /api/clerk/requests/{id}/reschedule
+     * Updates the pickup date to today (from the Done tab).
+     * Body: { pickup_date: "YYYY-MM-DD" }
+     */
+    public function rescheduleToday(Request $request, $id)
+    {
+        $request->validate(['pickup_date' => 'required|date']);
+
+        $docRequest = DocumentRequest::with(['documentType'])->findOrFail($id);
+
+        $docRequest->update([
+            'pickup_date'     => $request->pickup_date,
+            'last_updated_by' => Auth::id(),
+        ]);
+
+        ActionLog::create([
+            'user_id'    => Auth::id(),
+            'request_id' => $id,
+            'action'     => 'RESCHEDULE PICKUP',
+            'details'    => "Pickup date updated to {$request->pickup_date}. Document: "
+                            . $docRequest->documentType->document_name,
+        ]);
+
+        return response()->json([
+            'message' => 'Pickup date updated.',
+            'request' => $this->baseQuery()->find($id),
         ]);
     }
 
