@@ -158,13 +158,6 @@ const LoginPage = () => {
             </p>
           </div>
 
-          {/* Error Message Display */}
-          {error && (
-            <div className="mb-6 p-4 bg-red-50 border-l-4 border-red-500 text-red-700 text-sm font-bold rounded-r-xl animate-shake">
-              {error}
-            </div>
-          )}
-
           <form className="space-y-6" onSubmit={handleSubmit}>
             <div className="space-y-2 animate-slide-up">
               <label className="text-xs font-bold text-gray-600 uppercase tracking-widest ml-1">
@@ -210,6 +203,12 @@ const LoginPage = () => {
                 </button>
               </div>
             </div>
+            {/* Error Message Display */}
+            {error && (
+              <div className="   text-red-700 text-sm font-bold rounded-r-xl animate-shake">
+                {error}
+              </div>
+            )}
 
             <button
               type="submit"

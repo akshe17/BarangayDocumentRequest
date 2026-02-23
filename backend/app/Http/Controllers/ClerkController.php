@@ -66,7 +66,7 @@ class ClerkController extends Controller
         $hasDate     = !empty($request->pickup_date);
         $pickupDate  = $hasDate ? $request->pickup_date : Carbon::today()->toDateString();
         $newStatusId = $hasDate ? 2 : 5; // 2: Approved, 5: Ready for Pickup
-        $actionLabel = $hasDate ? 'APPROVE_REQUEST' : 'MARK_READY_FOR_PICKUP';
+        $actionLabel = $hasDate ? 'APPROVE REQUEST' : 'MARKED READY FOR PICKUP';
         $statusKey   = $hasDate ? 'approved' : 'ready';
         
         $detail = $hasDate
@@ -120,7 +120,7 @@ class ClerkController extends Controller
         ActionLog::create([
             'user_id'    => Auth::id(),
             'request_id' => $id,
-            'action'     => 'REJECT_REQUEST',
+            'action'     => 'REJECT REQUEST',
             'details'    => "Rejected. Reason: {$request->reason}. Document: {$docRequest->documentType->document_name}",
         ]);
 

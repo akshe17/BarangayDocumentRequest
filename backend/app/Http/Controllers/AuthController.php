@@ -25,7 +25,7 @@ class AuthController extends Controller
 
     // 1. Initial attempt to authenticate
     if (!auth()->attempt($credentials)) {
-        return response()->json(['success' => false, 'error' => 'Invalid credentials'], 401);
+        return response()->json(['success' => false, 'message' => 'Invalid credentials'], 401);
     }
 
     $user = auth()->user();
@@ -35,7 +35,7 @@ class AuthController extends Controller
         auth()->logout(); // Important: terminate the session we just started
         return response()->json([
             'success' => false,
-            'error' => 'Your account is deactivated. Please contact the administrator.'
+            'message' => 'Your account is deactivated. Please contact the administrator.'
         ], 403);
     }
 
