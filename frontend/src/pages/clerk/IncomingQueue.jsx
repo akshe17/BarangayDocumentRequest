@@ -6,23 +6,18 @@ import {
   ArrowLeft,
   Printer,
   Loader2,
-  User,
   MapPin,
   XCircle,
-  Calendar,
   Clock,
   AlertCircle,
-  Hash,
-  Home,
-  Heart,
-  Download,
   Inbox,
   ArrowUpRight,
   ChevronDown,
+  RefreshCw,
 } from "lucide-react";
 import api from "../../axious/api";
-// 1. Import the hook
 import { useFillDocument } from "../../utils/UseFillDocument";
+import { useDocumentRequests } from "../../context/DocumentRequestContext";
 
 /* ─────────────────────────────────────────────────────────────
    HELPERS
@@ -44,13 +39,14 @@ const todayStr = () => new Date().toISOString().split("T")[0];
 const STATUS = {
   1: { label: "Pending", cls: "bg-amber-50 text-amber-700 border-amber-200" },
   2: { label: "Approved", cls: "bg-blue-50 text-blue-700 border-blue-200" },
-  3: {
-    label: "Ready for Pickup",
-    cls: "bg-emerald-50 text-emerald-700 border-emerald-200",
-  },
+  3: { label: "Done", cls: "bg-gray-100 text-gray-600 border-gray-200" },
   4: { label: "Rejected", cls: "bg-red-50 text-red-700 border-red-200" },
   5: {
     label: "Ready for Pickup",
+    cls: "bg-emerald-50 text-emerald-700 border-emerald-200",
+  },
+  6: {
+    label: "Collected",
     cls: "bg-emerald-50 text-emerald-700 border-emerald-200",
   },
 };
@@ -62,7 +58,8 @@ const StatusPill = ({ statusId }) => {
   };
   return (
     <span
-      className={`inline-flex items-center text-[10px] font-bold tracking-widest uppercase px-2.5 py-1 rounded-full border ${s.cls}`}
+      className={`inline-flex items-center text-[10px] font-bold tracking-widest uppercase
+                      px-2.5 py-1 rounded-full border ${s.cls}`}
     >
       {s.label}
     </span>
@@ -81,7 +78,10 @@ const Label = ({ children }) => (
 const FieldBox = ({ label, value }) => (
   <div>
     <Label>{label}</Label>
-    <div className="bg-gray-50 border border-gray-100 rounded-xl px-4 py-3 text-sm font-medium text-gray-800 min-h-[44px] flex items-center">
+    <div
+      className="bg-gray-50 border border-gray-100 rounded-xl px-4 py-3 text-sm font-medium
+                    text-gray-800 min-h-[44px] flex items-center"
+    >
       {value || (
         <span className="text-gray-300 italic font-normal text-xs">—</span>
       )}
@@ -100,14 +100,12 @@ const SectionTitle = ({ children }) => (
   </div>
 );
 
-/* ─────────────────────────────────────────────────────────────
-   TOAST
-───────────────────────────────────────────────────────────── */
 const Toast = ({ toast }) => {
   if (!toast) return null;
   return (
     <div
-      className={`fixed top-5 right-5 z-[100] flex items-center gap-2.5 px-5 py-3 rounded-2xl text-sm font-bold shadow-lg
+      className={`fixed top-5 right-5 z-[100] flex items-center gap-2.5 px-5 py-3
+      rounded-2xl text-sm font-bold shadow-lg
       ${toast.type === "error" ? "bg-red-500 text-white" : "bg-emerald-500 text-white"}`}
     >
       {toast.type === "error" ? (
@@ -150,7 +148,8 @@ const RejectModal = ({ onConfirm, onCancel, busy }) => {
         <div className="flex gap-3">
           <button
             onClick={onCancel}
-            className="flex-1 py-3 border border-gray-200 rounded-2xl text-sm font-bold text-gray-500 hover:bg-gray-50 transition-colors"
+            className="flex-1 py-3 border border-gray-200 rounded-2xl text-sm font-bold
+                       text-gray-500 hover:bg-gray-50 transition-colors"
           >
             Cancel
           </button>
@@ -176,29 +175,35 @@ const RejectModal = ({ onConfirm, onCancel, busy }) => {
 
 /* ─────────────────────────────────────────────────────────────
    DETAIL VIEW
+   — uses context: getById for initial data, updateRequest after
+     approve/reject so the list updates without a full reload.
 ───────────────────────────────────────────────────────────── */
 const DetailView = ({ requestId, onBack }) => {
-  const [data, setData] = useState(null);
-  const [loading, setLoading] = useState(true);
+  const { getById, updateRequest } = useDocumentRequests();
+  const { fill, filling } = useFillDocument();
+
+  // seed from context cache — no extra network call needed
+  const [data, setData] = useState(() => getById(requestId));
+  const [loadingDetail, setLoadingDetail] = useState(!getById(requestId));
   const [pickupDate, setPickupDate] = useState("");
   const [busy, setBusy] = useState(false);
   const [showReject, setShowReject] = useState(false);
   const [toast, setToast] = useState(null);
-
-  // 2. Initialize the PDF filling hook
-  const { fill, filling } = useFillDocument();
 
   const notify = (msg, type = "success") => {
     setToast({ msg, type });
     setTimeout(() => setToast(null), 3500);
   };
 
+  // Only fetch individually if not already in context (edge case)
   useEffect(() => {
+    if (data) return;
+    setLoadingDetail(true);
     api
       .get(`/clerk/requests/${requestId}`)
       .then((r) => setData(r.data))
       .catch(console.error)
-      .finally(() => setLoading(false));
+      .finally(() => setLoadingDetail(false));
   }, [requestId]);
 
   const handleApprove = async () => {
@@ -207,7 +212,9 @@ const DetailView = ({ requestId, onBack }) => {
       const res = await api.post(`/clerk/requests/${requestId}/approve`, {
         pickup_date: pickupDate || null,
       });
-      setData(res.data.request);
+      const updated = res.data.request;
+      setData(updated);
+      updateRequest(updated); // ← instant list update, no reload
       notify(res.data.message);
     } catch {
       notify("Approval failed.", "error");
@@ -222,7 +229,9 @@ const DetailView = ({ requestId, onBack }) => {
       const res = await api.post(`/clerk/requests/${requestId}/reject`, {
         reason,
       });
-      setData(res.data.request);
+      const updated = res.data.request;
+      setData(updated);
+      updateRequest(updated); // ← instant list update, no reload
       setShowReject(false);
       notify(res.data.message);
     } catch {
@@ -232,7 +241,7 @@ const DetailView = ({ requestId, onBack }) => {
     }
   };
 
-  if (loading)
+  if (loadingDetail)
     return (
       <div className="flex flex-col items-center justify-center min-h-screen bg-gray-50 gap-3">
         <Loader2 size={24} className="animate-spin text-emerald-500" />
@@ -245,8 +254,9 @@ const DetailView = ({ requestId, onBack }) => {
   const user = resi?.user;
   const zone = user?.zone;
   const doc = data.document_type;
-  const isPending = data.status_id === 1;
-  const isApprovedOrReady = data.status_id === 2 || data.status_id === 5;
+  const isPending = Number(data.status_id) === 1;
+  const isApprovedOrReady =
+    Number(data.status_id) === 2 || Number(data.status_id) === 5;
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -260,10 +270,11 @@ const DetailView = ({ requestId, onBack }) => {
       )}
 
       {/* Top bar */}
-      <div className=" px-8 h-14 flex items-center justify-between ">
+      <div className="px-4 sm:px-8 h-14 flex items-center justify-between bg-white border-b border-gray-100 sticky top-0 z-30">
         <button
           onClick={onBack}
-          className="flex items-center cursor-pointer gap-2 text-sm font-semibold text-gray-500 hover:text-gray-900 transition-colors group"
+          className="flex items-center gap-2 text-sm font-semibold text-gray-500
+                     hover:text-gray-900 transition-colors group"
         >
           <ArrowLeft
             size={15}
@@ -272,7 +283,7 @@ const DetailView = ({ requestId, onBack }) => {
           Back to Queue
         </button>
         <div className="flex items-center gap-3">
-          <span className="text-[11px] text-gray-600 font-mono tracking-wider">
+          <span className="text-[11px] text-gray-600 font-mono tracking-wider hidden sm:inline">
             REQ-{String(data.request_id).padStart(4, "0")}
           </span>
           <StatusPill statusId={data.status_id} />
@@ -280,7 +291,7 @@ const DetailView = ({ requestId, onBack }) => {
       </div>
 
       {/* Body */}
-      <div className="max-w-2xl mx-auto px-6 py-12 space-y-0">
+      <div className="max-w-2xl mx-auto px-4 sm:px-6 py-12 space-y-0">
         <section>
           <div className="flex items-center gap-5 mb-10">
             <div className="w-14 h-14 rounded-2xl bg-emerald-500 flex items-center justify-center shrink-0">
@@ -295,34 +306,33 @@ const DetailView = ({ requestId, onBack }) => {
               </h2>
               <p className="text-sm text-gray-400 mt-0.5">{user?.email}</p>
               {resi?.is_verified && (
-                <span className="inline-flex items-center gap-1 text-[10px] font-bold text-emerald-600 mt-1.5 tracking-wide uppercase">
+                <span
+                  className="inline-flex items-center gap-1 text-[10px] font-bold
+                                 text-emerald-600 mt-1.5 tracking-wide uppercase"
+                >
                   <CheckCircle size={10} /> Verified
                 </span>
               )}
             </div>
           </div>
 
-          <div className="flex flex-col">
-            <SectionTitle>Request Information</SectionTitle>
-            <div className="grid grid-cols-3 gap-5 pt-2">
-              {[
-                [
-                  "Request ID",
-                  `REQ-${String(data.request_id).padStart(4, "0")}`,
-                ],
-                ["Document", doc?.document_name],
-                ["Fee", doc?.fee ? `₱${Number(doc.fee).toFixed(2)}` : "Free"],
-                ["Filed", fmt(data.request_date)],
-                ["Status", STATUS[data.status_id]?.label ?? "—"],
-                ["Pickup", fmt(data.pickup_date)],
-              ].map(([k, v]) => (
-                <div key={k}>
-                  <Label>{k}</Label>
-                  <p className="text-sm font-semibold text-gray-700">{v}</p>
-                </div>
-              ))}
-            </div>
+          <SectionTitle>Request Information</SectionTitle>
+          <div className="grid grid-cols-3 gap-5 pt-2">
+            {[
+              ["Request ID", `REQ-${String(data.request_id).padStart(4, "0")}`],
+              ["Document", doc?.document_name],
+              ["Fee", doc?.fee ? `₱${Number(doc.fee).toFixed(2)}` : "Free"],
+              ["Filed", fmt(data.request_date)],
+              ["Status", STATUS[data.status_id]?.label ?? "—"],
+              ["Pickup", fmt(data.pickup_date)],
+            ].map(([k, v]) => (
+              <div key={k}>
+                <Label>{k}</Label>
+                <p className="text-sm font-semibold text-gray-700">{v}</p>
+              </div>
+            ))}
           </div>
+
           <Divider />
 
           <SectionTitle>Personal Information</SectionTitle>
@@ -376,6 +386,7 @@ const DetailView = ({ requestId, onBack }) => {
 
         <Divider />
 
+        {/* ── Clerk Decision (Pending only) ── */}
         {isPending && (
           <section>
             <SectionTitle>Clerk Decision</SectionTitle>
@@ -400,8 +411,9 @@ const DetailView = ({ requestId, onBack }) => {
                   min={todayStr()}
                   value={pickupDate}
                   onChange={(e) => setPickupDate(e.target.value)}
-                  className="w-full bg-white border border-gray-200 rounded-xl px-4 py-3 text-sm text-gray-800
-                             focus:ring-2 focus:ring-emerald-400 focus:border-emerald-400 outline-none"
+                  className="w-full bg-white border border-gray-200 rounded-xl px-4 py-3 text-sm
+                             text-gray-800 focus:ring-2 focus:ring-emerald-400
+                             focus:border-emerald-400 outline-none"
                 />
                 <p className="text-[10px] text-gray-400 mt-1.5 font-medium">
                   {pickupDate
@@ -409,22 +421,20 @@ const DetailView = ({ requestId, onBack }) => {
                     : "→ Ready for pickup today"}
                 </p>
               </div>
-              <div className="flex flex-col justify-end">
-                <button
-                  onClick={handleApprove}
-                  disabled={busy}
-                  className="w-full py-3 bg-emerald-500 hover:bg-emerald-600 text-white rounded-xl
-                             text-sm font-black transition-colors flex items-center justify-center gap-2
-                             disabled:opacity-50 disabled:cursor-not-allowed"
-                >
-                  {busy ? (
-                    <Loader2 size={14} className="animate-spin" />
-                  ) : (
-                    <CheckCircle size={14} />
-                  )}
-                  {!pickupDate ? "Ready for Pickup" : "Approve & Schedule"}
-                </button>
-              </div>
+              <button
+                onClick={handleApprove}
+                disabled={busy}
+                className="w-full py-3 bg-emerald-500 hover:bg-emerald-600 text-white rounded-xl
+                           text-sm font-black transition-colors flex items-center justify-center gap-2
+                           disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {busy ? (
+                  <Loader2 size={14} className="animate-spin" />
+                ) : (
+                  <CheckCircle size={14} />
+                )}
+                {!pickupDate ? "Ready for Pickup" : "Approve & Schedule"}
+              </button>
             </div>
 
             <button
@@ -439,12 +449,11 @@ const DetailView = ({ requestId, onBack }) => {
           </section>
         )}
 
-        {/* ── 3. Post-approval Action Area ── */}
+        {/* ── Print & Issuance (Approved / Ready) ── */}
         {isApprovedOrReady && (
           <>
             <section>
               <SectionTitle>Print & Issuance</SectionTitle>
-
               <div className="flex gap-4 mb-6">
                 <div className="flex-1 bg-white border border-gray-100 rounded-2xl px-5 py-4">
                   <Label>Current Status</Label>
@@ -473,10 +482,8 @@ const DetailView = ({ requestId, onBack }) => {
                       </p>
                     </div>
                   </div>
-
-                  {/* Automated PDF Fill Button */}
                   <button
-                    onClick={() => fill(data)} // 4. Passing the current 'data' object
+                    onClick={() => fill(data)}
                     disabled={filling}
                     className="w-full py-4 bg-emerald-500 hover:bg-emerald-600 text-white rounded-2xl
                                text-sm font-black transition-all flex items-center justify-center gap-3
@@ -484,17 +491,15 @@ const DetailView = ({ requestId, onBack }) => {
                   >
                     {filling ? (
                       <>
-                        <Loader2 size={18} className="animate-spin" />
+                        <Loader2 size={18} className="animate-spin" />{" "}
                         Generating Document...
                       </>
                     ) : (
                       <>
-                        <Printer size={18} />
-                        Fill & Open Document
+                        <Printer size={18} /> Fill & Open Document
                       </>
                     )}
                   </button>
-
                   <p className="text-[10px] text-gray-300 text-center">
                     Uses automated form fields. Make sure PDF text boxes are
                     named correctly.
@@ -518,23 +523,25 @@ const DetailView = ({ requestId, onBack }) => {
 
 /* ─────────────────────────────────────────────────────────────
    LIST VIEW
+   — reads pending requests directly from context (byStatus)
+     instead of its own api.get("/clerk/requests/pending")
 ───────────────────────────────────────────────────────────── */
 const IncomingQueue = () => {
+  const { byStatus, loading, error, refresh, lastFetched } =
+    useDocumentRequests();
   const [selectedId, setSelectedId] = useState(null);
-  const [requests, setRequests] = useState([]);
   const [zones, setZones] = useState([]);
-  const [loading, setLoading] = useState(true);
+  const [zonesLoading, setZonesLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedZone, setSelectedZone] = useState("");
 
+  // Zones are static — still fetch them independently
   useEffect(() => {
-    Promise.all([api.get("/clerk/requests/pending"), api.get("/zones")])
-      .then(([rr, zr]) => {
-        setRequests(rr.data);
-        setZones(zr.data);
-      })
+    api
+      .get("/zones")
+      .then((r) => setZones(r.data))
       .catch(console.error)
-      .finally(() => setLoading(false));
+      .finally(() => setZonesLoading(false));
   }, []);
 
   if (selectedId) {
@@ -543,31 +550,52 @@ const IncomingQueue = () => {
     );
   }
 
-  const filtered = requests.filter((req) => {
+  // ── Pull pending (status_id = 1) from shared context ──────────
+  // Cast to Number to handle string "1" vs number 1 from API
+  const pending = byStatus(1); // context already handles this
+
+  const filtered = pending.filter((req) => {
     const u = req.resident?.user;
     const name = `${u?.first_name ?? ""} ${u?.last_name ?? ""}`.toLowerCase();
-    const matchZone = !selectedZone || u?.zone_id?.toString() === selectedZone;
+    const matchZone = !selectedZone || String(u?.zone_id) === selectedZone;
     return name.includes(searchTerm.toLowerCase()) && matchZone;
   });
 
   return (
     <div className="min-h-screen bg-gray-50">
-      <div className=" border-b border-gray-100 px-8 py-6">
+      {/* Header */}
+      <div className="border-b border-gray-100 px-4 sm:px-8 py-6 bg-white">
         <div className="max-w-4xl mx-auto">
-          <div className="mb-5">
-            <p className="text-[10px] font-black tracking-[0.14em] uppercase text-emerald-500 mb-1">
-              Document Requests
-            </p>
-            <h1 className="text-2xl font-black text-gray-900 tracking-tight">
-              Incoming Queue
-            </h1>
-            <p className="text-sm text-gray-400 mt-1">
-              {loading
-                ? "Loading…"
-                : `${filtered.length} pending ${filtered.length === 1 ? "request" : "requests"}`}
-            </p>
+          <div className="flex items-end justify-between mb-5 flex-wrap gap-3">
+            <div>
+              <p className="text-[10px] font-black tracking-[0.14em] uppercase text-emerald-500 mb-1">
+                Document Requests
+              </p>
+              <h1 className="text-2xl font-black text-gray-900 tracking-tight">
+                Incoming Queue
+              </h1>
+              <p className="text-sm text-gray-400 mt-1">
+                {loading
+                  ? "Loading…"
+                  : `${filtered.length} pending ${filtered.length === 1 ? "request" : "requests"}`}
+                {lastFetched && (
+                  <span className="text-gray-300 ml-2 text-[10px]">
+                    · synced {lastFetched.toLocaleTimeString()}
+                  </span>
+                )}
+              </p>
+            </div>
+            <button
+              onClick={refresh}
+              className="p-2 rounded-xl border border-gray-200 text-gray-400
+                         hover:text-emerald-600 hover:border-emerald-200 transition-colors"
+              title="Refresh"
+            >
+              <RefreshCw size={14} />
+            </button>
           </div>
 
+          {/* Search + Zone filter */}
           <div className="flex gap-3">
             <div className="relative flex-[4]">
               <Search
@@ -584,7 +612,6 @@ const IncomingQueue = () => {
                            focus:ring-2 focus:ring-emerald-400 focus:border-emerald-400 outline-none"
               />
             </div>
-
             <div className="relative flex-1">
               <MapPin
                 size={13}
@@ -613,26 +640,32 @@ const IncomingQueue = () => {
         </div>
       </div>
 
-      <div className="max-w-4xl mx-auto px-8 py-8">
-        <div className="bg-white border border-gray-100 rounded-2xl overflow-hidden">
-          <table className="w-full">
+      {error && (
+        <div className="max-w-4xl mx-auto px-4 sm:px-8 pt-4">
+          <div
+            className="flex items-center gap-2 bg-red-50 border border-red-200 rounded-xl
+                          px-4 py-3 text-sm text-red-600"
+          >
+            <AlertCircle size={14} /> {error}
+          </div>
+        </div>
+      )}
+
+      {/* Table */}
+      <div className="max-w-4xl mx-auto px-4 sm:px-8 py-8">
+        <div className="bg-white border border-gray-100 rounded-2xl overflow-hidden overflow-x-auto">
+          <table className="w-full min-w-[520px]">
             <thead>
               <tr className="border-b border-gray-100 bg-gray-50/70">
-                <th className="px-6 py-3.5 text-left text-[9px] font-black tracking-[0.12em] uppercase text-gray-400">
-                  Resident
-                </th>
-                <th className="px-6 py-3.5 text-left text-[9px] font-black tracking-[0.12em] uppercase text-gray-400">
-                  Zone
-                </th>
-                <th className="px-6 py-3.5 text-left text-[9px] font-black tracking-[0.12em] uppercase text-gray-400">
-                  Document
-                </th>
-                <th className="px-6 py-3.5 text-left text-[9px] font-black tracking-[0.12em] uppercase text-gray-400">
-                  Filed
-                </th>
-                <th className="px-6 py-3.5 text-right text-[9px] font-black tracking-[0.12em] uppercase text-gray-400">
-                  Action
-                </th>
+                {["Resident", "Zone", "Document", "Filed", ""].map((h) => (
+                  <th
+                    key={h}
+                    className="px-6 py-3.5 text-left text-[9px] font-black tracking-[0.12em]
+                               uppercase text-gray-400 last:text-right"
+                  >
+                    {h}
+                  </th>
+                ))}
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-50">
@@ -662,7 +695,7 @@ const IncomingQueue = () => {
                   return (
                     <tr
                       key={req.request_id}
-                      className="hover:bg-gray-50/60 transition-colors group"
+                      className="hover:bg-gray-50/60 transition-colors"
                     >
                       <td className="px-6 py-4">
                         <div className="flex items-center gap-3">
