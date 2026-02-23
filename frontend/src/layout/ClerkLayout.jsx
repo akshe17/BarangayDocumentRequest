@@ -56,11 +56,7 @@ const ClerkLayout = () => {
       label: "Rejected",
       icon: <FileX size={20} />, // Distinct "X" for errors
     },
-    {
-      path: "/clerk/residents",
-      label: "Resident Directory",
-      icon: <Users size={20} />,
-    },
+
     {
       path: "/clerk/logs",
       label: "Audit Logs",

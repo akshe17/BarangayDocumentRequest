@@ -38,6 +38,7 @@ import CaptainDocumentRequests from "./pages/barangayCaptain/CaptainDocumentRequ
 import { ZoneLeaaderProfile } from "./pages/zoneLeader/ZoneLeaderProfile";
 import { AdminProfile } from "./pages/admin/AdminProfile";
 import { ClerkProfile } from "./pages/clerk/ClerkProfile";
+import ClerkLogs from "./pages/clerk/ClerkLogs";
 import RejectedRequests from "./pages/clerk/RejectedRequests";
 import { CaptainProfile } from "./pages/barangayCaptain/CaptainProfile";
 import ResidentManagement from "./pages/admin/ResidentManagement";
@@ -138,7 +139,8 @@ const App = () => {
           <Route path="residents" element={<ResidentDirectory />} />
           <Route path="dashboard" element={<ClerkDashboard />} />
           <Route path="requests" element={<RequestTable />} />
-          <Route path="logs" element={<AuditLogs />} />
+
+          <Route path="logs" element={<ClerkLogs />} />
           <Route path="profile" element={<ClerkProfile />} />
         </Route>
 

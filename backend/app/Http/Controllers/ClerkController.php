@@ -336,4 +336,13 @@ class ClerkController extends Controller
             'processed' => $due->count(),
         ]);
     }
+
+    public function getLogs()
+{
+    $logs = \App\Models\ActionLog::with(['user'])
+        ->orderBy('created_at', 'desc')
+        ->get();
+
+    return response()->json($logs);
+}
 }
