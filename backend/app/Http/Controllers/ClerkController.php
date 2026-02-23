@@ -12,6 +12,7 @@ use Illuminate\Support\Facades\Mail;
 use Carbon\Carbon;
 use Stripe\Stripe;
 use Stripe\PaymentIntent;
+use Illuminate\Support\Facades\DB;
 
 class ClerkController extends Controller
 {
@@ -340,10 +341,70 @@ class ClerkController extends Controller
 public function getLogs()
 {
     $logs = \App\Models\ActionLog::with(['user'])
-        ->where('user_id', Auth::id())
+        ->whereHas('user', function ($q) {
+            $q->where('role_id', 3);
+        })
         ->orderBy('created_at', 'desc')
         ->get();
 
     return response()->json($logs);
+}
+
+public function getDashboardStats()
+{
+    // 1. Daily request counts (Last 7 Days)
+    // Using 'request_date' as defined in your DocumentRequest model
+    $daily = collect(range(6, 0))->map(function ($daysAgo) {
+        $date = Carbon::today()->subDays($daysAgo);
+
+        return [
+            'date'      => $date->format('M d'),
+            'pending'   => DocumentRequest::whereDate('request_date', $date)
+                            ->where('status_id', 1)->count(),
+            // 5 = Ready for Pickup, 6 = Completed
+            'completed' => DocumentRequest::whereDate('request_date', $date)
+                            ->whereIn('status_id', [5, 6])->count(),
+        ];
+    });
+
+    // 2. Top 5 most requested document types
+    // FIX: Changed 'document_type_id' to 'document_id' to match your model
+    $topDocuments = DocumentRequest::select('document_id', \Illuminate\Support\Facades\DB::raw('count(*) as count'))
+        ->with('documentType:document_id,document_name')
+        ->groupBy('document_id')
+        ->orderByDesc('count')
+        ->limit(5)
+        ->get()
+        ->map(fn($r) => [
+            'name'  => \Illuminate\Support\Str::limit(
+                $r->documentType?->document_name ?? 'Unknown', 14
+            ),
+            'count' => $r->count,
+        ]);
+
+    // 3. Revenue Logic
+    // In your model, payment_status likely stores 'Paid' or 'Unpaid' 
+    // or a boolean. Adjust the where clause if it's a string like 'Paid'.
+    $paidRequests = DocumentRequest::where('payment_status', 'Paid') 
+        ->with('documentType:document_id,fee')
+        ->get();
+
+    $totalRevenue = $paidRequests->sum(fn($r) => (float) ($r->documentType?->fee ?? 0));
+
+    $todayRevenue = $paidRequests
+        ->filter(fn($r) => Carbon::parse($r->updated_at)->isToday())
+        ->sum(fn($r) => (float) ($r->documentType?->fee ?? 0));
+
+    $monthRevenue = $paidRequests
+        ->filter(fn($r) => Carbon::parse($r->updated_at)->isCurrentMonth())
+        ->sum(fn($r) => (float) ($r->documentType?->fee ?? 0));
+
+    return response()->json([
+        'daily'        => $daily,
+        'topDocuments' => $topDocuments,
+        'totalRevenue' => $totalRevenue,
+        'todayRevenue' => $todayRevenue,
+        'monthRevenue' => $monthRevenue,
+    ]);
 }
 }

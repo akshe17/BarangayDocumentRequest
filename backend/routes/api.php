@@ -146,6 +146,7 @@ Route::get('/resident/notifications', [ResidentNotificationController::class, 'i
 
     // ── Static named routes first ──────────────────────────────
     Route::get ('/clerk/requests/pending',                  [ClerkController::class, 'getPending']);
+    Route::get('/clerk/dashboard/stats', [ClerkController::class, 'getDashboardStats']);
     Route::get('/clerk/logs', [ClerkController::class, 'getLogs']);
     Route::get ('/clerk/requests/all',                      [ClerkController::class, 'getAll']);
     Route::post('/clerk/requests/process-scheduled',        [ClerkController::class, 'processScheduled']);
