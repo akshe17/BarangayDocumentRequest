@@ -38,13 +38,13 @@ Route::middleware(['custom.auth'])->group(function () {
     Route::post('/auth/change-password', [AuthController::class, 'changePassword']);
 
     //admin resident
-  Route::get   ('/admin/residents',                    [AdminResidentController::class, 'index']);
-    Route::get   ('/admin/residents/meta',               [AdminResidentController::class, 'meta']);           // ← before /{id}
-    Route::get   ('/admin/residents/{id}',               [AdminResidentController::class, 'show']);
-    Route::patch ('/admin/residents/{id}',               [AdminResidentController::class, 'update']);
-    Route::patch ('/admin/residents/{id}/toggle-active', [AdminResidentController::class, 'toggleActive']);   // ← before /{id}/password
-    Route::patch ('/admin/residents/{id}/password',      [AdminResidentController::class, 'updatePassword']);
-
+ 
+Route::get   ('/admin/residents',                    [AdminResidentController::class, 'index']);
+Route::get   ('/admin/residents/meta',               [AdminResidentController::class, 'meta']);
+Route::get   ('/admin/residents/{id}',               [AdminResidentController::class, 'show']);
+Route::patch ('/admin/residents/{id}',               [AdminResidentController::class, 'update']);
+Route::patch ('/admin/residents/{id}/toggle-active', [AdminResidentController::class, 'toggleActive']);
+Route::patch ('/admin/residents/{id}/password',      [AdminResidentController::class, 'updatePassword']);
 
     //admin document
   Route::get('document-types',         [AdminDocumentController::class, 'index']);

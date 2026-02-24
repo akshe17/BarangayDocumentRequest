@@ -4,12 +4,17 @@ import App from "./App.jsx";
 import { AuthProvider } from "./context/AuthContext.jsx";
 import { ZoneProvider } from "./context/ZoneContext";
 import { DocumentRequestProvider } from "./context/DocumentRequestContext.jsx";
+import { AdminResidentProvider } from "./context/AdminResidentContext.jsx";
+// ... inside your router/layout
+
 createRoot(document.getElementById("root")).render(
-  <DocumentRequestProvider>
-    <ZoneProvider>
-      <AuthProvider>
-        <App />
-      </AuthProvider>
-    </ZoneProvider>
-  </DocumentRequestProvider>,
+  <AdminResidentProvider>
+    <DocumentRequestProvider>
+      <ZoneProvider>
+        <AuthProvider>
+          <App />
+        </AuthProvider>
+      </ZoneProvider>
+    </DocumentRequestProvider>
+  </AdminResidentProvider>,
 );

@@ -29,8 +29,7 @@ return new class extends Migration
             $table->string('house_no', 50);
 
             $table->string('id_image_path')->nullable(); 
-      
-            $table->boolean('is_verified')->default(null); 
+    $table->boolean('is_verified')->nullable();
             $table->timestamps();
         });
     }
