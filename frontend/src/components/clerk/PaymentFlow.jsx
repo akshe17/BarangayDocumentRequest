@@ -11,9 +11,9 @@ import {
   X,
 } from "lucide-react";
 import api from "../../axious/api";
-import { stripePromise } from "./stripeUtils";
+import { stripePromise } from "../../utils/StripeUtils";
 import StripeCardForm from "./StripeCardForm";
-import { isPaid } from "./pickupHelpers";
+import { isPaid } from "../../utils/PickupHelpers";
 
 /**
  * PaymentFlow — inline payment steps.
