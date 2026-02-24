@@ -2,408 +2,147 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\DocumentRequest;
-use App\Models\RequestItem;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Validator;
+use Illuminate\Support\Facades\Hash;
+use Illuminate\Validation\Rules\Password;
+use App\Models\User;
+use App\Models\Resident;
+use App\Models\Zone;
+use App\Models\Gender;
+use App\Models\CivilStatus;
 
-class AdminRequestController extends Controller
+class AdminResidentController extends Controller
 {
-    /**
-     * Display a listing of all document requests with relationships
-     * GET /api/document-requests
-     */
-  public function index(Request $request)
+    /* ── Shared eager-load ─────────────────────────────────── */
+    private function baseQuery()
     {
-        try {
-            $query = DocumentRequest::with([
-                'resident.user',
-                'resident.gender',
-                'resident.civilStatus',
-                'items.document',
-                'status'
-            ])->whereHas('resident', function ($q) {
-                $q->where('is_verified', 1);
-            });
-
-            // Filter by status if provided
-            if ($request->has('status') && $request->status !== 'all') {
-                $query->whereHas('status', function ($q) use ($request) {
-                    $q->where('status_name', ucfirst($request->status));
-                });
-            }
-
-            // Search functionality
-            if ($request->has('search') && $request->search !== '') {
-                $searchTerm = $request->search;
-                $query->where(function ($q) use ($searchTerm) {
-                    $q->whereHas('resident', function ($residentQuery) use ($searchTerm) {
-                        $residentQuery->where('first_name', 'LIKE', "%{$searchTerm}%")
-                            ->orWhere('last_name', 'LIKE', "%{$searchTerm}%");
-                    })
-                    ->orWhereHas('items.document', function ($docQuery) use ($searchTerm) {
-                        $docQuery->where('document_name', 'LIKE', "%{$searchTerm}%");
-                    })
-                    ->orWhere('request_id', 'LIKE', "%{$searchTerm}%");
-                });
-            }
-
-            // Order by most recent first
-            $requests = $query->orderBy('request_date', 'desc')->get();
-
-            // Format the response
-            $formattedRequests = $requests->map(function ($request) {
-                $resident = $request->resident;
-                $fullName = "{$resident->first_name} {$resident->last_name}";
-                $initials = strtoupper(substr($resident->first_name, 0, 1) . substr($resident->last_name, 0, 1));
-
-                return [
-                    'id' => "REQ-" . str_pad($request->request_id, 3, '0', STR_PAD_LEFT),
-                    'request_id' => $request->request_id,
-                    'resident' => $fullName,
-                    'email' => $resident->user->email ?? 'N/A',
-                    'documents' => $request->items->map(function ($item) {
-                        return $item->document->document_name;
-                    })->toArray(),
-                    'date' => $request->request_date->diffForHumans(),
-                    'dateCreated' => $request->request_date->format('M d, Y'),
-                    'status' => $request->status->status_name ?? 'Pending',
-                    'purpose' => $request->purpose ?? 'No purpose provided',
-                    'avatar' => $initials,
-                    // FIX: Check for integer 1
-                    'paymentStatus' => $request->payment_status == 1 ? 'Paid' : 'Unpaid',
-                    'rejectionReason' => $request->rejection_reason,
-                    'pickup_date' => $request->pickup_date ? $request->pickup_date->format('M d, Y') : null,
-                ];
-            });
-
-            return response()->json([
-                'success' => true,
-                'data' => $formattedRequests,
-                'message' => 'Document requests retrieved successfully'
-            ], 200);
-
-        } catch (\Exception $e) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Error retrieving document requests',
-                'error' => $e->getMessage()
-            ], 500);
-        }
+        return User::with(['zone', 'resident.gender', 'resident.civilStatus'])
+            ->where('role_id', 2);
     }
 
-    /**
-     * Display the specified document request
-     * GET /api/document-requests/{id}
-     */
+    /* ─────────────────────────────────────────────────────────
+     * GET /api/admin/residents
+     * All resident users (both active and inactive).
+     * Frontend splits them by is_active client-side.
+     * ───────────────────────────────────────────────────────── */
+    public function index()
+    {
+        return response()->json(
+            $this->baseQuery()
+                ->orderBy('last_name')
+                ->orderBy('first_name')
+                ->get()
+        );
+    }
+
+    /* ─────────────────────────────────────────────────────────
+     * GET /api/admin/residents/meta
+     * Lookup tables for dropdowns — one call.
+     * MUST be registered BEFORE /{id} in routes.
+     * ───────────────────────────────────────────────────────── */
+    public function meta()
+    {
+        return response()->json([
+            'zones'          => Zone::orderBy('zone_name')->get(['zone_id', 'zone_name']),
+            'genders'        => Gender::orderBy('gender_name')->get(['gender_id', 'gender_name']),
+            'civil_statuses' => CivilStatus::orderBy('status_name')->get(['civil_status_id', 'status_name']),
+        ]);
+    }
+
+    /* ─────────────────────────────────────────────────────────
+     * GET /api/admin/residents/{id}
+     * Single resident — edit page initial load.
+     * ───────────────────────────────────────────────────────── */
     public function show($id)
     {
-        try {
-            $request = DocumentRequest::with([
-                'resident.user',
-                'resident.gender',
-                'resident.civilStatus',
-                'items.document',
-                'status'
-            ])->findOrFail($id);
-
-            $resident = $request->resident;
-            $fullName = "{$resident->first_name} {$resident->last_name}";
-            $initials = strtoupper(substr($resident->first_name, 0, 1) . substr($resident->last_name, 0, 1));
-
-            $formattedRequest = [
-                'id' => "REQ-" . str_pad($request->request_id, 3, '0', STR_PAD_LEFT),
-                'request_id' => $request->request_id,
-                'resident' => $fullName,
-                'email' => $resident->user->email ?? 'N/A',
-                'documents' => $request->items->map(function ($item) {
-                    return [
-                        'name' => $item->document->document_name,
-                        'quantity' => $item->quantity,
-                        'fee' => $item->document->fee
-                    ];
-                })->toArray(),
-                'date' => $request->request_date->diffForHumans(),
-                'dateCreated' => $request->request_date->format('M d, Y'),
-                'status' => $request->status->status_name ?? 'Pending',
-                'purpose' => $request->purpose ?? 'No purpose provided',
-                'avatar' => $initials,
-                // FIX: Check for integer 1
-                'paymentStatus' => $request->payment_status == 1 ? 'Paid' : 'Unpaid',
-                'rejectionReason' => $request->rejection_reason,
-                'pickup_date' => $request->pickup_date ? $request->pickup_date->format('M d, Y') : null,
-                'resident_details' => [
-                    'house_no' => $resident->house_no,
-                    'zone' => $resident->zone,
-                    'birthdate' => $resident->birthdate,
-                    'gender' => $resident->gender->gender_name ?? null,
-                    'civil_status' => $resident->civilStatus->status_name ?? null,
-                ]
-            ];
-
-            return response()->json([
-                'success' => true,
-                'data' => $formattedRequest,
-                'message' => 'Document request retrieved successfully'
-            ], 200);
-
-        } catch (\Exception $e) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Error retrieving document request',
-                'error' => $e->getMessage()
-            ], 404);
-        }
+        return response()->json(
+            $this->baseQuery()->findOrFail($id)
+        );
     }
 
-    /**
-     * Update the status of a document request to "Approved"
-     * PUT /api/document-requests/{id}/approve
-     */
-    public function approve($id)
+    /* ─────────────────────────────────────────────────────────
+     * PATCH /api/admin/residents/{id}
+     * Update User + Resident records together.
+     * ───────────────────────────────────────────────────────── */
+    public function update(Request $request, $id)
     {
-        try {
-            $request = DocumentRequest::findOrFail($id);
+        $user = User::where('role_id', 2)->findOrFail($id);
 
-            // Get the "Approved" status ID (assuming status_id 2 is Approved)
-            // You should adjust this based on your actual status table
-            $approvedStatusId = DB::table('request_statuses')
-                ->where('status_name', 'Approved')
-                ->value('status_id');
+        $data = $request->validate([
+            'first_name'      => 'required|string|max:100',
+            'last_name'       => 'required|string|max:100',
+            'email'           => "required|email|max:255|unique:users,email,{$id},user_id",
+            'zone_id'         => 'nullable|exists:zones,zone_id',
+            'is_active'       => 'required|boolean',
+            'gender_id'       => 'nullable|exists:genders,gender_id',
+            'civil_status_id' => 'nullable|exists:civil_statuses,civil_status_id',
+            'birthdate'       => 'nullable|date|before:today',
+            'house_no'        => 'nullable|string|max:100',
+            'is_verified'     => 'required|boolean',
+        ]);
 
-            if (!$approvedStatusId) {
-                return response()->json([
-                    'success' => false,
-                    'message' => 'Approved status not found in database'
-                ], 400);
-            }
+        $user->update([
+            'first_name' => $data['first_name'],
+            'last_name'  => $data['last_name'],
+            'email'      => $data['email'],
+            'zone_id'    => $data['zone_id']  ?? null,
+            'is_active'  => $data['is_active'],
+        ]);
 
-            $request->update([
-                'status_id' => $approvedStatusId,
-                'rejection_reason' => null // Clear rejection reason if any
-            ]);
-
-            return response()->json([
-                'success' => true,
-                'message' => 'Document request approved successfully',
-                'data' => $request->fresh(['status', 'resident', 'items.document'])
-            ], 200);
-
-        } catch (\Exception $e) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Error approving document request',
-                'error' => $e->getMessage()
-            ], 500);
-        }
-    }
-
-    /**
-     * Update the status of a document request to "Rejected"
-     * PUT /api/document-requests/{id}/reject
-     */
-    public function reject(Request $request, $id)
-    {
-        try {
-            $validator = Validator::make($request->all(), [
-                'rejection_reason' => 'required|string|max:500'
-            ]);
-
-            if ($validator->fails()) {
-                return response()->json([
-                    'success' => false,
-                    'message' => 'Validation error',
-                    'errors' => $validator->errors()
-                ], 422);
-            }
-
-            $documentRequest = DocumentRequest::findOrFail($id);
-
-            // Get the "Rejected" status ID
-            $rejectedStatusId = DB::table('request_statuses')
-                ->where('status_name', 'Rejected')
-                ->value('status_id');
-
-            if (!$rejectedStatusId) {
-                return response()->json([
-                    'success' => false,
-                    'message' => 'Rejected status not found in database'
-                ], 400);
-            }
-
-            $documentRequest->update([
-                'status_id' => $rejectedStatusId,
-                'rejection_reason' => $request->rejection_reason
-            ]);
-
-            return response()->json([
-                'success' => true,
-                'message' => 'Document request rejected successfully',
-                'data' => $documentRequest->fresh(['status', 'resident', 'items.document'])
-            ], 200);
-
-        } catch (\Exception $e) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Error rejecting document request',
-                'error' => $e->getMessage()
-            ], 500);
-        }
-    }
-
-    /**
-     * Update the status of a document request to "Completed"
-     * PUT /api/document-requests/{id}/complete
-     */
-    public function complete($id)
-    {
-        try {
-            $request = DocumentRequest::findOrFail($id);
-
-            // Get the "Completed" status ID
-            $completedStatusId = DB::table('request_statuses')
-                ->where('status_name', 'Completed')
-                ->value('status_id');
-
-            if (!$completedStatusId) {
-                return response()->json([
-                    'success' => false,
-                    'message' => 'Completed status not found in database'
-                ], 400);
-            }
-
-            $request->update([
-               'status_id' => $completedStatusId,
-            'payment_status' => 1 // Mark as paid
-            ]);
-
-            return response()->json([
-                'success' => true,
-                'message' => 'Document request marked as completed successfully',
-                'data' => $request->fresh(['status', 'resident', 'items.document'])
-            ], 200);
-
-        } catch (\Exception $e) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Error completing document request',
-                'error' => $e->getMessage()
-            ], 500);
-        }
-    }
-
-    /**
-     * Toggle payment status
-     * PUT /api/document-requests/{id}/toggle-payment
-     */
-   public function togglePaymentStatus($id)
-    {
-        try {
-            $request = DocumentRequest::findOrFail($id);
-
-            // FIX: Toggle integer 1 to 0 or vice versa
-            $newPaymentStatus = $request->payment_status == 1 ? 0 : 1;
-            
-            $request->update([
-                'payment_status' => $newPaymentStatus
-            ]);
-
-            return response()->json([
-                'success' => true,
-                'message' => 'Payment status updated successfully',
-                'data' => [
-                    'request_id' => $request->request_id,
-                    'payment_status' => $newPaymentStatus
-                ]
-            ], 200);
-
-        } catch (\Exception $e) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Error updating payment status',
-                'error' => $e->getMessage()
-            ], 500);
-        }
-    }
-    /**
-     * Get statistics for dashboard
-     * GET /api/document-requests/stats
-     */
-  public function getStats()
-{
-    try {
-        // Define the base query with the verification filter
-        $baseQuery = DocumentRequest::whereHas('resident', function ($q) {
-            $q->where('is_verified', 1);
-        });
-
-        // Use the base query for all calculations
-        $total = $baseQuery->count();
-        
-        $pending = (clone $baseQuery)->whereHas('status', function ($q) {
-            $q->where('status_name', 'pending');
-        })->count();
-        
-        $approved = (clone $baseQuery)->whereHas('status', function ($q) {
-            $q->where('status_name', 'approved');
-        })->count();
-        
-        $completed = (clone $baseQuery)->whereHas('status', function ($q) {
-            $q->where('status_name', 'completed');
-        })->count();
-        
-        $rejected = (clone $baseQuery)->whereHas('status', function ($q) {
-            $q->where('status_name', 'rejected');
-        })->count();
-
-        return response()->json([
-            'success' => true,
-            'data' => [
-                'total' => $total,
-                'pending' => $pending,
-                'approved' => $approved,
-                'completed' => $completed,
-                'rejected' => $rejected
+        Resident::updateOrCreate(
+            ['user_id' => $user->user_id],
+            [
+                'gender_id'       => $data['gender_id']       ?? null,
+                'civil_status_id' => $data['civil_status_id'] ?? null,
+                'birthdate'       => $data['birthdate']        ?? null,
+                'house_no'        => $data['house_no']         ?? null,
+                'is_verified'     => $data['is_verified'],
             ]
-        ], 200);
+        );
 
-    } catch (\Exception $e) {
         return response()->json([
-            'success' => false,
-            'message' => 'Error retrieving statistics',
-            'error' => $e->getMessage()
-        ], 500);
+            'message' => 'Resident updated successfully.',
+            'user'    => $this->baseQuery()->find($id),
+        ]);
     }
-}
-    /**
-     * Calculate total fee for a document request
-     * GET /api/document-requests/{id}/calculate-total
-     */
-    public function calculateTotal($id)
+
+    /* ─────────────────────────────────────────────────────────
+     * PATCH /api/admin/residents/{id}/toggle-active
+     * Disable (is_active = false) or reactivate (is_active = true).
+     * Body: { is_active: true|false }
+     * ───────────────────────────────────────────────────────── */
+    public function toggleActive(Request $request, $id)
     {
-        try {
-            $request = DocumentRequest::with('items.document')->findOrFail($id);
-            
-            $total = $request->items->sum(function ($item) {
-                return $item->document->fee * $item->quantity;
-            });
+        $request->validate([
+            'is_active' => 'required|boolean',
+        ]);
 
-            return response()->json([
-                'success' => true,
-                'data' => [
-                    'request_id' => $request->request_id,
-                    'total' => $total,
-                    'formatted_total' => '₱' . number_format($total, 2)
-                ]
-            ], 200);
+        $user = User::where('role_id', 2)->findOrFail($id);
+        $user->update(['is_active' => $request->boolean('is_active')]);
 
-        } catch (\Exception $e) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Error calculating total',
-                'error' => $e->getMessage()
-            ], 500);
-        }
+        $state = $user->is_active ? 'reactivated' : 'disabled';
+
+        return response()->json([
+            'message'   => "Account {$state} successfully.",
+            'is_active' => $user->is_active,
+        ]);
+    }
+
+    /* ─────────────────────────────────────────────────────────
+     * PATCH /api/admin/residents/{id}/password
+     * Admin force-sets a new password.
+     * ───────────────────────────────────────────────────────── */
+    public function updatePassword(Request $request, $id)
+    {
+        $user = User::where('role_id', 2)->findOrFail($id);
+
+        $request->validate([
+            'password'              => ['required', 'confirmed', Password::min(8)->mixedCase()->numbers()],
+            'password_confirmation' => 'required',
+        ]);
+
+        $user->update(['password' => Hash::make($request->password)]);
+
+        return response()->json(['message' => 'Password changed successfully.']);
     }
 }
