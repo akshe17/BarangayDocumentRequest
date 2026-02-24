@@ -4,19 +4,30 @@ namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Validation\Rules\Password;
 use App\Models\User;
 use App\Models\Resident;
 use App\Models\Zone;
 use App\Models\Gender;
 use App\Models\CivilStatus;
+use App\Models\ActionLog; // Import the Log model
 
 class AdminResidentController extends Controller
 {
-    /* ──────────────────────────────────────────────────────────────
-     | GET /api/admin/residents
-     | All users with role_id = 2, with full relationships.
-     ─────────────────────────────────────────────────────────────── */
+    /**
+     * Helper to record administrative actions
+     */
+    private function logAction($action, $details, $requestId = null)
+    {
+        ActionLog::create([
+            'user_id'    => Auth::id(), // The Admin performing the action
+            'request_id' => $requestId,
+            'action'     => $action,
+            'details'    => $details
+        ]);
+    }
+
     public function index()
     {
         $residents = User::with(['zone', 'resident.gender', 'resident.civilStatus'])
@@ -28,72 +39,31 @@ class AdminResidentController extends Controller
         return response()->json($residents);
     }
 
-    /* ──────────────────────────────────────────────────────────────
-     | GET /api/admin/residents/meta
-     | Dropdown lookup tables for the edit form.
-     |
-     | FIX: civil_statuses now returns `civil_status_name` (was
-     |      `status_name`) to match the frontend dropdown rendering:
-     |        {cs.civil_status_name}
-     ─────────────────────────────────────────────────────────────── */
     public function meta()
     {
         return response()->json([
-            'zones'          => Zone::orderBy('zone_name')
-                                    ->get(['zone_id', 'zone_name']),
-
-            'genders'        => Gender::orderBy('gender_name')
-                                    ->get(['gender_id', 'gender_name']),
-
-            // Alias status_name → civil_status_name so the frontend
-            // can render {cs.civil_status_name} without any mapping.
+            'zones'          => Zone::orderBy('zone_name')->get(['zone_id', 'zone_name']),
+            'genders'        => Gender::orderBy('gender_name')->get(['gender_id', 'gender_name']),
             'civil_statuses' => CivilStatus::orderBy('status_name')
                                     ->get(['civil_status_id', 'status_name as civil_status_name']),
         ]);
     }
 
-    /* ──────────────────────────────────────────────────────────────
-     | GET /api/admin/residents/{id}
-     | Single resident — used if a direct page load is ever needed.
-     ─────────────────────────────────────────────────────────────── */
-    public function show($id)
-    {
-        $user = User::with(['zone', 'resident.gender', 'resident.civilStatus'])
-            ->where('role_id', 2)
-            ->findOrFail($id);
-
-        return response()->json($user);
-    }
-
-    /* ──────────────────────────────────────────────────────────────
-     | PATCH /api/admin/residents/{id}
-     | Details tab — updates profile fields only.
-     | Sends: first_name, last_name, email, zone_id,
-     |        gender_id, civil_status_id, birthdate, house_no
-     |
-     | is_active is handled by toggleActive().
-     ─────────────────────────────────────────────────────────────── */
     public function update(Request $request, $id)
     {
-        $user = User::with('resident')
-            ->where('role_id', 2)
-            ->findOrFail($id);
+        $user = User::where('role_id', 2)->findOrFail($id);
 
         $data = $request->validate([
-            // User fields
-            'first_name' => 'required|string|max:100',
-            'last_name'  => 'required|string|max:100',
-            'email'      => "required|email|max:255|unique:users,email,{$id},user_id",
-            'zone_id'    => 'nullable|exists:zones,zone_id',
-
-            // Resident fields
+            'first_name'      => 'required|string|max:100',
+            'last_name'       => 'required|string|max:100',
+            'email'           => "required|email|max:255|unique:users,email,{$id},user_id",
+            'zone_id'         => 'nullable|exists:zones,zone_id',
             'gender_id'       => 'nullable|exists:genders,gender_id',
             'civil_status_id' => 'nullable|exists:civil_statuses,civil_status_id',
             'birthdate'       => 'nullable|date|before:today',
             'house_no'        => 'nullable|string|max:100',
         ]);
 
-        // ── Update User row ───────────────────────────────────────
         $user->update([
             'first_name' => $data['first_name'],
             'last_name'  => $data['last_name'],
@@ -101,50 +71,48 @@ class AdminResidentController extends Controller
             'zone_id'    => $data['zone_id'] ?? null,
         ]);
 
-        // ── Update or create Resident row ─────────────────────────
         Resident::updateOrCreate(
             ['user_id' => $user->user_id],
             [
-                'gender_id'       => $data['gender_id']       ?? null,
+                'gender_id'       => $data['gender_id'] ?? null,
                 'civil_status_id' => $data['civil_status_id'] ?? null,
-                'birthdate'       => $data['birthdate']        ?? null,
-                'house_no'        => $data['house_no']         ?? null,
+                'birthdate'       => $data['birthdate'] ?? null,
+                'house_no'        => $data['house_no'] ?? null,
             ]
+        );
+
+        // RECORD LOG
+        $this->logAction(
+            'Update Resident Profile', 
+            "Admin updated profile for resident: {$user->first_name} {$user->last_name} (ID: {$id})"
         );
 
         return response()->json([
             'message' => 'Resident updated successfully.',
-            'user'    => User::with(['zone', 'resident.gender', 'resident.civilStatus'])
-                             ->find($id),
+            'user'    => User::with(['zone', 'resident.gender', 'resident.civilStatus'])->find($id),
         ]);
     }
 
-    /* ──────────────────────────────────────────────────────────────
-     | PATCH /api/admin/residents/{id}/toggle-active
-     | Account tab — flips is_active between 0 and 1.
-     | No request body needed; just toggles the current value.
-     ─────────────────────────────────────────────────────────────── */
     public function toggleActive($id)
     {
         $user = User::where('role_id', 2)->findOrFail($id);
-
         $newState = !$user->is_active;
         $user->update(['is_active' => $newState]);
 
+        $statusText = $newState ? 'Enabled' : 'Disabled';
+
+        // RECORD LOG
+        $this->logAction(
+            'Toggle Resident Status', 
+            "Admin {$statusText} account for: {$user->first_name} {$user->last_name} (ID: {$id})"
+        );
+
         return response()->json([
             'message' => $newState ? 'Account enabled.' : 'Account disabled.',
-            'user'    => User::with(['zone', 'resident.gender', 'resident.civilStatus'])
-                             ->find($id),
+            'user'    => User::with(['zone', 'resident.gender', 'resident.civilStatus'])->find($id),
         ]);
     }
 
-    /* ──────────────────────────────────────────────────────────────
-     | PATCH /api/admin/residents/{id}/password
-     | Admin force-sets a new password. No current password needed.
-     |
-     | Frontend sends: { password, password_confirmation }
-     | Password rule: min 8 chars, mixed case, at least one number
-     ─────────────────────────────────────────────────────────────── */
     public function updatePassword(Request $request, $id)
     {
         $user = User::where('role_id', 2)->findOrFail($id);
@@ -156,17 +124,27 @@ class AdminResidentController extends Controller
 
         $user->update(['password' => Hash::make($request->password)]);
 
+        // RECORD LOG
+        $this->logAction(
+            'Force Password Reset', 
+            "Admin force-changed password for resident: {$user->first_name} {$user->last_name} (ID: {$id})"
+        );
+
         return response()->json(['message' => 'Password changed successfully.']);
     }
 
-    /* ──────────────────────────────────────────────────────────────
-     | DELETE /api/admin/residents/{id}
-     | Deletes the User (cascades to Resident via FK).
-     ─────────────────────────────────────────────────────────────── */
     public function destroy($id)
     {
         $user = User::where('role_id', 2)->findOrFail($id);
+        $name = "{$user->first_name} {$user->last_name}";
+        
         $user->delete();
+
+        // RECORD LOG
+        $this->logAction(
+            'Delete Resident', 
+            "Admin permanently deleted resident record: {$name} (ID: {$id})"
+        );
 
         return response()->json(['message' => 'Resident deleted successfully.']);
     }
