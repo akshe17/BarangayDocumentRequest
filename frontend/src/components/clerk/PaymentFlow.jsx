@@ -11,12 +11,13 @@ import {
   X,
 } from "lucide-react";
 import api from "../../axious/api";
-import { stripePromise } from "../../utils/StripeUtils";
+import { stripePromise } from "./stripeUtils";
 import StripeCardForm from "./StripeCardForm";
-import { isPaid } from "../../utils/PickupHelpers";
+import { isPaid } from "./pickupHelpers";
+
 /**
- * PaymentFlow — inline payment steps (no modal).
- * Steps: idle → choose → stripe → success
+ * PaymentFlow — inline payment steps.
+ * Steps: idle → choose → stripe (full-screen modal) → success
  */
 const PaymentFlow = ({ request, fee, onCollected }) => {
   const [step, setStep] = useState("idle");
@@ -40,7 +41,7 @@ const PaymentFlow = ({ request, fee, onCollected }) => {
   // ── Walk-in cash ──────────────────────────────────────────────
   const handleWalkin = () => markCollected();
 
-  // ── Online: create PaymentIntent → show card form ─────────────
+  // ── Online: create PaymentIntent → show Stripe modal ─────────
   const handleOnlineClick = async () => {
     setLoadingPI(true);
     setPiError(null);
@@ -51,7 +52,6 @@ const PaymentFlow = ({ request, fee, onCollected }) => {
       setClientSecret(res.data.client_secret);
       setStep("stripe");
     } catch (err) {
-      // Show server error message if available
       const msg =
         err?.response?.data?.error ??
         "Could not start online payment. Please try again.";
@@ -61,7 +61,7 @@ const PaymentFlow = ({ request, fee, onCollected }) => {
     }
   };
 
-  // ── Stripe success ─────────────────────────────────────────────
+  // ── Stripe success → mark collected ──────────────────────────
   const handleStripeSuccess = async () => {
     setStep("success");
     await markCollected();
@@ -80,6 +80,20 @@ const PaymentFlow = ({ request, fee, onCollected }) => {
     );
   }
 
+  // ── Stripe modal (rendered as fixed overlay via StripeCardForm) ──
+  if (step === "stripe" && clientSecret) {
+    return (
+      <Elements stripe={stripePromise} options={{ clientSecret }}>
+        <StripeCardForm
+          clientSecret={clientSecret}
+          fee={fee}
+          onSuccess={handleStripeSuccess}
+          onCancel={() => setStep("choose")}
+        />
+      </Elements>
+    );
+  }
+
   // ── Success state ─────────────────────────────────────────────
   if (step === "success") {
     return (
@@ -95,37 +109,7 @@ const PaymentFlow = ({ request, fee, onCollected }) => {
     );
   }
 
-  // ── Stripe card form ──────────────────────────────────────────
-  if (step === "stripe" && clientSecret) {
-    return (
-      <div className="bg-white rounded-2xl border border-gray-100 overflow-hidden">
-        <div className="flex items-center justify-between px-5 py-4 border-b border-gray-50">
-          <p className="text-sm font-black text-gray-900 flex items-center gap-2">
-            <CreditCard size={14} className="text-emerald-500" />
-            Online Payment
-          </p>
-          <button
-            onClick={() => setStep("choose")}
-            className="text-gray-300 hover:text-gray-500 transition-colors"
-          >
-            <X size={14} />
-          </button>
-        </div>
-        <div className="px-5 py-5">
-          <Elements stripe={stripePromise} options={{ clientSecret }}>
-            <StripeCardForm
-              clientSecret={clientSecret}
-              fee={fee}
-              onSuccess={handleStripeSuccess}
-              onCancel={() => setStep("choose")}
-            />
-          </Elements>
-        </div>
-      </div>
-    );
-  }
-
-  // ── Idle: single button to open chooser ──────────────────────
+  // ── Idle: single button ───────────────────────────────────────
   if (step === "idle") {
     return (
       <button
@@ -140,103 +124,107 @@ const PaymentFlow = ({ request, fee, onCollected }) => {
 
   // ── Choose: Walk-in or Online ─────────────────────────────────
   return (
-    <div className="bg-white rounded-2xl border border-gray-100 overflow-hidden">
-      <div className="flex items-center justify-between px-5 py-4 border-b border-gray-50">
-        <p className="text-sm font-black text-gray-900">Payment Method</p>
-        <button
-          onClick={() => setStep("idle")}
-          className="text-gray-300 hover:text-gray-500 transition-colors"
-        >
-          <X size={14} />
-        </button>
-      </div>
-
-      <div className="p-3 space-y-2">
-        {/* Walk-in Cash */}
-        <button
-          onClick={handleWalkin}
-          disabled={collecting}
-          className="w-full flex items-center gap-3 px-4 py-3.5 rounded-xl border border-gray-100
-                     hover:border-emerald-200 hover:bg-emerald-50/40 transition-all group text-left
-                     disabled:opacity-50"
-        >
-          <div
-            className="w-9 h-9 rounded-xl bg-gray-50 border border-gray-100 flex items-center
-                          justify-center shrink-0 group-hover:bg-emerald-100 group-hover:border-emerald-200
-                          transition-colors"
+    <>
+      <div className="bg-white rounded-2xl border border-gray-100 overflow-hidden">
+        <div className="flex items-center justify-between px-5 py-4 border-b border-gray-50">
+          <p className="text-sm font-black text-gray-900">Payment Method</p>
+          <button
+            onClick={() => setStep("idle")}
+            className="text-gray-300 hover:text-gray-500 transition-colors"
           >
-            {collecting ? (
-              <Loader2 size={15} className="text-emerald-500 animate-spin" />
-            ) : (
-              <Banknote
-                size={16}
-                className="text-gray-500 group-hover:text-emerald-600 transition-colors"
-              />
-            )}
-          </div>
-          <div className="flex-1">
-            <p className="text-sm font-black text-gray-900">Walk-in Payment</p>
-            <p className="text-[11px] text-gray-400 mt-0.5">
-              Cash · Over the counter
-            </p>
-          </div>
-          <ChevronRight
-            size={13}
-            className="text-gray-300 group-hover:text-emerald-400 transition-colors shrink-0"
-          />
-        </button>
-
-        {/* Online / Stripe */}
-        <button
-          onClick={handleOnlineClick}
-          disabled={loadingPI}
-          className="w-full flex items-center gap-3 px-4 py-3.5 rounded-xl border border-gray-100
-                     hover:border-emerald-200 hover:bg-emerald-50/40 transition-all group text-left
-                     disabled:opacity-50"
-        >
-          <div
-            className="w-9 h-9 rounded-xl bg-gray-50 border border-gray-100 flex items-center
-                          justify-center shrink-0 group-hover:bg-emerald-100 group-hover:border-emerald-200
-                          transition-colors"
-          >
-            {loadingPI ? (
-              <Loader2 size={15} className="text-emerald-500 animate-spin" />
-            ) : (
-              <Wifi
-                size={16}
-                className="text-gray-500 group-hover:text-emerald-600 transition-colors"
-              />
-            )}
-          </div>
-          <div className="flex-1">
-            <p className="text-sm font-black text-gray-900 flex items-center gap-2">
-              Online Payment
-              <span
-                className="text-[9px] font-black bg-violet-100 text-violet-600 px-1.5 py-0.5
-                               rounded-full uppercase tracking-wide"
-              >
-                Stripe
-              </span>
-            </p>
-            <p className="text-[11px] text-gray-400 mt-0.5">
-              Credit / debit card
-            </p>
-          </div>
-          <ChevronRight
-            size={13}
-            className="text-gray-300 group-hover:text-emerald-400 transition-colors shrink-0"
-          />
-        </button>
-      </div>
-
-      {piError && (
-        <div className="px-4 pb-4">
-          <p className="text-[11px] text-red-500 flex items-center gap-1">
-            <AlertCircle size={11} /> {piError}
-          </p>
+            <X size={14} />
+          </button>
         </div>
-      )}
-    </div>
+
+        <div className="p-3 space-y-2">
+          {/* Walk-in Cash */}
+          <button
+            onClick={handleWalkin}
+            disabled={collecting}
+            className="w-full flex items-center gap-3 px-4 py-3.5 rounded-xl border border-gray-100
+                       hover:border-emerald-200 hover:bg-emerald-50/40 transition-all group text-left
+                       disabled:opacity-50"
+          >
+            <div
+              className="w-9 h-9 rounded-xl bg-gray-50 border border-gray-100 flex items-center
+                            justify-center shrink-0 group-hover:bg-emerald-100 group-hover:border-emerald-200
+                            transition-colors"
+            >
+              {collecting ? (
+                <Loader2 size={15} className="text-emerald-500 animate-spin" />
+              ) : (
+                <Banknote
+                  size={16}
+                  className="text-gray-500 group-hover:text-emerald-600 transition-colors"
+                />
+              )}
+            </div>
+            <div className="flex-1">
+              <p className="text-sm font-black text-gray-900">
+                Walk-in Payment
+              </p>
+              <p className="text-[11px] text-gray-400 mt-0.5">
+                Cash · Over the counter
+              </p>
+            </div>
+            <ChevronRight
+              size={13}
+              className="text-gray-300 group-hover:text-emerald-400 transition-colors shrink-0"
+            />
+          </button>
+
+          {/* Online / Stripe */}
+          <button
+            onClick={handleOnlineClick}
+            disabled={loadingPI}
+            className="w-full flex items-center gap-3 px-4 py-3.5 rounded-xl border border-gray-100
+                       hover:border-emerald-200 hover:bg-emerald-50/40 transition-all group text-left
+                       disabled:opacity-50"
+          >
+            <div
+              className="w-9 h-9 rounded-xl bg-gray-50 border border-gray-100 flex items-center
+                            justify-center shrink-0 group-hover:bg-emerald-100 group-hover:border-emerald-200
+                            transition-colors"
+            >
+              {loadingPI ? (
+                <Loader2 size={15} className="text-emerald-500 animate-spin" />
+              ) : (
+                <Wifi
+                  size={16}
+                  className="text-gray-500 group-hover:text-emerald-600 transition-colors"
+                />
+              )}
+            </div>
+            <div className="flex-1">
+              <p className="text-sm font-black text-gray-900 flex items-center gap-2">
+                Online Payment
+                <span
+                  className="text-[9px] font-black bg-violet-100 text-violet-600 px-1.5 py-0.5
+                                 rounded-full uppercase tracking-wide"
+                >
+                  Stripe
+                </span>
+              </p>
+              <p className="text-[11px] text-gray-400 mt-0.5">
+                Credit / debit card
+              </p>
+            </div>
+            <ChevronRight
+              size={13}
+              className="text-gray-300 group-hover:text-emerald-400 transition-colors shrink-0"
+            />
+          </button>
+        </div>
+
+        {piError && (
+          <div className="px-4 pb-4">
+            <p className="text-[11px] text-red-500 flex items-center gap-1">
+              <AlertCircle size={11} /> {piError}
+            </p>
+          </div>
+        )}
+      </div>
+    </>
   );
 };
 
