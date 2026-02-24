@@ -1,24 +1,23 @@
-import React, { useState, useEffect, useMemo } from "react";
-// Import your Axios instance here
+import React, { useState, useEffect, useMemo, useCallback } from "react";
 import api from "../axious/api";
 import {
-  Activity,
   Terminal,
   Search,
-  Download,
-  Calendar,
   User,
   Edit,
   Trash2,
-  UserPlus,
   Settings,
-  LogIn,
   Shield,
   Clock,
+  Calendar,
   CheckCircle2,
   XCircle,
   AlertCircle,
   Loader2,
+  RefreshCw,
+  Filter,
+  ChevronRight,
+  UserCheck,
 } from "lucide-react";
 
 const AuditLogs = () => {
@@ -27,243 +26,287 @@ const AuditLogs = () => {
   const [error, setError] = useState(null);
   const [searchTerm, setSearchTerm] = useState("");
   const [filterType, setFilterType] = useState("all");
-  const [dateFilter, setDateFilter] = useState("today");
+  const [dateFilter, setDateFilter] = useState("all");
 
-  // Fetch data using Axios
-  useEffect(() => {
-    const fetchLogs = async () => {
-      try {
-        setLoading(true);
-        // Using api.get instead of fetch
-        const response = await api.get("/audit-logs");
+  // --- Fetch Data ---
+  const fetchLogs = useCallback(async () => {
+    try {
+      setLoading(true);
+      setError(null);
+      const response = await api.get("/admin/audit-logs");
 
-        // Axios automatically parses JSON, data is in response.data
-        setLogs(response.data);
-      } catch (err) {
-        console.error("API Error:", err);
-        // Axios stores error details in err.response
-        setError(
-          err.response?.data?.message ||
-            "Failed to fetch logs. Please check console.",
-        );
-      } finally {
-        setLoading(false);
-      }
-    };
+      // Transform Laravel data for UI
+      const mapped = response.data.map((log) => {
+        const dateObj = new Date(log.created_at);
+        const styles = determineLogStyles(log.action);
 
-    fetchLogs();
+        return {
+          id: log.log_id,
+          action: log.action,
+          details: log.details,
+          userName: log.user
+            ? `${log.user.first_name} ${log.user.last_name}`
+            : "System",
+          userRole: log.user?.role?.role_name || "System Process",
+          date: dateObj.toLocaleDateString("en-PH", {
+            month: "short",
+            day: "numeric",
+            year: "numeric",
+          }),
+          time: dateObj.toLocaleTimeString("en-PH", {
+            hour: "2-digit",
+            minute: "2-digit",
+          }),
+          rawDate: dateObj, // for filtering
+          ...styles,
+        };
+      });
+
+      setLogs(mapped);
+    } catch (err) {
+      console.error("Audit Fetch Error:", err);
+      setError("Failed to synchronize audit logs with the server.");
+    } finally {
+      setLoading(false);
+    }
   }, []);
 
-  // Filter logs
+  useEffect(() => {
+    fetchLogs();
+  }, [fetchLogs]);
+
+  // --- Helper: Dynamic UI mapping ---
+  const determineLogStyles = (action) => {
+    const act = action.toLowerCase();
+    if (act.includes("delete"))
+      return { type: "delete", color: "red", icon: <Trash2 size={16} /> };
+    if (act.includes("update") || act.includes("edit"))
+      return { type: "update", color: "blue", icon: <Edit size={16} /> };
+    if (act.includes("password"))
+      return { type: "security", color: "purple", icon: <Shield size={16} /> };
+    if (act.includes("enabled") || act.includes("active"))
+      return {
+        type: "active",
+        color: "emerald",
+        icon: <UserCheck size={16} />,
+      };
+    if (act.includes("disabled"))
+      return { type: "inactive", color: "amber", icon: <XCircle size={16} /> };
+    return { type: "general", color: "gray", icon: <Terminal size={16} /> };
+  };
+
+  const getColorClasses = (color) => {
+    const colors = {
+      emerald: "bg-emerald-50 text-emerald-600 border-emerald-100",
+      blue: "bg-blue-50 text-blue-600 border-blue-100",
+      purple: "bg-purple-50 text-purple-600 border-purple-100",
+      red: "bg-red-50 text-red-600 border-red-100",
+      amber: "bg-amber-50 text-amber-600 border-amber-100",
+      gray: "bg-slate-50 text-slate-600 border-slate-100",
+    };
+    return colors[color] || colors.gray;
+  };
+
+  // --- Filter Logic ---
   const filteredLogs = useMemo(() => {
     return logs.filter((log) => {
       const matchesSearch =
         log.action.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        log.user.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        log.description.toLowerCase().includes(searchTerm.toLowerCase());
+        log.userName.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        log.details.toLowerCase().includes(searchTerm.toLowerCase());
 
       const matchesType = filterType === "all" || log.type === filterType;
 
-      // Note: Ensure API date format matches required filtering logic
+      const today = new Date().toDateString();
+      const logDateString = log.rawDate.toDateString();
       const matchesDate =
         dateFilter === "all" ||
-        (dateFilter === "today" && log.date === "Feb 11, 2026") || // Assuming current date
-        (dateFilter === "yesterday" && log.date === "Feb 10, 2026");
+        (dateFilter === "today" && logDateString === today);
 
       return matchesSearch && matchesType && matchesDate;
     });
   }, [logs, searchTerm, filterType, dateFilter]);
 
-  // Stats
-  const stats = useMemo(() => {
-    return {
-      total: logs.length,
-      today: logs.filter((l) => l.date === "Feb 11, 2026").length,
-      approvals: logs.filter((l) => l.type === "approval").length,
-      updates: logs.filter((l) => l.type === "update").length,
-    };
-  }, [logs]);
-
-  // Map log types to icons
-  const getIcon = (type) => {
-    const icons = {
-      approval: <CheckCircle2 size={18} />,
-      update: <Edit size={18} />,
-      verification: <Shield size={18} />,
-      rejection: <XCircle size={18} />,
-      create: <UserPlus size={18} />,
-      delete: <Trash2 size={18} />,
-      login: <LogIn size={18} />,
-      settings: <Settings size={18} />,
-    };
-    return icons[type] || <AlertCircle size={18} />;
-  };
-
-  const getColorClasses = (color) => {
-    const colors = {
-      emerald: "bg-emerald-100 text-emerald-700 border-emerald-200",
-      blue: "bg-blue-100 text-blue-700 border-blue-200",
-      purple: "bg-purple-100 text-purple-700 border-purple-200",
-      red: "bg-red-100 text-red-700 border-red-200",
-      indigo: "bg-indigo-100 text-indigo-700 border-indigo-200",
-      amber: "bg-amber-100 text-amber-700 border-amber-200",
-      gray: "bg-gray-100 text-gray-700 border-gray-200",
-    };
-    return colors[color] || colors.gray;
-  };
-
-  const getBarColor = (color) => {
-    const colors = {
-      emerald: "bg-emerald-500",
-      blue: "bg-blue-500",
-      purple: "bg-purple-500",
-      red: "bg-red-500",
-      indigo: "bg-indigo-500",
-      amber: "bg-amber-500",
-      gray: "bg-gray-500",
-    };
-    return colors[color] || colors.gray;
-  };
-
   return (
-    <div className="space-y-6 p-6 bg-gradient-to-br from-gray-50 to-gray-100 min-h-screen">
-      {/* HEADER */}
-      <div className="mb-8">
-        <div className="flex items-center gap-4 mb-3">
-          <div className="w-12 h-12 bg-gradient-to-br from-emerald-500 to-green-600 rounded-xl flex items-center justify-center text-white shadow-lg">
-            <Terminal size={24} strokeWidth={2.5} />
-          </div>
-          <div>
-            <h1 className="text-3xl font-black text-gray-900">
-              Audit Logs & Activity
+    <div className="max-w-6xl mx-auto p-4 sm:p-8 space-y-8 animate-in fade-in duration-500">
+      {/* HEADER SECTION */}
+      <div className="flex flex-col md:flex-row md:items-end justify-between gap-6">
+        <div className="space-y-2">
+          <div className="flex items-center gap-3">
+            <div className="p-3 bg-slate-900 text-white rounded-2xl shadow-xl shadow-slate-200">
+              <Terminal size={28} strokeWidth={2.5} />
+            </div>
+            <h1 className="text-3xl font-black text-slate-900 tracking-tight">
+              System Audit
             </h1>
-            <p className="text-gray-500">
-              Real-time tracking of all system activities
+          </div>
+          <p className="text-slate-500 font-medium text-sm flex items-center gap-2">
+            <span className="flex h-2 w-2 rounded-full bg-emerald-500 animate-pulse" />
+            Monitoring administrative actions and security events
+          </p>
+        </div>
+
+        <button
+          onClick={fetchLogs}
+          disabled={loading}
+          className="flex items-center justify-center gap-2 px-5 py-3 bg-white border-2 border-slate-100 rounded-2xl text-slate-600 font-bold text-sm hover:bg-slate-50 hover:border-slate-200 transition-all active:scale-95 disabled:opacity-50 shadow-sm"
+        >
+          <RefreshCw size={18} className={loading ? "animate-spin" : ""} />
+          Refresh Stream
+        </button>
+      </div>
+
+      {/* FILTER BAR */}
+      <div className="bg-white p-2 rounded-3xl border border-slate-200 shadow-sm flex flex-col lg:flex-row gap-2">
+        <div className="relative flex-1">
+          <Search
+            className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400"
+            size={18}
+          />
+          <input
+            className="w-full pl-12 pr-4 py-3 bg-transparent text-slate-900 font-medium placeholder:text-slate-400 outline-none"
+            placeholder="Search by admin name or specific action..."
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+          />
+        </div>
+
+        <div className="flex flex-wrap items-center gap-2 p-1 bg-slate-50 rounded-2xl border border-slate-100">
+          {["all", "update", "delete", "security"].map((t) => (
+            <button
+              key={t}
+              onClick={() => setFilterType(t)}
+              className={`px-4 py-2 rounded-xl text-xs font-black uppercase tracking-wider transition-all ${
+                filterType === t
+                  ? "bg-white text-slate-900 shadow-sm ring-1 ring-slate-200"
+                  : "text-slate-400 hover:text-slate-600"
+              }`}
+            >
+              {t}
+            </button>
+          ))}
+          <div className="w-px h-6 bg-slate-200 mx-1 hidden sm:block" />
+          <select
+            className="bg-transparent text-xs font-black uppercase text-slate-600 outline-none pr-4 cursor-pointer"
+            value={dateFilter}
+            onChange={(e) => setDateFilter(e.target.value)}
+          >
+            <option value="all">All Time</option>
+            <option value="today">Today Only</option>
+          </select>
+        </div>
+      </div>
+
+      {/* LOG FEED */}
+      <div className="relative">
+        {loading && logs.length === 0 ? (
+          <div className="flex flex-col items-center justify-center py-20 space-y-4">
+            <Loader2 size={40} className="text-slate-300 animate-spin" />
+            <p className="text-slate-400 font-bold animate-pulse text-sm">
+              Intercepting log packets...
             </p>
           </div>
-        </div>
-      </div>
-
-      {/* FILTERS & SEARCH */}
-      <div className="bg-white p-5 rounded-xl border border-gray-200 shadow-sm">
-        <div className="flex flex-col md:flex-row justify-between items-center gap-4">
-          <div className="relative w-full md:w-96">
-            <Search
-              className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400"
-              size={18}
-            />
-            <input
-              className="w-full pl-11 pr-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-emerald-500 focus:border-transparent outline-none transition-all text-sm"
-              placeholder="Search activities..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-            />
-          </div>
-
-          <div className="flex items-center gap-3 w-full md:w-auto">
-            <div className="flex items-center gap-2 bg-gray-50 p-1 rounded-xl border border-gray-200">
-              {["all", "approval", "update"].map((type) => (
-                <button
-                  key={type}
-                  onClick={() => setFilterType(type)}
-                  className={`px-3 py-2 rounded-lg text-xs font-bold transition-all ${
-                    filterType === type
-                      ? "bg-white text-gray-900 shadow-sm"
-                      : "text-gray-500 hover:text-gray-700"
-                  }`}
-                >
-                  {type.charAt(0).toUpperCase() + type.slice(1)}
-                </button>
-              ))}
-            </div>
-
-            <select
-              value={dateFilter}
-              onChange={(e) => setDateFilter(e.target.value)}
-              className="px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-xs font-bold text-gray-700 outline-none focus:ring-2 focus:ring-emerald-500 transition-all"
-            >
-              <option value="all">All Time</option>
-              <option value="today">Today</option>
-              <option value="yesterday">Yesterday</option>
-            </select>
-          </div>
-        </div>
-      </div>
-
-      {/* LOGS LIST */}
-      <div className="space-y-3">
-        {loading ? (
-          <div className="text-center py-10 text-gray-500 flex justify-center items-center gap-2">
-            <Loader2 className="animate-spin" /> Loading logs...
-          </div>
         ) : error ? (
-          <div className="text-center py-10 text-red-500 bg-red-50 rounded-xl border border-red-200">
-            <AlertCircle className="mx-auto mb-2" /> {error}
+          <div className="flex flex-col items-center justify-center py-16 bg-red-50 rounded-3xl border-2 border-dashed border-red-100">
+            <AlertCircle size={40} className="text-red-400 mb-3" />
+            <p className="text-red-800 font-black mb-1">Connection Error</p>
+            <p className="text-red-500 text-sm">{error}</p>
           </div>
         ) : filteredLogs.length === 0 ? (
-          <div className="bg-white p-12 rounded-xl border border-gray-200 shadow-sm text-center">
-            <Search size={48} className="mx-auto mb-3 text-gray-300" />
-            <p className="font-semibold text-sm text-gray-500">
-              No activities found
+          <div className="text-center py-20 bg-slate-50 rounded-3xl border-2 border-dashed border-slate-200">
+            <Filter size={48} className="mx-auto text-slate-200 mb-4" />
+            <h3 className="text-slate-900 font-black">No matching events</h3>
+            <p className="text-slate-400 text-sm mt-1">
+              Try adjusting your search or filters.
             </p>
           </div>
         ) : (
-          filteredLogs.map((log) => (
-            <div
-              key={log.id}
-              className="bg-white p-5 rounded-xl border border-gray-200 shadow-sm hover:shadow-md hover:border-gray-300 transition-all group"
-            >
-              <div className="flex items-start justify-between gap-4">
-                <div className="flex items-start gap-4 flex-1">
-                  {/* Icon & Color Bar */}
-                  <div className="flex items-center gap-3">
+          <div className="space-y-4">
+            {filteredLogs.map((log) => (
+              <div
+                key={log.id}
+                className="group bg-white p-5 rounded-3xl border border-slate-200 hover:border-slate-300 hover:shadow-xl hover:shadow-slate-100 transition-all duration-300"
+              >
+                <div className="flex flex-col md:flex-row md:items-center gap-6">
+                  {/* Action Icon */}
+                  <div className="flex items-center gap-4">
                     <div
-                      className={`w-1.5 h-14 rounded-full ${getBarColor(log.color)} group-hover:scale-110 transition-transform`}
-                    ></div>
+                      className={`h-14 w-1 bg-slate-100 rounded-full group-hover:h-16 transition-all duration-300 ${
+                        log.color === "red"
+                          ? "bg-red-400"
+                          : log.color === "emerald"
+                            ? "bg-emerald-400"
+                            : "bg-blue-400"
+                      }`}
+                    />
                     <div
-                      className={`w-10 h-10 rounded-xl flex items-center justify-center border ${getColorClasses(log.color)}`}
+                      className={`w-12 h-12 rounded-2xl flex items-center justify-center border-2 transition-transform group-hover:rotate-6 ${getColorClasses(log.color)}`}
                     >
-                      {getIcon(log.type)}
+                      {log.icon}
                     </div>
                   </div>
 
-                  {/* Content */}
-                  <div className="flex-1">
-                    <h3 className="text-sm font-bold text-gray-900 mb-1">
-                      {log.action}
-                    </h3>
-                    <p className="text-xs text-gray-600 mb-2">
-                      {log.description}
+                  {/* Body */}
+                  <div className="flex-1 space-y-1">
+                    <div className="flex flex-wrap items-center gap-2">
+                      <h3 className="text-sm font-black text-slate-900 uppercase tracking-tight">
+                        {log.action}
+                      </h3>
+                      <span className="text-[10px] font-black px-2 py-0.5 rounded bg-slate-100 text-slate-500 uppercase">
+                        ID: #{log.id}
+                      </span>
+                    </div>
+                    <p className="text-sm text-slate-500 font-medium leading-relaxed">
+                      {log.details}
                     </p>
-                    <div className="flex items-center gap-3 text-xs">
-                      <span className="flex items-center gap-1.5 text-gray-500">
-                        <User size={12} />
-                        <span className="font-semibold text-emerald-600">
-                          {log.user}
+                    <div className="flex items-center gap-3 pt-1">
+                      <div className="flex items-center gap-1.5 px-2 py-1 bg-slate-50 rounded-lg">
+                        <User size={12} className="text-slate-400" />
+                        <span className="text-xs font-bold text-slate-700">
+                          {log.userName}
                         </span>
-                        <span className="text-gray-400">·</span>
-                        <span className="text-gray-500">{log.userRole}</span>
+                      </div>
+                      <span className="text-slate-300">/</span>
+                      <span className="text-[11px] font-bold text-slate-400 uppercase tracking-widest">
+                        {log.userRole}
                       </span>
                     </div>
                   </div>
-                </div>
 
-                {/* Time & Date */}
-                <div className="text-right flex-shrink-0">
-                  <div className="flex items-center gap-1.5 text-xs font-bold text-gray-900 mb-1">
-                    <Clock size={12} className="text-gray-400" />
-                    {log.time}
-                  </div>
-                  <div className="flex items-center gap-1.5 text-[10px] font-bold text-gray-500 uppercase tracking-wide">
-                    <Calendar size={10} className="text-gray-400" />
-                    {log.date}
+                  {/* Timestamp */}
+                  <div className="flex md:flex-col items-center md:items-end justify-between md:justify-center gap-1 pt-4 md:pt-0 border-t md:border-t-0 border-slate-50">
+                    <div className="flex items-center gap-1.5 text-slate-900">
+                      <Clock size={14} className="text-slate-400" />
+                      <span className="text-xs font-black">{log.time}</span>
+                    </div>
+                    <div className="flex items-center gap-1.5 text-slate-400">
+                      <Calendar size={12} />
+                      <span className="text-[10px] font-bold uppercase tracking-tighter">
+                        {log.date}
+                      </span>
+                    </div>
+                    <ChevronRight
+                      size={16}
+                      className="text-slate-200 ml-2 hidden md:block group-hover:translate-x-1 transition-transform"
+                    />
                   </div>
                 </div>
               </div>
-            </div>
-          ))
+            ))}
+          </div>
         )}
       </div>
+
+      {/* Footer Meta */}
+      {!loading && filteredLogs.length > 0 && (
+        <div className="flex justify-center">
+          <div className="px-4 py-2 bg-slate-900 rounded-full shadow-lg">
+            <p className="text-[10px] text-white font-black uppercase tracking-[0.2em]">
+              End of Stream — {filteredLogs.length} Events Logged
+            </p>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

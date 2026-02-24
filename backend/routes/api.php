@@ -38,7 +38,8 @@ Route::middleware(['custom.auth'])->group(function () {
     Route::post('/auth/change-password', [AuthController::class, 'changePassword']);
 
     //admin resident
- 
+ Route::get('/admin/audit-logs', [App\Http\Controllers\AdminLogController::class, 'index']);
+
 Route::get   ('/admin/residents',                    [AdminResidentController::class, 'index']);
 Route::get   ('/admin/residents/meta',               [AdminResidentController::class, 'meta']);
 Route::get   ('/admin/residents/{id}',               [AdminResidentController::class, 'show']);
@@ -83,7 +84,8 @@ Route::get('/admin/users', [AdminUserController::class, 'index']);
     Route::put('/admin/users/{id}', [AdminUserController::class, 'update']);
     Route::delete('/admin/users/{id}', [AdminUserController::class, 'destroy']);
     Route::put('/admin/users/{id}/change-password', [AdminUserController::class, 'changePassword']);
-    Route::get('/admin/dashboard/overview', [AdminDashboardController::class, 'getOverview']);
+    // GET /api/admin/dashboard/overview
+Route::get('/admin/dashboard/overview', [AdminDashboardController::class, 'overview']);
 
       Route::get('/admin/dashboard/overview', [AdminDashboardController::class, 'getOverview']);
 
