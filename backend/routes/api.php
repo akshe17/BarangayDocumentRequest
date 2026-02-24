@@ -38,7 +38,7 @@ Route::middleware(['custom.auth'])->group(function () {
     Route::post('/auth/change-password', [AuthController::class, 'changePassword']);
 
     //admin resident
- Route::get('/admin/audit-logs', [App\Http\Controllers\AdminLogController::class, 'index']);
+ Route::get('/admin/audit-logs', [App\Http\Controllers\AdminLogsController::class, 'index']);
 
 Route::get   ('/admin/residents',                    [AdminResidentController::class, 'index']);
 Route::get   ('/admin/residents/meta',               [AdminResidentController::class, 'meta']);
