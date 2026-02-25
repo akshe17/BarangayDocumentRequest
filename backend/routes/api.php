@@ -19,7 +19,7 @@ use App\Http\Controllers\AdminUserController;
 use App\Http\Controllers\ZoneLeaderController;
 use App\Http\Controllers\AdminResidentController;
 use App\Http\Controllers\AdminDocumentController;
-
+use App\Http\Controllers\AdminLogsController;
 
 
 Route::middleware('custom.auth')->get('/user', function (Request $request) {
@@ -38,7 +38,7 @@ Route::middleware(['custom.auth'])->group(function () {
     Route::post('/auth/change-password', [AuthController::class, 'changePassword']);
 
     //admin resident
- Route::get('/admin/audit-logs', [App\Http\Controllers\AdminLogsController::class, 'index']);
+ Route::get('/admin/audit-logs', [AdminLogsController::class, 'index']);
 
 Route::get   ('/admin/residents',                    [AdminResidentController::class, 'index']);
 Route::get   ('/admin/residents/meta',               [AdminResidentController::class, 'meta']);
