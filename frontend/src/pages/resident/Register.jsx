@@ -535,7 +535,7 @@ const Register = () => {
             loop
             muted
             playsInline
-            className="absolute inset-0 w-full h-full object-cover"
+            className="absolute inset-0 w-full h-full blur-sm object-cover"
           >
             <source src={bonbonVideo} type="video/mp4" />
           </video>
@@ -543,6 +543,7 @@ const Register = () => {
           <div className="relative z-10 flex flex-col justify-between h-full p-10 lg:p-14">
             <div className="flex items-center gap-3.5">
               <img src={logo} alt="Logo" className="w-9 h-9 object-contain" />
+              <div className="h-8 w-px bg-white/20 ml-2" />
               <div>
                 <span className="text-white font-bold text-lg leading-none">
                   Barangay Bonbon
@@ -553,14 +554,14 @@ const Register = () => {
               </div>
             </div>
             <div className="max-w-sm">
-              <h1 className="text-4xl lg:text-5xl font-bold text-white leading-[1.15] tracking-tight">
-                Easily Request <br />
-                <span className="text-emerald-400">Documents</span> <br />
-                Digitally.
+              <h1 className="text-4xl lg:text-7xl font-bold text-white leading-[1.15] tracking-tight">
+                Let's Get
+                <br />
+                <span className="text-emerald-400">Started</span>
+                <br />
               </h1>
-              <p className="text-emerald-50/65 text-base leading-relaxed mt-5 font-medium">
-                Complete the registration to access the barangay document
-                request system.
+              <p className="text-emerald-50/65 text-2xl leading-relaxed mt-5 font-medium">
+                Create an Account and Request Documents Digitally.
               </p>
             </div>
             <p className="text-emerald-300/40 text-xs font-semibold uppercase tracking-widest">

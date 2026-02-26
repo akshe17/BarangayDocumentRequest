@@ -82,70 +82,81 @@ const LoginPage = () => {
   return (
     <div className="min-h-screen flex flex-col md:flex-row bg-gradient-to-br from-slate-50 to-gray-100 font-sans overflow-hidden">
       {/* LEFT SIDE: Branding & Video */}
-      <div className="relative hidden md:flex md:w-1/2 lg:w-3/5 overflow-hidden bg-black">
+      {/* LEFT SIDE: Video Branding */}
+      <div className="relative hidden md:flex md:w-1/2 lg:w-3/5 overflow-hidden bg-zinc-950">
+        {/* The Video */}
         <video
           autoPlay
           muted
           loop
           playsInline
-          className="absolute inset-0 w-full h-full object-cover"
+          className="absolute inset-0 w-full h-full object-cover blur-sm scale-105 opacity-60"
         >
           <source src={bonbonVideo} type="video/mp4" />
         </video>
 
-        <div className="absolute inset-0 bg-emerald-950/80 backdrop-blur-[2px] z-10" />
-        <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-black/90 z-10" />
+        {/* ── NEW GREEN GRADIENT OVERLAYS ── */}
+        {/* Layer 1: Emerald Tint (Primary branding color) */}
+        <div className="absolute inset-0 bg-emerald-950/40 mix-blend-multiply z-10" />
 
-        <div className="relative z-10 flex flex-col justify-between h-full p-16">
-          <div className="flex items-center gap-5">
-            <div className="w-16 h-16 rounded-2xl backdrop-blur-md flex items-center justify-center">
-              <img src={logo} alt="Logo" className="w-10 h-10 object-contain" />
-            </div>
+        {/* Layer 2: Directional Gradient (Fades to black at the bottom and left for text contrast) */}
+        <div
+          className="absolute inset-0 z-10"
+          style={{
+            background:
+              "linear-gradient(135deg, rgba(6, 78, 59, 0.8) 0%, rgba(37, 68, 44, 0.4) 50%, rgba(29, 59, 47, 0.8) 100%)",
+          }}
+        />
+
+        <div className="relative z-20 flex flex-col justify-between h-full p-16 lg:p-20">
+          {/* Logo Section */}
+          <div className="flex items-center gap-4">
+            <img
+              src={logo}
+              alt="Logo"
+              className="w-12 h-12 object-contain brightness-110"
+            />
+            <div className="h-8 w-px bg-white/20 ml-2" />
             <div>
-              <h1 className="text-white text-2xl font-black tracking-tight">
+              <h1 className="text-white text-xl font-bold tracking-tight">
                 Barangay Bonbon
               </h1>
-              <p className="text-emerald-200 text-xs font-bold uppercase tracking-widest mt-1">
+              <p className="text-emerald-400 text-[10px] uppercase font-bold tracking-[0.2em]">
                 Document Request System
               </p>
             </div>
           </div>
 
-          <div className="max-w-xl">
-            <h2 className="text-white text-4xl font-black leading-tight mb-6">
-              Your Documents Made{" "}
-              <span className="text-emerald-400">Easier.</span>
+          {/* Headline Section */}
+          <div className="max-w-md">
+            <h2 className="text-white text-5xl lg:text-6xl font-black leading-[1.1] mb-6 tracking-tight">
+              Your documents, <br />
+              <span className="text-emerald-400">Made Simple.</span>
             </h2>
-            <p className="text-gray-200 text-lg leading-relaxed">
-              A centralized digital platform designed to simplify document
-              requests, verification, and approvals.
+            <p className="text-white/80 text-2xl leading-relaxed font-medium">
+              Request and Track your Document Requests Digitally.
             </p>
           </div>
 
-          <div className="animate-in fade-in slide-in-from-bottom-4 duration-700 delay-200">
-            <div className="inline-flex items-center gap-6 bg-white/5 backdrop-blur-xl rounded-3xl p-6 border border-white/10 shadow-2xl">
-              <div className="p-3 bg-emerald-500 rounded-2xl shadow-lg shadow-emerald-500/20">
-                <Download size={24} className="text-white" />
+          {/* Download Section */}
+          <div className="flex flex-col gap-4">
+            <a
+              href="/barangay-connect.apk"
+              className="group flex items-center gap-4 text-white hover:text-emerald-400 transition-all duration-300"
+            >
+              <div className="p-3 bg-emerald-500/20 group-hover:bg-emerald-500 border border-emerald-500/30 rounded-full transition-all">
+                <Download size={20} className="text-white" />
               </div>
               <div>
-                <p className="text-white text-sm font-bold">
-                  Download Mobile App
+                <p className="text-[10px] uppercase font-bold tracking-widest text-emerald-200/50">
+                  Available for Android
                 </p>
-                <p className="text-emerald-100/50 text-xs">
-                  Request via Android APK
-                </p>
+                <p className="text-sm font-bold">Download Official APK</p>
               </div>
-              <a
-                href="/barangay-connect.apk"
-                className="ml-4 bg-white hover:bg-emerald-50 text-emerald-950 px-6 py-2.5 rounded-xl transition-all text-xs font-black shadow-xl"
-              >
-                INSTALL
-              </a>
-            </div>
+            </a>
           </div>
         </div>
       </div>
-
       {/* RIGHT SIDE: Login Form */}
       <div className="w-full md:w-1/2 lg:w-2/5 flex items-center justify-center p-8 lg:p-20 bg-white/80 backdrop-blur-sm relative">
         <div className="w-full max-w-md relative z-10">
