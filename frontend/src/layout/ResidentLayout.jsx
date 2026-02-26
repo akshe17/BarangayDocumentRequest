@@ -11,6 +11,7 @@ import {
   X,
   Shield,
   ShieldAlert,
+  SearchCheck,
 } from "lucide-react";
 import logo from "../assets/logo.png";
 import { useAuth } from "../context/AuthContext";
@@ -85,15 +86,15 @@ const ResidentLayout = () => {
           />
           <NavItem
             to="/resident/history"
-            icon={<Clock size={18} />}
-            label="My History"
+            icon={<SearchCheck size={18} />}
+            label="Track Request"
             active={pathname === "/resident/history"}
             onClick={() => setIsSidebarOpen(false)}
           />
           <NavItem
             to="/resident/notifications"
-            icon={<Bell size={18} />}
-            label="Notifications"
+            icon={<Clock size={18} />}
+            label="My history"
             active={pathname === "/resident/notifications"}
             onClick={() => setIsSidebarOpen(false)}
           />

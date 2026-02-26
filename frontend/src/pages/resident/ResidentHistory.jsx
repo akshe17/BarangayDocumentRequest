@@ -332,7 +332,7 @@ const ResidentHistory = () => {
             Barangay Portal
           </p>
           <h1 className="text-2xl font-black text-gray-900 tracking-tight">
-            Request History
+            Track Request
           </h1>
           <p className="text-sm text-gray-400 mt-0.5">
             Track all your document applications.
