@@ -6,18 +6,21 @@ import { ZoneProvider } from "./context/ZoneContext";
 import { DocumentRequestProvider } from "./context/DocumentRequestContext.jsx";
 import { AdminResidentProvider } from "./context/AdminResidentContext.jsx";
 import { ResidentDashboardProvider } from "./context/ResidentDashboardContext.jsx";
+import { NewRequestProvider } from "./context/NewRequestContext.jsx";
 // ... inside your router/layout
 
 createRoot(document.getElementById("root")).render(
   <AuthProvider>
     <ResidentDashboardProvider>
-      <AdminResidentProvider>
-        <DocumentRequestProvider>
-          <ZoneProvider>
-            <App />
-          </ZoneProvider>
-        </DocumentRequestProvider>
-      </AdminResidentProvider>
+      <NewRequestProvider>
+        <AdminResidentProvider>
+          <DocumentRequestProvider>
+            <ZoneProvider>
+              <App />
+            </ZoneProvider>
+          </DocumentRequestProvider>
+        </AdminResidentProvider>
+      </NewRequestProvider>
     </ResidentDashboardProvider>
   </AuthProvider>,
 );

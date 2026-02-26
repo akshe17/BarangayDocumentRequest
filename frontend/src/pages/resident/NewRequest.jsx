@@ -1,6 +1,6 @@
-import React, { useState, useEffect } from "react";
-import api from "../../axious/api";
+import React, { useState } from "react";
 import Toast from "../../components/toast";
+import Skeleton from "../../components/Skeleton";
 import {
   FileText,
   ArrowLeft,
@@ -14,17 +14,16 @@ import {
   ClipboardList,
 } from "lucide-react";
 import { useAuth } from "../../context/AuthContext";
+import { useNewRequest } from "../../context/NewRequestContext";
 
 // ─── helpers ────────────────────────────────────────────────────────────────
 
-// Change this line (around line 19)
 const STATUS_BLOCKED = [
   "pending",
   "processing",
   "approved",
   "ready for pickup",
 ];
-const STATUS_ALLOWED = ["rejected", "completed"];
 
 const statusMeta = {
   pending: { label: "Pending", color: "#f59e0b", bg: "#fffbeb", Icon: Clock },
@@ -54,13 +53,7 @@ const statusMeta = {
   },
 };
 
-// Simple lookup maps — extend as needed to match your seeded data
-const GENDER_MAP = {
-  1: "Male",
-  2: "Female",
-  3: "Other",
-};
-
+const GENDER_MAP = { 1: "Male", 2: "Female", 3: "Other" };
 const CIVIL_STATUS_MAP = {
   1: "Single",
   2: "Married",
@@ -71,8 +64,7 @@ const CIVIL_STATUS_MAP = {
 
 function formatDate(dateStr) {
   if (!dateStr) return "—";
-  const d = new Date(dateStr);
-  return d.toLocaleDateString("en-PH", {
+  return new Date(dateStr).toLocaleDateString("en-PH", {
     year: "numeric",
     month: "long",
     day: "numeric",
@@ -83,7 +75,6 @@ function getBlockedStatus(doc, existingRequests) {
   if (!existingRequests?.length) return null;
   const match = existingRequests.find((r) => {
     if (r.document_id !== doc.document_id) return false;
-    // status is a relation object: { status_id, status_name, ... }
     const statusName = (r.status?.status_name ?? "").toLowerCase();
     return STATUS_BLOCKED.includes(statusName);
   });
@@ -113,11 +104,10 @@ function ReadOnlyField({ label, value }) {
   );
 }
 
-// ─── Resident Info Fields (read-only inputs) ──────────────────────────────────
+// ─── Resident Info Fields ─────────────────────────────────────────────────────
 
 function ResidentInfoFields({ user }) {
   const resident = user?.resident;
-
   const fullName =
     [user?.first_name, user?.last_name].filter(Boolean).join(" ") || "";
   const gender = GENDER_MAP[resident?.gender_id] ?? "";
@@ -143,7 +133,7 @@ function ResidentInfoFields({ user }) {
   );
 }
 
-// ─── Sub-components ──────────────────────────────────────────────────────────
+// ─── Dynamic Field Input ──────────────────────────────────────────────────────
 
 function FieldInput({ field, value, onChange }) {
   const base =
@@ -195,6 +185,44 @@ function FieldInput({ field, value, onChange }) {
   );
 }
 
+// ─── Skeleton: Document Picker ────────────────────────────────────────────────
+// Mirrors the real DocumentPicker card layout exactly so the transition
+// from skeleton → real content feels natural.
+
+function SkeletonDocumentPicker({ count = 5 }) {
+  return (
+    <div className="space-y-3">
+      {Array.from({ length: count }).map((_, i) => (
+        <div
+          key={i}
+          className="w-full rounded-2xl border border-gray-100 bg-white p-5 sm:p-6"
+        >
+          <div className="flex items-center gap-4">
+            {/* Icon placeholder */}
+            <Skeleton.Block className="w-12 h-12 rounded-2xl shrink-0" />
+
+            {/* Text content */}
+            <div className="flex-1 min-w-0 space-y-2">
+              {/* Doc name */}
+              <Skeleton.Block
+                className={`h-3.5 ${i % 3 === 0 ? "w-48" : i % 3 === 1 ? "w-36" : "w-56"}`}
+              />
+              {/* Fee + meta row */}
+              <div className="flex items-center gap-3">
+                <Skeleton.Block className="h-3 w-10" />
+                <Skeleton.Block className="h-3 w-24" />
+              </div>
+            </div>
+
+            {/* Arrow placeholder */}
+            <Skeleton.Block className="w-4 h-4 rounded shrink-0" />
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
 // ─── VIEW 1: Document Picker ─────────────────────────────────────────────────
 
 function DocumentPicker({
@@ -205,14 +233,7 @@ function DocumentPicker({
   error,
   onRetry,
 }) {
-  if (isLoading) {
-    return (
-      <div className="flex flex-col items-center justify-center py-24 gap-4 text-gray-400">
-        <Loader2 size={32} className="animate-spin" />
-        <span className="text-sm">Loading available documents…</span>
-      </div>
-    );
-  }
+  if (isLoading) return <SkeletonDocumentPicker count={5} />;
 
   if (error) {
     return (
@@ -256,7 +277,6 @@ function DocumentPicker({
             }`}
           >
             <div className="p-5 sm:p-6 flex items-center gap-4">
-              {/* Icon */}
               <div
                 className={`w-12 h-12 rounded-2xl flex items-center justify-center shrink-0 transition-all ${
                   isBlocked
@@ -274,7 +294,6 @@ function DocumentPicker({
                 />
               </div>
 
-              {/* Info */}
               <div className="flex-1 min-w-0">
                 <div className="flex items-center gap-2 flex-wrap">
                   <h3 className="text-sm font-bold text-gray-800 truncate">
@@ -317,7 +336,6 @@ function DocumentPicker({
                 )}
               </div>
 
-              {/* Arrow */}
               {!isBlocked && (
                 <ChevronRight
                   size={18}
@@ -334,7 +352,7 @@ function DocumentPicker({
 
 // ─── VIEW 2: Request Form ─────────────────────────────────────────────────────
 
-function RequestForm({ doc, onBack, onSubmit, isSubmitting, user }) {
+function RequestForm({ doc, onSubmit, isSubmitting, user }) {
   const [formValues, setFormValues] = useState(() => {
     const init = {};
     doc.form_fields?.forEach((f) => {
@@ -421,10 +439,10 @@ function RequestForm({ doc, onBack, onSubmit, isSubmitting, user }) {
         </div>
       )}
 
-      {/* ── Resident Info (read-only) ── */}
+      {/* Resident Info (read-only) */}
       <ResidentInfoFields user={user} />
 
-      {/* ── Dynamic form fields ── */}
+      {/* Dynamic form fields */}
       {doc.form_fields?.length > 0 && (
         <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5 sm:p-6 space-y-4">
           {doc.form_fields.map((field) => (
@@ -463,7 +481,7 @@ function RequestForm({ doc, onBack, onSubmit, isSubmitting, user }) {
         </div>
       )}
 
-      {/* Notice */}
+      {/* Payment notice */}
       <div className="flex gap-3 items-start p-4 bg-blue-50 rounded-2xl border border-blue-100">
         <AlertCircle size={15} className="text-blue-500 shrink-0 mt-0.5" />
         <p className="text-xs text-blue-700 leading-relaxed">
@@ -497,51 +515,31 @@ function RequestForm({ doc, onBack, onSubmit, isSubmitting, user }) {
 // ─── Main Component ───────────────────────────────────────────────────────────
 
 const NewRequest = () => {
+  const { user } = useAuth();
+  const {
+    documentList,
+    existingRequests,
+    isLoading,
+    error,
+    isSubmitting,
+    retry,
+    submitRequest,
+  } = useNewRequest();
+
   const [view, setView] = useState("pick"); // "pick" | "form"
   const [selectedDoc, setSelectedDoc] = useState(null);
-  const [documentList, setDocumentList] = useState([]);
-  const [existingRequests, setExistingRequests] = useState([]);
-  const [isLoading, setIsLoading] = useState(true);
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  const [error, setError] = useState(null);
-  const { user } = useAuth();
-
   const [toast, setToast] = useState({
     show: false,
     message: "",
     type: "success",
   });
+
   const triggerToast = (message, type = "success") => {
     setToast({ show: true, message, type });
     setTimeout(
       () => setToast({ show: false, message: "", type: "success" }),
       4000,
     );
-  };
-
-  useEffect(() => {
-    fetchAll();
-  }, []);
-
-  const fetchAll = async () => {
-    setIsLoading(true);
-    setError(null);
-    try {
-      const [docsRes, reqsRes] = await Promise.all([
-        api.get("/documents"),
-        api.get("/current-request"),
-      ]);
-      setDocumentList(
-        Array.isArray(docsRes.data) ? docsRes.data : (docsRes.data?.data ?? []),
-      );
-      setExistingRequests(
-        Array.isArray(reqsRes.data) ? reqsRes.data : (reqsRes.data?.data ?? []),
-      );
-    } catch {
-      setError("Failed to load documents.");
-    } finally {
-      setIsLoading(false);
-    }
   };
 
   const handleSelectDoc = (doc) => {
@@ -557,30 +555,13 @@ const NewRequest = () => {
   };
 
   const handleSubmit = async ({ formValues, purpose }) => {
-    setIsSubmitting(true);
-    try {
-      const payload = {
-        document_id: selectedDoc.document_id,
-        purpose,
-        // field_value is what the controller and RequestFormData model expect
-        form_data: Object.entries(formValues)
-          .filter(([, value]) => value !== "") // skip blank optional fields
-          .map(([field_id, field_value]) => ({
-            field_id: parseInt(field_id),
-            field_value,
-          })),
-      };
+    const result = await submitRequest({
+      documentId: selectedDoc.document_id,
+      formValues,
+      purpose,
+    });
 
-      await api.post("/submit-document", payload, {
-        headers: { "Content-Type": "application/json" },
-      });
-
-      // Refresh using the correct endpoint
-      const reqsRes = await api.get("/current-request");
-      setExistingRequests(
-        Array.isArray(reqsRes.data) ? reqsRes.data : (reqsRes.data?.data ?? []),
-      );
-
+    if (result.success) {
       triggerToast(
         "Request submitted! Track it in your request history.",
         "success",
@@ -588,13 +569,8 @@ const NewRequest = () => {
       setView("pick");
       setSelectedDoc(null);
       window.scrollTo({ top: 0, behavior: "smooth" });
-    } catch (err) {
-      const msg = err.response?.data?.errors
-        ? Object.values(err.response.data.errors).flat()[0]
-        : err.response?.data?.message || "Failed to submit. Please try again.";
-      triggerToast(msg, "error");
-    } finally {
-      setIsSubmitting(false);
+    } else {
+      triggerToast(result.message, "error");
     }
   };
 
@@ -609,7 +585,7 @@ const NewRequest = () => {
 
       {/* Header */}
       <div className="mb-8">
-        {view === "form" ? (
+        {view === "form" && (
           <button
             onClick={handleBack}
             disabled={isSubmitting}
@@ -618,7 +594,7 @@ const NewRequest = () => {
             <ArrowLeft size={16} />
             Back to documents
           </button>
-        ) : null}
+        )}
 
         <h1 className="text-2xl sm:text-3xl font-black text-gray-900 tracking-tight">
           {view === "pick" ? "Request a Document" : selectedDoc?.document_name}
@@ -647,12 +623,11 @@ const NewRequest = () => {
           onSelect={handleSelectDoc}
           isLoading={isLoading}
           error={error}
-          onRetry={fetchAll}
+          onRetry={retry}
         />
       ) : (
         <RequestForm
           doc={selectedDoc}
-          onBack={handleBack}
           onSubmit={handleSubmit}
           isSubmitting={isSubmitting}
           user={user}
