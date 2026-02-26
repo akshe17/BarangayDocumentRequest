@@ -7,20 +7,23 @@ import { DocumentRequestProvider } from "./context/DocumentRequestContext.jsx";
 import { AdminResidentProvider } from "./context/AdminResidentContext.jsx";
 import { ResidentDashboardProvider } from "./context/ResidentDashboardContext.jsx";
 import { NewRequestProvider } from "./context/NewRequestContext.jsx";
+import { ResidentHistoryProvider } from "./context/ResidentHistoryContext.jsx";
 // ... inside your router/layout
 
 createRoot(document.getElementById("root")).render(
   <AuthProvider>
-    <ResidentDashboardProvider>
-      <NewRequestProvider>
-        <AdminResidentProvider>
-          <DocumentRequestProvider>
-            <ZoneProvider>
-              <App />
-            </ZoneProvider>
-          </DocumentRequestProvider>
-        </AdminResidentProvider>
-      </NewRequestProvider>
-    </ResidentDashboardProvider>
+    <ResidentHistoryProvider>
+      <ResidentDashboardProvider>
+        <NewRequestProvider>
+          <AdminResidentProvider>
+            <DocumentRequestProvider>
+              <ZoneProvider>
+                <App />
+              </ZoneProvider>
+            </DocumentRequestProvider>
+          </AdminResidentProvider>
+        </NewRequestProvider>
+      </ResidentDashboardProvider>
+    </ResidentHistoryProvider>
   </AuthProvider>,
 );
