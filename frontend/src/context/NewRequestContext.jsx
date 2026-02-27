@@ -8,6 +8,8 @@ import React, {
 } from "react";
 import api from "../axious/api";
 import { useResidentDashboard } from "./ResidentDashboardContext";
+import { useResidentHistory } from "./ResidentHistoryContext";
+import { useResidentNotifications } from "./ResidentNotificationsContext";
 
 /* ─────────────────────────────────────────────────────────────
    CACHE SETTINGS
@@ -26,6 +28,8 @@ const NewRequestContext = createContext(null);
 
 export const NewRequestProvider = ({ children }) => {
   const { invalidate: invalidateDashboard } = useResidentDashboard();
+  const { refresh: refreshHistory } = useResidentHistory();
+  const { refresh: refreshNotifications } = useResidentNotifications();
 
   const [documentList, setDocumentList] = useState([]);
   const [existingRequests, setExistingRequests] = useState([]);
@@ -107,8 +111,11 @@ export const NewRequestProvider = ({ children }) => {
         );
         lastFetchedAt.current = Date.now();
 
-        // Tell the dashboard context its cache is stale
+        // Force-refresh history and notifications so new data shows immediately,
+        // and mark the dashboard cache stale for its next render.
         invalidateDashboard();
+        refreshHistory();
+        refreshNotifications();
 
         return { success: true };
       } catch (err) {
@@ -121,7 +128,7 @@ export const NewRequestProvider = ({ children }) => {
         setIsSubmitting(false);
       }
     },
-    [invalidateDashboard],
+    [invalidateDashboard, refreshHistory, refreshNotifications],
   );
 
   return (

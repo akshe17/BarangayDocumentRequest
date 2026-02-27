@@ -15,7 +15,7 @@ import {
 } from "lucide-react";
 import { useAuth } from "../../context/AuthContext";
 import { useNewRequest } from "../../context/NewRequestContext";
-
+import { useResidentHistory } from "../../context/ResidentHistoryContext";
 // ─── helpers ────────────────────────────────────────────────────────────────
 
 const STATUS_BLOCKED = [
