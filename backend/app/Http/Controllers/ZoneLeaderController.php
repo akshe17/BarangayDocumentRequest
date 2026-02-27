@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\Resident;
 use App\Models\User;
 use App\Models\ActionLog;
+use App\Models\DocumentRequest;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Log;
@@ -14,6 +15,16 @@ use App\Mail\ResidentRejected;
 
 class ZoneLeaderController extends Controller
 {
+      private function authorizedZoneLeader()
+    {
+        $user = Auth::user();
+
+        if ($user->role_id !== 4) {
+            abort(response()->json(['message' => 'Unauthorized'], 403));
+        }
+
+        return $user;
+    }
     // 1. Fetch residents only for the authenticated zone leader's zone
     public function getZoneResidents()
     {
@@ -182,4 +193,83 @@ class ZoneLeaderController extends Controller
         $roles = [1 => 'Admin', 4 => 'Zone Leader', 5 => 'Resident'];
         return $roles[$roleId] ?? 'Unknown';
     }
+
+      // ─── Shared: map a log entry to the standard frontend shape ──────────────
+    private function formatLog(ActionLog $log): array
+    {
+        $actionLower = strtolower($log->action);
+
+        $type = match (true) {
+            str_contains($actionLower, 'verify')    => 'verification',
+            str_contains($actionLower, 'reject')    => 'rejection',
+            str_contains($actionLower, 'request')   => 'request',
+            str_contains($actionLower, 'resubmit')  => 'resubmission',
+            default                                  => 'update',
+        };
+
+        return [
+            'id'          => $log->log_id,
+            'action'      => $log->action,
+            'description' => $log->details,
+            'type'        => $type,
+            'user'        => $log->user
+                ? "{$log->user->first_name} {$log->user->last_name}"
+                : 'System',
+            'time'        => $log->created_at->format('h:i A'),
+            'date'        => $log->created_at->format('M d, Y'),
+        ];
+    }
+
+    // ─── 1. Dashboard stats ───────────────────────────────────────────────────
+    
+     public function dashboardStats()
+    {
+        $zoneLeader = $this->authorizedZoneLeader();
+        $zoneId     = $zoneLeader->zone_id;
+
+        // Query directly from Resident model, joining to users in this zone.
+        // Avoids role_id assumption — any user in this zone with a resident profile counts.
+        $residents = Resident::whereHas('user', fn($q) => $q->where('zone_id', $zoneId))
+            ->with('user')
+            ->get();
+
+        // is_verified: null = pending, true = verified, false = rejected
+        $verified = $residents->filter(fn($r) => $r->is_verified === true)->count();
+        $rejected = $residents->filter(fn($r) => $r->is_verified === false)->count();
+        $pendingVerifications = $residents->filter(fn($r) => is_null($r->is_verified))->count();
+
+        // 5 most recent pending residents for the verification queue
+        $recentResidents = $residents
+            ->filter(fn($r) => is_null($r->is_verified))
+            ->sortByDesc('created_at')
+            ->take(5)
+            ->values()
+            ->map(fn($r) => [
+                'user_id'    => $r->user->user_id    ?? null,
+                'first_name' => $r->user->first_name ?? '',
+                'last_name'  => $r->user->last_name  ?? '',
+                'email'      => $r->user->email       ?? '',
+            ]);
+
+        // 5 most recent action logs by this zone leader
+        $recentLogs = ActionLog::with('user')
+            ->where('user_id', $zoneLeader->user_id)
+            ->orderBy('created_at', 'desc')
+            ->take(5)
+            ->get()
+            ->map(fn($log) => $this->formatLog($log));
+
+        return response()->json([
+            'zone_name'             => $zoneLeader->zone->name ?? "Zone {$zoneLeader->zone_id}",
+            'verified'              => $verified,
+            'rejected'              => $rejected,
+            'pending_verifications' => $pendingVerifications,
+            'recent_residents'      => $recentResidents,
+            'recent_logs'           => $recentLogs,
+        ]);
+    }
+
+
+    // ─── 2. Get all residents in the zone leader's zone ───────────────────────
+   
 }

@@ -141,6 +141,8 @@ Route::get('/resident/notifications', [ResidentNotificationController::class, 'i
 
 
         // Zone Leader Routes
+         Route::get('/zone-leader/dashboard-stats', [ZoneLeaderController::class, 'dashboardStats']);
+
         Route::get('/zone-leader/logs', [ZoneLeaderController::class, 'zoneLeaderPersonalLogs']);
     Route::get('/zone-leader/residents', [ZoneLeaderController::class, 'getZoneResidents']);
     Route::post('/zone-leader/residents/{id}/verify', [ZoneLeaderController::class, 'verifyResident']);

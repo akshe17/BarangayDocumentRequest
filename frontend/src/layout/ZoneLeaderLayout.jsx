@@ -7,6 +7,8 @@ import {
   Menu,
   X,
   UserCog,
+  Users,
+  ClipboardList,
 } from "lucide-react";
 import logo from "../assets/logo.png";
 import { useAuth } from "../context/AuthContext";
@@ -21,14 +23,19 @@ const ZoneLeaderLayout = () => {
   // Streamlined Navigation Links
   const menuItems = [
     {
+      path: "/zone-leader/dashboard",
+      label: "Dashboard",
+      icon: <Users size={20} />,
+    },
+    {
       path: "/zone-leader/residents",
       label: "Residents",
-      icon: <FileText size={20} />,
+      icon: <Users size={20} />,
     },
     {
       path: "/zone-leader/logs",
       label: "Logs",
-      icon: <FileText size={20} />,
+      icon: <ClipboardList size={20} />,
     },
   ];
 

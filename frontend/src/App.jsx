@@ -154,6 +154,7 @@ const App = () => {
           }
         >
           <Route index element={<Navigate to="residents" replace />} />
+          <Route path="dashboard" element={<ZoneLeaderDashboard />} />
           <Route path="residents" element={<ZoneResidentDirectory />} />
           <Route path="logs" element={<ZoneLeaderLogs />} />
           <Route path="zone-map" element={<ZoneMap />} />

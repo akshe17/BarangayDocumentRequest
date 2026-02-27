@@ -24,6 +24,9 @@ class Resident extends Model
         'is_verified'
         // --- REMOVED NAMES FROM HERE ---
     ];
+    protected $casts = [
+    'is_verified' => 'boolean',
+];
 
     public function requests()
     {
