@@ -25,7 +25,7 @@ const ZoneLeaderLayout = () => {
     {
       path: "/zone-leader/dashboard",
       label: "Dashboard",
-      icon: <Users size={20} />,
+      icon: <LayoutDashboard size={20} />,
     },
     {
       path: "/zone-leader/residents",
@@ -34,7 +34,7 @@ const ZoneLeaderLayout = () => {
     },
     {
       path: "/zone-leader/logs",
-      label: "Logs",
+      label: "Activity Logs",
       icon: <ClipboardList size={20} />,
     },
   ];
