@@ -110,12 +110,9 @@ const ZoneLeaderDashboard = () => {
       {/* ── Header ── */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div className="flex items-center gap-3">
-          <div className="p-2.5 bg-slate-900 text-white rounded-xl shadow-lg">
-            <MapPin size={22} strokeWidth={2.5} />
-          </div>
           <div>
             <h1 className="text-2xl font-black text-slate-900 tracking-tight leading-none">
-              Zone Overview
+              Zone <span className="text-emerald-500">Overview</span>
             </h1>
             <div className="flex items-center gap-1.5 mt-1">
               <span className="flex h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse" />

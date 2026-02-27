@@ -210,7 +210,7 @@ const ZoneLeaderLogs = () => {
         <div className="flex items-center gap-4">
           <div>
             <h1 className="text-3xl font-black text-gray-900">
-              My Activity Logs
+              MyZone<span className="text-emerald-500">Logs</span>
             </h1>
             <p className="text-gray-500 text-sm">
               Personal log of your actions
