@@ -16,6 +16,7 @@ use Laravel\Sanctum\PersonalAccessToken;
 use App\Models\ActionLog;
 class AuthController extends Controller
 {
+  
    public function login(Request $request)
 {
     $credentials = $request->validate([
@@ -42,8 +43,8 @@ class AuthController extends Controller
     // Load relationships
     $user->load('zone', 'resident');
     
-    // 3. Resident-specific verification checks (Role 5)
-    if ((int)$user->role_id === 5) {
+    // 3. Resident-specific verification checks (Role 2)
+    if ((int)$user->role_id === 2) {
         $resident = $user->resident;
 
         // Account was specifically Rejected

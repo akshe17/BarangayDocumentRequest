@@ -14,7 +14,7 @@ class CustomTokenAuth
         // 1. Get the token from the Header
         $hashedToken = $request->bearerToken();
 
-        if (!$hashedToken) {
+        if (!$hashedToken) { 
             return response()->json(['message' => 'No token provided (Custom Auth)'], 401);
         }
 

@@ -96,11 +96,29 @@ export const AuthProvider = ({ children }) => {
       // We use the direct userData here so we don't have to wait for state updates
       window.location.href = getHomeRoute(userData);
 
-      return { success: true };
+      return { success: true, user: userData };
     } catch (error) {
+      // The backend returns 403 for pending/rejected accounts.
+      // We must pass back the FULL response body (including `status`, `user_id`,
+      // `email`) so LoginPage can show the correct screen.
+      const data = error.response?.data;
+
+      if (
+        data?.status === "pending_verification" ||
+        data?.status === "rejected"
+      ) {
+        return {
+          success: false,
+          status: data.status,
+          email: data.email,
+          user_id: data.user_id,
+          message: data.message,
+        };
+      }
+
       return {
         success: false,
-        error: error.response?.data?.message || "Login failed",
+        error: data?.message || "Invalid credentials",
       };
     }
   };
