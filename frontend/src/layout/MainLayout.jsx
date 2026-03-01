@@ -37,11 +37,7 @@ const MainLayout = () => {
       label: "Manage Resident",
       icon: <Users size={20} />,
     },
-    {
-      path: "/dashboard/requests",
-      label: "Requests",
-      icon: <FileText size={20} />,
-    },
+
     {
       path: "/dashboard/documents",
       label: "Documents",
