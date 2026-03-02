@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useState } from "react";
 import {
   Smartphone,
   CheckCircle,
@@ -14,6 +14,111 @@ import logo from "../assets/logo.png";
 import bonbonVideo from "../assets/bonbonVideo.mp4";
 
 const DownloadApp = () => {
+  // Simple FAQ-style chatbot state
+  const [chatMessages, setChatMessages] = useState([
+    {
+      from: "bot",
+      text: "Hi! I'm your Barangay Bonbon assistant. You can ask me about where to pay, the process for requesting documents, and what documents are available.",
+    },
+  ]);
+  const [chatInput, setChatInput] = useState("");
+  const [isChatOpen, setIsChatOpen] = useState(false);
+
+  const addMessage = (from, text) => {
+    setChatMessages((prev) => [...prev, { from, text }]);
+  };
+
+  const getBotReply = (raw) => {
+    const text = raw.toLowerCase();
+
+    // Payment-related
+    if (text.includes("pay") || text.includes("payment") || text.includes("bayad")) {
+      return (
+        "You can pay your document fees at the Barangay Bonbon office cashier window. " +
+        "For some requests, payment can also be made when you claim the document. " +
+        "Make sure to bring a valid ID and your reference number from the app or website."
+      );
+    }
+
+    // Process-related
+    if (
+      text.includes("process") ||
+      text.includes("how do i request") ||
+      text.includes("how to request") ||
+      text.includes("steps") ||
+      text.includes("paano")
+    ) {
+      return (
+        "Basic process:\n" +
+        "1) Log in or register an account.\n" +
+        "2) Choose the document you need and submit your request.\n" +
+        "3) Wait for confirmation and status updates in the app/website.\n" +
+        "4) Once approved, go to the barangay office to pay (if needed) and claim your document."
+      );
+    }
+
+    // Available documents
+    if (
+      text.includes("what documents") ||
+      text.includes("available documents") ||
+      text.includes("documents available") ||
+      text.includes("kinds of documents") ||
+      text.includes("types of documents")
+    ) {
+      return (
+        "Common documents available in the system include:\n" +
+        "• Barangay Clearance\n" +
+        "• Certificate of Residency\n" +
+        "• Indigency Certificate\n" +
+        "• Business Permit/Barangay Permit\n" +
+        "Availability may still depend on local policies — please check inside the app for the full list."
+      );
+    }
+
+    // Status / tracking
+    if (text.includes("status") || text.includes("track") || text.includes("tracking")) {
+      return (
+        "You can track your document request status inside the app or website under the 'My Requests' or 'History' section. " +
+        "Each request will show if it is pending, approved, or ready for pickup."
+      );
+    }
+
+    // Requirements
+    if (
+      text.includes("requirement") ||
+      text.includes("id") ||
+      text.includes("valid id") ||
+      text.includes("need to bring")
+    ) {
+      return (
+        "Most requests require at least one valid government-issued ID. Some documents may need additional requirements (for example, supporting papers or authorizations). " +
+        "You can see the exact requirements when you select a specific document type in the app or website."
+      );
+    }
+
+    // Default fallback
+    return (
+      "I can help with:\n" +
+      "• Where and how to pay\n" +
+      "• The step-by-step request process\n" +
+      "• What documents are available\n" +
+      "• How to track your request\n\n" +
+      "Try asking, for example: \"Where do I pay?\" or \"What documents are available?\""
+    );
+  };
+
+  const handleSend = (e) => {
+    e.preventDefault();
+    if (!chatInput.trim()) return;
+
+    const userText = chatInput.trim();
+    addMessage("user", userText);
+    setChatInput("");
+
+    const reply = getBotReply(userText);
+    addMessage("bot", reply);
+  };
+
   const features = [
     {
       icon: <Zap size={18} />,
@@ -202,12 +307,12 @@ const DownloadApp = () => {
           </div>
 
           {/* Right Side: Phone Mockup */}
-          <div className="relative flex justify-center lg:justify-end">
+          <div className="relative flex flex-col gap-6 lg:items-end">
             {/* Glow Effect */}
             <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[400px] h-[400px] bg-emerald-500/30 rounded-full blur-[120px] animate-pulse"></div>
 
             {/* Phone Mockup */}
-            <div className="relative">
+            <div className="relative self-center lg:self-auto">
               <div className="relative bg-gray-900 rounded-[3.5rem] p-3 shadow-2xl transform hover:rotate-2 transition-all duration-500 border border-white/10">
                 <div className="bg-white rounded-[3rem] overflow-hidden border-[6px] border-gray-900 aspect-[9/19] w-[300px] relative shadow-inner">
                   {/* Mockup Content */}
@@ -288,6 +393,84 @@ const DownloadApp = () => {
           </div>
         </div>
       </section>
+
+      {/* Floating Chatbot Button + Panel (fixed on screen) */}
+      <div className="fixed bottom-5 right-5 z-40 flex flex-col items-end gap-3">
+        {/* Chat Panel */}
+        {isChatOpen && (
+          <div className="w-80 max-w-[90vw] bg-black/80 backdrop-blur-xl border border-emerald-400/40 rounded-2xl p-4 shadow-2xl">
+            <div className="flex items-center justify-between mb-3">
+              <div className="flex items-center gap-2">
+                <div className="w-8 h-8 rounded-full bg-emerald-500 flex items-center justify-center text-white text-sm font-bold">
+                  ?
+                </div>
+                <div>
+                  <p className="text-xs font-bold text-emerald-300 uppercase tracking-widest">
+                    Brgy Bonbon Assistant
+                  </p>
+                  <p className="text-[11px] text-gray-300">
+                    Ask about payments, process, and documents.
+                  </p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setIsChatOpen(false)}
+                className="text-xs text-gray-400 hover:text-white transition-colors"
+              >
+                ✕
+              </button>
+            </div>
+
+            <div className="h-56 overflow-y-auto space-y-2 pr-1 custom-scrollbar">
+              {chatMessages.map((msg, idx) => (
+                <div
+                  key={idx}
+                  className={`flex ${
+                    msg.from === "user" ? "justify-end" : "justify-start"
+                  }`}
+                >
+                  <div
+                    className={`max-w-[80%] text-xs rounded-2xl px-3 py-2 whitespace-pre-line ${
+                      msg.from === "user"
+                        ? "bg-emerald-500 text-white rounded-br-sm"
+                        : "bg-white/10 text-gray-100 border border-white/10 rounded-bl-sm"
+                    }`}
+                  >
+                    {msg.text}
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            <form onSubmit={handleSend} className="mt-3 flex gap-2">
+              <input
+                type="text"
+                value={chatInput}
+                onChange={(e) => setChatInput(e.target.value)}
+                placeholder="Ask: Where do I pay?"
+                className="flex-1 bg-black/40 border border-white/20 rounded-xl px-3 py-2 text-xs text-white placeholder:text-gray-500 focus:outline-none focus:border-emerald-400"
+              />
+              <button
+                type="submit"
+                className="px-3 py-2 rounded-xl bg-emerald-500 text-xs font-bold text-white hover:bg-emerald-600 transition-colors"
+              >
+                Ask
+              </button>
+            </form>
+          </div>
+        )}
+
+        {/* Circular Chat Toggle Button */}
+        <button
+          type="button"
+          onClick={() => setIsChatOpen((prev) => !prev)}
+          className="w-14 h-14 rounded-full bg-emerald-500 text-white shadow-xl flex items-center justify-center text-2xl font-bold border border-emerald-300 hover:bg-emerald-600 transition-all"
+          aria-label="Open Barangay Bonbon chat assistant"
+        >
+          ?
+        </button>
+      </div>
 
       {/* Stats Section */}
       <section className="relative z-10 max-w-7xl mx-auto px-6 md:px-8 py-16">
