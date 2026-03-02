@@ -143,6 +143,7 @@ public function register(Request $request)
             'gender_id' => 'required|integer|exists:genders,gender_id',
             'civil_status_id' => 'required|integer|exists:civil_statuses,civil_status_id',
             'id_image' => 'required|image|mimes:jpg,jpeg,png|max:10240',
+            'h_captcha_token' => 'required',
         ], [
             'email.unique' => 'This email is already registered.',
             'email.email' => 'Please provide a valid email address.',
@@ -155,11 +156,42 @@ public function register(Request $request)
             'id_image.image' => 'The file must be an image.',
             'id_image.mimes' => 'Only JPG, JPEG, and PNG images are allowed.',
             'id_image.max' => 'Image size must not exceed 10MB.',
+            'h_captcha_token.required' => 'Please complete the captcha verification.',
         ]);
     } catch (\Illuminate\Validation\ValidationException $e) {
         return response()->json([
             'message' => 'Validation failed',
             'errors' => $e->errors()
+        ], 422);
+    }
+
+    // hCaptcha verification for registration
+    $hcaptchaResponse = $request->input('h_captcha_token');
+    $secret = config('services.hcaptcha.secret');
+
+    if (empty($secret)) {
+        Log::error('hCaptcha secret key is not configured (register).');
+        return response()->json([
+            'message' => 'hCaptcha server configuration error. Please contact the administrator.',
+            'debug' => ['reason' => 'missing_hcaptcha_secret'],
+        ], 500);
+    }
+
+    $verify = Http::asForm()->post('https://hcaptcha.com/siteverify', [
+        'secret' => $secret,
+        'response' => $hcaptchaResponse,
+        'remoteip' => $request->ip(),
+    ]);
+
+    $verifyBody = $verify->json();
+    Log::info('hCaptcha verification response (register)', ['body' => $verifyBody]);
+
+    if (!($verifyBody['success'] ?? false)) {
+        return response()->json([
+            'message' => 'hCaptcha verification failed.',
+            'errors' => [
+                'captcha' => $verifyBody['error-codes'] ?? ['unknown_captcha_error'],
+            ],
         ], 422);
     }
 

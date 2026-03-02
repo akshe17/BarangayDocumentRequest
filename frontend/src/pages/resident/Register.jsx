@@ -16,6 +16,7 @@ import {
   ArrowLeft,
 } from "lucide-react";
 import api from "../../axious/api";
+import HCaptcha from "@hcaptcha/react-hcaptcha";
 import { Link } from "react-router-dom";
 import logo from "../../assets/logo.png";
 import bonbonVideo from "../../assets/bonbonVideo.mp4";
@@ -375,6 +376,8 @@ const Register = () => {
   const [registeredEmail, setRegisteredEmail] = useState("");
 
   const { isAuthenticated, isAdmin } = useAuth();
+  const [captchaToken, setCaptchaToken] = useState(null);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   const [formData, setFormData] = useState({
     email: "",
@@ -400,6 +403,32 @@ const Register = () => {
 
   const handleInputChange = (e) => {
     const { name, value } = e.target;
+
+    // Custom validation for names: letters and spaces only
+    if (name === "fname" || name === "lname") {
+      const nameRegex = /^[A-Za-z\s]*$/;
+      if (!nameRegex.test(value)) {
+        setErrors((prev) => ({
+          ...prev,
+          [name]: "Only letters and spaces are allowed.",
+        }));
+        return; // do not update state with invalid character
+      }
+    }
+
+    // Custom validation for house_no: letters, numbers, and spaces only (no special characters)
+    if (name === "house_no") {
+      const houseRegex = /^[A-Za-z0-9\s]*$/;
+      if (!houseRegex.test(value)) {
+        setErrors((prev) => ({
+          ...prev,
+          house_no:
+            "Only letters, numbers, and spaces are allowed in House No.",
+        }));
+        return; // do not update state with invalid character
+      }
+    }
+
     setFormData((prev) => ({ ...prev, [name]: value }));
     if (errors[name]) {
       setErrors((prev) => ({ ...prev, [name]: null }));
@@ -426,16 +455,25 @@ const Register = () => {
   const handleRegistration = async () => {
     setErrors({});
 
+    // Require hCaptcha before submitting
+    if (!captchaToken) {
+      setErrors({ general: "Please complete the hCaptcha verification." });
+      return;
+    }
+
     if (!imageFile) {
       setErrors({ id_image: "Please upload a valid ID image" });
       return;
     }
+
+    setIsSubmitting(true);
 
     const data = new FormData();
     Object.keys(formData).forEach((key) => {
       if (key !== "confirmPassword") data.append(key, formData[key]);
     });
     data.append("id_image", imageFile);
+    data.append("h_captcha_token", captchaToken);
 
     try {
       // Register the user
@@ -461,6 +499,9 @@ const Register = () => {
         console.error(err);
         setErrors({ general: "An unexpected error occurred." });
       }
+    } finally {
+      // Re-enable the button if registration did not navigate away
+      setIsSubmitting(false);
     }
   };
 
@@ -507,7 +548,8 @@ const Register = () => {
     formData.birthdate !== "" &&
     !birthdateError &&
     formData.gender_id !== "";
-  const isFormValid = section1Valid && section2Valid && selectedImage !== null;
+  const isFormValid =
+    section1Valid && section2Valid && selectedImage !== null && !!captchaToken;
 
   useEffect(() => {
     if (section1Valid && section2Valid) setCurrentStep(3);
@@ -803,11 +845,11 @@ const Register = () => {
                   )}
                 </label>
               ) : (
-                <div className="relative border-2 border-emerald-400 bg-emerald-50/30 rounded-xl overflow-hidden">
+                <div className="relative border-2 border-emerald-400 bg-emerald-50/30 rounded-xl overflow-hidden flex flex-col items-center justify-center p-3">
                   <img
                     src={selectedImage}
                     alt="ID Preview"
-                    className="w-full h-48 object-cover"
+                    className="max-h-64 w-auto object-contain"
                   />
                   <button
                     onClick={removeImage}
@@ -823,6 +865,23 @@ const Register = () => {
                   </div>
                 </div>
               )}
+            </SectionCard>
+
+            <SectionCard>
+              <StepHeader
+                number="4"
+                title="Security Check"
+                subtitle="Verify you are not a robot."
+              />
+              <div className="flex justify-center">
+                <HCaptcha
+                  sitekey={
+                    import.meta.env.VITE_HCAPTCHA_SITEKEY ||
+                    "your-site-key-here"
+                  }
+                  onVerify={(token) => setCaptchaToken(token)}
+                />
+              </div>
             </SectionCard>
 
             <div className="pt-3">
@@ -842,16 +901,25 @@ const Register = () => {
               )}
               <button
                 type="submit"
-                disabled={!isFormValid}
+                disabled={!isFormValid || isSubmitting}
                 className={`w-full py-4 rounded-xl font-bold text-base shadow-md transition-all duration-200 flex items-center justify-center gap-2.5
                   ${
-                    isFormValid
+                    isFormValid && !isSubmitting
                       ? "bg-emerald-600 hover:bg-emerald-700 text-white shadow-emerald-200 active:scale-[0.98]"
                       : "bg-gray-200 text-gray-400 cursor-not-allowed shadow-none"
                   }`}
               >
-                <CheckCircle2 size={20} />
-                Complete Registration
+                {isSubmitting ? (
+                  <>
+                    <div className="w-4 h-4 border-2 border-white/40 border-t-white rounded-full animate-spin" />
+                    Processing...
+                  </>
+                ) : (
+                  <>
+                    <CheckCircle2 size={20} />
+                    Complete Registration
+                  </>
+                )}
               </button>
               <p className="text-center mt-6 text-sm text-gray-500">
                 Already have an account?{" "}
