@@ -9,24 +9,27 @@ import { ResidentDashboardProvider } from "./context/ResidentDashboardContext.js
 import { NewRequestProvider } from "./context/NewRequestContext.jsx";
 import { ResidentHistoryProvider } from "./context/ResidentHistoryContext.jsx";
 import { ResidentNotificationsProvider } from "./context/ResidentNotificationsContext.jsx";
+import { ZoneResidentProvider } from "./context/ZoneResidentContext.jsx";
 // ... inside your router/layout
 
 createRoot(document.getElementById("root")).render(
   <AuthProvider>
-    <ResidentNotificationsProvider>
-      <ResidentHistoryProvider>
-        <ResidentDashboardProvider>
-          <NewRequestProvider>
-            <AdminResidentProvider>
-              <DocumentRequestProvider>
-                <ZoneProvider>
-                  <App />
-                </ZoneProvider>
-              </DocumentRequestProvider>
-            </AdminResidentProvider>
-          </NewRequestProvider>
-        </ResidentDashboardProvider>
-      </ResidentHistoryProvider>
-    </ResidentNotificationsProvider>
+    <ZoneResidentProvider>
+      <ResidentNotificationsProvider>
+        <ResidentHistoryProvider>
+          <ResidentDashboardProvider>
+            <NewRequestProvider>
+              <AdminResidentProvider>
+                <DocumentRequestProvider>
+                  <ZoneProvider>
+                    <App />
+                  </ZoneProvider>
+                </DocumentRequestProvider>
+              </AdminResidentProvider>
+            </NewRequestProvider>
+          </ResidentDashboardProvider>
+        </ResidentHistoryProvider>
+      </ResidentNotificationsProvider>
+    </ZoneResidentProvider>
   </AuthProvider>,
 );

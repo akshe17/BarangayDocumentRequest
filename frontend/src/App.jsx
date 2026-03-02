@@ -153,7 +153,7 @@ const App = () => {
             </ProtectedRoute>
           }
         >
-          <Route index element={<Navigate to="residents" replace />} />
+          <Route index element={<Navigate to="dashboard" replace />} />
           <Route path="dashboard" element={<ZoneLeaderDashboard />} />
           <Route path="residents" element={<ZoneResidentDirectory />} />
           <Route path="logs" element={<ZoneLeaderLogs />} />

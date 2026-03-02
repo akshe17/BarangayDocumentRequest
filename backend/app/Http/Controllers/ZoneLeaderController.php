@@ -26,36 +26,65 @@ class ZoneLeaderController extends Controller
         return $user;
     }
     // 1. Fetch residents only for the authenticated zone leader's zone
-    public function getZoneResidents()
-    {
-        $zoneLeader = Auth::user();
+  public function getZoneResidents()
+{
+    $zoneLeader = Auth::user();
 
-        if ($zoneLeader->role_id !== 4) {
-            return response()->json(['message' => 'Unauthorized'], 403);
-        }
-
-        // Fetch users (Residents) in the same zone
-        $users = User::with(['resident'])
-            ->where('zone_id', $zoneLeader->zone_id)
-            ->where('role_id', 2) // Assuming 5 is Resident role
-            ->orderBy('created_at', 'desc')
-            ->get();
-
-        // Transform data: is_active is now a direct property of $user
-        return response()->json($users->map(function ($user) {
-            return [
-                'user_id' => $user->user_id,
-                'first_name' => $user->first_name,
-                'last_name' => $user->last_name,
-                'email' => $user->email,
-                'is_active' => $user->is_active, // Moved from resident
-                'resident_id' => $user->resident->resident_id ?? null,
-                'is_verified' => $user->resident->is_verified ?? null,
-                'id_image_path' => $user->resident->id_image_path ?? null,
-                'created_at' => $user->created_at,
-            ];
-        }));
+    if ($zoneLeader->role_id !== 4) {
+        return response()->json(['message' => 'Unauthorized'], 403);
     }
+
+    $users = User::with([
+            'resident.gender',       // → resident.gender.gender_name
+            'resident.civilStatus',  // → resident.civil_status.status_name
+            'zone',                  // → zone.zone_name
+        ])
+        ->where('zone_id', $zoneLeader->zone_id)
+        ->where('role_id', 2)
+        ->orderBy('created_at', 'desc')
+        ->get();
+
+    return response()->json($users->map(function ($user) {
+        $resident = $user->resident;
+
+        return [
+            // ── User fields ─────────────────────────────────
+            'user_id'    => $user->user_id,
+            'first_name' => $user->first_name,
+            'last_name'  => $user->last_name,
+            'email'      => $user->email,
+            'is_active'  => $user->is_active,
+            'created_at' => $user->created_at,
+
+            // ── Zone ────────────────────────────────────────
+            'zone' => $user->zone ? [
+                'zone_id'   => $user->zone->zone_id,
+                'zone_name' => $user->zone->zone_name,
+            ] : null,
+
+            // ── Resident fields ─────────────────────────────
+            'resident_id'      => $resident->resident_id      ?? null,
+            'is_verified'      => $resident->is_verified      ?? null,
+            'id_image_path'    => $resident->id_image_path    ?? null,
+            'rejection_reason' => $resident->rejection_reason ?? null,
+
+            // ── Resident detail fields ───────────────────────
+            'resident' => $resident ? [
+                'resident_id'    => $resident->resident_id,
+                'birthdate'      => $resident->birthdate,
+                'house_no'       => $resident->house_no,
+                'gender'         => $resident->gender ? [
+                    'gender_id'   => $resident->gender->gender_id,
+                    'gender_name' => $resident->gender->gender_name,
+                ] : null,
+                'civil_status'   => $resident->civilStatus ? [
+                    'civil_status_id' => $resident->civilStatus->civil_status_id,
+                    'status_name'     => $resident->civilStatus->status_name,
+                ] : null,
+            ] : null,
+        ];
+    }));
+}
 
     // 2. Verify a resident
     public function verifyResident($residentId)

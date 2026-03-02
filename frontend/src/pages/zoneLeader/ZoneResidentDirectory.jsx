@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo, useCallback } from "react";
+import React, { useState, useMemo, useCallback } from "react";
 import {
   Search,
   CheckCircle2,
@@ -13,18 +13,16 @@ import {
   FileCheck,
   Calendar,
   AlertCircle,
-  RotateCcw,
-  Plus,
-  Minus,
   UserCheck,
+  Home,
+  Users,
+  User,
 } from "lucide-react";
 
 import api from "../../axious/api";
 import Toast from "../../components/toast";
 import { SkeletonStatGrid, SkeletonTable } from "../../components/Skeleton";
-
-const BASE_URL = "http://localhost:8000";
-
+import { useZoneResidents } from "../../context/ZoneResidentContext";
 /* ─────────────────────────────────────────────────────────────
    HELPERS
 ───────────────────────────────────────────────────────────── */
@@ -51,29 +49,43 @@ const getStatusUI = (status) => {
   }
 };
 
-const parseResidents = (data) =>
-  data.map((r) => ({
-    id: r.resident_id,
-    name: `${r.first_name} ${r.last_name}`,
-    email: r.email || "No Email",
-    status:
-      r.is_verified === null
-        ? "Pending"
-        : r.is_verified
-          ? "Verified"
-          : "Rejected",
-    date: new Date(r.created_at).toLocaleDateString("en-US", {
-      month: "short",
+const fmtDate = (raw) => {
+  if (!raw) return "—";
+  try {
+    return new Date(raw).toLocaleDateString("en-US", {
+      month: "long",
       day: "numeric",
       year: "numeric",
-    }),
-    avatar: `${r.first_name?.[0] ?? "?"}${r.last_name?.[0] ?? "?"}`,
-    idUrl: r.id_image_path ? `${BASE_URL}/storage/${r.id_image_path}` : null,
-    rejectionReason: r.rejection_reason ?? null,
-  }));
+    });
+  } catch {
+    return raw;
+  }
+};
 
 /* ─────────────────────────────────────────────────────────────
-   ID IMAGE VIEWER  —  zoom + rotate, no external deps
+   INFO ROW — used in detail panel
+───────────────────────────────────────────────────────────── */
+const InfoRow = ({ icon: Icon, label, value }) => (
+  <div className="flex items-start gap-3 py-3 border-b border-slate-50 last:border-0">
+    <div
+      className="w-7 h-7 rounded-lg bg-slate-50 border border-slate-100
+                    flex items-center justify-center shrink-0 mt-0.5"
+    >
+      <Icon size={12} className="text-slate-400" />
+    </div>
+    <div className="min-w-0 flex-1">
+      <p className="text-[9px] font-black uppercase tracking-widest text-slate-400 mb-0.5">
+        {label}
+      </p>
+      <p className="text-sm font-semibold text-slate-700 break-words">
+        {value || "—"}
+      </p>
+    </div>
+  </div>
+);
+
+/* ─────────────────────────────────────────────────────────────
+   ID IMAGE VIEWER
 ───────────────────────────────────────────────────────────── */
 const IdViewer = ({ url }) => {
   const [zoom, setZoom] = useState(1);
@@ -81,9 +93,11 @@ const IdViewer = ({ url }) => {
 
   return (
     <div className="flex flex-col h-full">
-      {/* Toolbar */}
       <div className="flex items-center justify-between mb-3">
-        <p className="text-[10px] font-black uppercase tracking-[0.14em] text-slate-400 flex items-center gap-1.5">
+        <p
+          className="text-[10px] font-black uppercase tracking-[0.14em] text-slate-400
+                      flex items-center gap-1.5"
+        >
           <ImageIcon size={11} /> Valid ID Document
         </p>
         <div className="flex gap-1">
@@ -118,7 +132,6 @@ const IdViewer = ({ url }) => {
         </div>
       </div>
 
-      {/* Image area */}
       <div
         className="flex-1 bg-slate-100 rounded-2xl border-2 border-slate-200
                       overflow-hidden flex items-center justify-center min-h-[300px]"
@@ -152,7 +165,6 @@ const IdViewer = ({ url }) => {
         )}
       </div>
 
-      {/* Zoom / rotation indicator */}
       <p className="text-[10px] text-slate-400 text-center mt-2 font-medium">
         {Math.round(zoom * 100)}% · {rotate}°
       </p>
@@ -161,7 +173,7 @@ const IdViewer = ({ url }) => {
 };
 
 /* ─────────────────────────────────────────────────────────────
-   REVIEW PAGE  —  dedicated full-screen page, no modal
+   REVIEW PAGE
 ───────────────────────────────────────────────────────────── */
 const ReviewPage = ({ resident, onBack, onUpdate, showToast }) => {
   const [actionLoading, setActionLoading] = useState(false);
@@ -206,7 +218,7 @@ const ReviewPage = ({ resident, onBack, onUpdate, showToast }) => {
 
   return (
     <div className="min-h-screen bg-slate-50">
-      {/* Sticky top bar */}
+      {/* Top bar */}
       <div
         className="bg-white border-b border-slate-100 h-14 px-5 md:px-8
                       flex items-center justify-between sticky top-0 z-30 shadow-sm"
@@ -223,7 +235,6 @@ const ReviewPage = ({ resident, onBack, onUpdate, showToast }) => {
           />
           Back to Directory
         </button>
-
         <div className="flex items-center gap-2.5">
           <span className="text-[11px] text-slate-300 font-mono hidden sm:block">
             ID-{String(resident.id).padStart(5, "0")}
@@ -232,15 +243,14 @@ const ReviewPage = ({ resident, onBack, onUpdate, showToast }) => {
             className={`inline-flex items-center gap-1.5 text-[10px] font-black
             tracking-widest uppercase px-3 py-1 rounded-full border ${statusCls}`}
           >
-            <StatusIcon size={11} />
-            {resident.status}
+            <StatusIcon size={11} /> {resident.status}
           </span>
         </div>
       </div>
 
       {/* Body */}
       <div className="max-w-5xl mx-auto px-4 md:px-6 py-8 grid md:grid-cols-2 gap-6">
-        {/* LEFT — ID Viewer */}
+        {/* LEFT — ID */}
         <div
           className="bg-white rounded-2xl border border-slate-100 shadow-sm p-5
                         flex flex-col min-h-[460px]"
@@ -248,11 +258,11 @@ const ReviewPage = ({ resident, onBack, onUpdate, showToast }) => {
           <IdViewer url={resident.idUrl} />
         </div>
 
-        {/* RIGHT — Details + actions */}
+        {/* RIGHT — Info + actions */}
         <div className="flex flex-col gap-5">
-          {/* Resident info card */}
+          {/* Info card */}
           <div className="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden">
-            <div className="flex items-center gap-3 px-5 py-4 border-b border-slate-50 bg-slate-50/50">
+            <div className="flex items-center gap-3 px-5 py-4 border-b border-slate-100 bg-slate-50/50">
               <div
                 className="w-8 h-8 rounded-xl bg-emerald-50 border border-emerald-100
                               flex items-center justify-center shrink-0"
@@ -263,8 +273,9 @@ const ReviewPage = ({ resident, onBack, onUpdate, showToast }) => {
                 Resident Details
               </p>
             </div>
+
             <div className="px-5 py-5 space-y-4">
-              {/* Avatar + name */}
+              {/* Avatar + name + email */}
               <div className="flex items-center gap-4">
                 <div
                   className="w-14 h-14 rounded-2xl bg-emerald-500 flex items-center
@@ -283,7 +294,7 @@ const ReviewPage = ({ resident, onBack, onUpdate, showToast }) => {
                 </div>
               </div>
 
-              {/* Meta */}
+              {/* Status + registered */}
               <div className="grid grid-cols-2 gap-3">
                 <div className="bg-slate-50 border border-slate-100 rounded-xl px-4 py-3">
                   <p className="text-[9px] font-black uppercase tracking-widest text-slate-400 mb-1">
@@ -307,11 +318,32 @@ const ReviewPage = ({ resident, onBack, onUpdate, showToast }) => {
                 </div>
               </div>
 
-              {/* Prior rejection reason */}
+              {/* All fields from the API */}
+              <div className="rounded-xl border border-slate-100 overflow-hidden px-4">
+                <InfoRow icon={MapPin} label="Zone" value={resident.zone} />
+                <InfoRow
+                  icon={Home}
+                  label="House No."
+                  value={resident.houseNo}
+                />
+                <InfoRow
+                  icon={Calendar}
+                  label="Date of Birth"
+                  value={fmtDate(resident.birthdate)}
+                />
+                <InfoRow icon={User} label="Gender" value={resident.gender} />
+                <InfoRow
+                  icon={Users}
+                  label="Civil Status"
+                  value={resident.civilStatus}
+                />
+              </div>
+
+              {/* Rejection reason */}
               {resident.status === "Rejected" && resident.rejectionReason && (
                 <div className="bg-red-50 border border-red-100 rounded-xl px-4 py-3">
                   <p className="text-[9px] font-black uppercase tracking-widest text-red-400 mb-1">
-                    Previous Rejection Reason
+                    Rejection Reason
                   </p>
                   <p className="text-xs text-red-700 font-medium leading-relaxed">
                     {resident.rejectionReason}
@@ -430,7 +462,7 @@ const ReviewPage = ({ resident, onBack, onUpdate, showToast }) => {
                         </>
                       ) : (
                         <>
-                          <CheckCircle2 size={15} />{" "}
+                          <CheckCircle2 size={15} />
                           {resident.status === "Rejected"
                             ? "Approve Anyway"
                             : "Approve Verification"}
@@ -445,7 +477,7 @@ const ReviewPage = ({ resident, onBack, onUpdate, showToast }) => {
                                  transition-all flex items-center justify-center gap-2
                                  disabled:opacity-40"
                     >
-                      <XCircle size={15} /> Reject Document
+                      <XCircle size={15} /> Reject Request
                     </button>
                   </div>
                 </div>
@@ -465,7 +497,7 @@ const ReviewPage = ({ resident, onBack, onUpdate, showToast }) => {
             <p className="text-[11px] text-emerald-700 leading-relaxed">
               Use the <strong>+ − ↺</strong> controls on the ID viewer to zoom
               and rotate the image. Check the photo, full name, and validity
-              date before making a decision.
+              date before deciding.
             </p>
           </div>
         </div>
@@ -475,57 +507,33 @@ const ReviewPage = ({ resident, onBack, onUpdate, showToast }) => {
 };
 
 /* ─────────────────────────────────────────────────────────────
-   MAIN — ZONE RESIDENT DIRECTORY (list view)
+   MAIN — LIST VIEW
 ───────────────────────────────────────────────────────────── */
 const ZoneResidentDirectory = () => {
-  const [residents, setResidents] = useState([]);
-  const [loading, setLoading] = useState(true);
+  const { residents, isLoading, error, lastFetched, refresh, updateResident } =
+    useZoneResidents();
+
   const [searchTerm, setSearchTerm] = useState("");
   const [filterStatus, setFilterStatus] = useState("pending");
-  const [lastFetched, setLastFetched] = useState(null);
+  const [reviewing, setReviewing] = useState(null);
   const [toast, setToast] = useState({
     show: false,
     message: "",
     type: "success",
   });
-  const [reviewing, setReviewing] = useState(null); // null = list, resident obj = review page
 
   const showToast = useCallback((message, type = "success") => {
     setToast({ show: true, message, type });
   }, []);
 
-  const fetchZoneResidents = useCallback(async () => {
-    setLoading(true);
-    try {
-      const response = await api.get("/zone-leader/residents");
-      if (!response.data || !Array.isArray(response.data)) {
-        console.error("Unexpected API response:", response.data);
-        setResidents([]);
-        return;
-      }
-      setResidents(parseResidents(response.data));
-      setLastFetched(new Date());
-    } catch (error) {
-      console.error("Error fetching residents:", error);
-      showToast("Failed to fetch zone residents.", "error");
-      setResidents([]);
-    } finally {
-      setLoading(false);
-    }
-  }, [showToast]);
+  const handleUpdate = useCallback(
+    (id, patch) => {
+      updateResident(id, patch);
+      setReviewing((prev) => (prev?.id === id ? { ...prev, ...patch } : prev));
+    },
+    [updateResident],
+  );
 
-  useEffect(() => {
-    fetchZoneResidents();
-  }, [fetchZoneResidents]);
-
-  const handleUpdate = useCallback((id, patch) => {
-    setResidents((prev) =>
-      prev.map((r) => (r.id === id ? { ...r, ...patch } : r)),
-    );
-    setReviewing((prev) => (prev?.id === id ? { ...prev, ...patch } : prev));
-  }, []);
-
-  // ── ALL hooks must come before any early return ──────────────
   const stats = {
     total: residents.length,
     verified: residents.filter((r) => r.status === "Verified").length,
@@ -537,11 +545,11 @@ const ZoneResidentDirectory = () => {
     () =>
       residents.filter((r) => {
         const q = searchTerm.toLowerCase();
-        const matchesSearch =
+        const matchSearch =
           r.name.toLowerCase().includes(q) || r.email.toLowerCase().includes(q);
-        const matchesFilter =
+        const matchFilter =
           filterStatus === "all" || r.status.toLowerCase() === filterStatus;
-        return matchesSearch && matchesFilter;
+        return matchSearch && matchFilter;
       }),
     [residents, searchTerm, filterStatus],
   );
@@ -588,7 +596,6 @@ const ZoneResidentDirectory = () => {
     { key: "all", label: "All", count: stats.total },
   ];
 
-  // ── Early return AFTER all hooks ─────────────────────────────
   if (reviewing) {
     return (
       <>
@@ -628,30 +635,33 @@ const ZoneResidentDirectory = () => {
               Zone <span className="text-emerald-500">Residents</span>
             </h1>
             <p className="text-slate-400 text-sm font-medium mt-1">
-              {loading
+              {isLoading
                 ? "Loading residents…"
                 : `${filteredResidents.length} of ${stats.total} residents`}
-              {lastFetched && !loading && (
+              {lastFetched && !isLoading && (
                 <span className="text-slate-300 ml-2 text-[10px]">
                   · synced {lastFetched.toLocaleTimeString()}
                 </span>
               )}
             </p>
+            {error && (
+              <p className="text-xs text-red-500 font-semibold mt-1">{error}</p>
+            )}
           </div>
           <button
-            onClick={fetchZoneResidents}
-            disabled={loading}
+            onClick={refresh}
+            disabled={isLoading}
             title="Refresh"
             className="p-3 bg-white border border-slate-200 rounded-xl hover:bg-emerald-50
-                       hover:border-emerald-200 hover:text-emerald-600 transition-all text-slate-500
-                       shadow-sm disabled:opacity-50 self-start md:self-auto"
+                       hover:border-emerald-200 hover:text-emerald-600 transition-all
+                       text-slate-500 shadow-sm disabled:opacity-50 self-start md:self-auto"
           >
-            <RefreshCcw size={16} className={loading ? "animate-spin" : ""} />
+            <RefreshCcw size={16} className={isLoading ? "animate-spin" : ""} />
           </button>
         </div>
 
         {/* Stat cards */}
-        {loading ? (
+        {isLoading ? (
           <SkeletonStatGrid count={4} />
         ) : (
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
@@ -682,7 +692,7 @@ const ZoneResidentDirectory = () => {
         >
           <div className="relative flex-1">
             <Search
-              className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-300
+              className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-500
                                pointer-events-none"
               size={16}
             />
@@ -690,10 +700,10 @@ const ZoneResidentDirectory = () => {
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
               placeholder="Search by name or email…"
-              className="w-full pl-11 pr-4 py-3 bg-slate-50 border border-slate-100 rounded-xl
+              className="w-full pl-11 pr-4 py-3 bg-slate-200 border border-slate-200 rounded-xl
                          focus:ring-2 focus:ring-emerald-200 focus:border-emerald-400
                          focus:bg-white outline-none transition-all text-sm font-medium
-                         placeholder:text-slate-300"
+                         placeholder:text-slate-500"
             />
           </div>
           <div
@@ -713,8 +723,8 @@ const ZoneResidentDirectory = () => {
               >
                 {label}
                 <span
-                  className={`text-[9px] font-black px-1.5 py-0.5 rounded-full min-w-[18px]
-                  text-center leading-none ${
+                  className={`text-[9px] font-black px-1.5 py-0.5 rounded-full
+                  min-w-[18px] text-center leading-none ${
                     filterStatus === key
                       ? "bg-white/25 text-white"
                       : "bg-slate-200 text-slate-500"
@@ -729,7 +739,7 @@ const ZoneResidentDirectory = () => {
 
         {/* Table */}
         <div className="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden">
-          {loading ? (
+          {isLoading ? (
             <div className="p-4">
               <SkeletonTable rows={6} cols={5} />
             </div>
@@ -794,11 +804,12 @@ const ZoneResidentDirectory = () => {
                           {r.email}
                         </td>
 
-                        {/* Status badge */}
+                        {/* Status */}
                         <td className="px-6 py-4">
                           <span
                             className={`inline-flex items-center gap-1.5 px-3 py-1.5
-                            rounded-full text-[10px] font-black uppercase tracking-wider border ${cls}`}
+                            rounded-full text-[10px] font-black uppercase tracking-wider
+                            border ${cls}`}
                           >
                             <span
                               className={`w-1.5 h-1.5 rounded-full shrink-0 ${dot}`}
@@ -807,12 +818,12 @@ const ZoneResidentDirectory = () => {
                           </span>
                         </td>
 
-                        {/* Date */}
+                        {/* Registered */}
                         <td className="px-6 py-4 text-sm text-slate-400 font-medium">
                           {r.date}
                         </td>
 
-                        {/* Action button */}
+                        {/* Action */}
                         <td className="px-6 py-4 text-center">
                           <button
                             onClick={() => setReviewing(r)}
