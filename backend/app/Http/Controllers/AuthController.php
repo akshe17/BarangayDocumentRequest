@@ -20,44 +20,40 @@ class AuthController extends Controller
   
    public function login(Request $request)
 {
-   // Validate input, including hCaptcha token
+   // Basic validation for login
    $request->validate([
        'email' => 'required|email',
        'password' => 'required',
-       'h_captcha_token' => 'required',
    ]);
 
-   // Verify hCaptcha token with hCaptcha API
+   // Optional hCaptcha verification: only if a token is provided (e.g. web app)
    $hcaptchaResponse = $request->input('h_captcha_token');
-   $secret = config('services.hcaptcha.secret');
+   if ($hcaptchaResponse) {
+       $secret = config('services.hcaptcha.secret');
 
-   if (empty($secret)) {
-       Log::error('hCaptcha secret key is not configured.');
-       return response()->json([
-           'success' => false,
-           'message' => 'hCaptcha server configuration error. Please contact the administrator.',
-           'debug' => ['reason' => 'missing_hcaptcha_secret'],
-       ], 500);
-   }
+       if (empty($secret)) {
+           Log::error('hCaptcha secret key is not configured (login). Skipping captcha verification.');
+       } else {
+           $verify = Http::asForm()->post('https://hcaptcha.com/siteverify', [
+               'secret' => $secret,
+               'response' => $hcaptchaResponse,
+               'remoteip' => $request->ip(),
+           ]);
 
-   $verify = Http::asForm()->post('https://hcaptcha.com/siteverify', [
-       'secret' => $secret,
-       'response' => $hcaptchaResponse,
-       'remoteip' => $request->ip(),
-   ]);
+           $verifyBody = $verify->json();
+           Log::info('hCaptcha verification response (login)', ['body' => $verifyBody]);
 
-   $verifyBody = $verify->json();
-   Log::info('hCaptcha verification response', ['body' => $verifyBody]);
-
-   if (!($verifyBody['success'] ?? false)) {
-       return response()->json([
-           'success' => false,
-           'message' => 'hCaptcha verification failed.',
-           'debug' => [
-               'error_codes' => $verifyBody['error-codes'] ?? null,
-               'hostname' => $verifyBody['hostname'] ?? null,
-           ],
-       ], 422);
+           if (!($verifyBody['success'] ?? false)) {
+               return response()->json([
+                   'success' => false,
+                   'message' => 'hCaptcha verification failed.',
+                   'debug' => [
+                       'error_codes' => $verifyBody['error-codes'] ?? null,
+                       'hostname' => $verifyBody['hostname'] ?? null,
+                   ],
+               ], 422);
+           }
+       }
    }
 
    $credentials = $request->only(['email', 'password']);
@@ -143,7 +139,6 @@ public function register(Request $request)
             'gender_id' => 'required|integer|exists:genders,gender_id',
             'civil_status_id' => 'required|integer|exists:civil_statuses,civil_status_id',
             'id_image' => 'required|image|mimes:jpg,jpeg,png|max:10240',
-            'h_captcha_token' => 'required',
         ], [
             'email.unique' => 'This email is already registered.',
             'email.email' => 'Please provide a valid email address.',
@@ -156,7 +151,6 @@ public function register(Request $request)
             'id_image.image' => 'The file must be an image.',
             'id_image.mimes' => 'Only JPG, JPEG, and PNG images are allowed.',
             'id_image.max' => 'Image size must not exceed 10MB.',
-            'h_captcha_token.required' => 'Please complete the captcha verification.',
         ]);
     } catch (\Illuminate\Validation\ValidationException $e) {
         return response()->json([
@@ -165,34 +159,32 @@ public function register(Request $request)
         ], 422);
     }
 
-    // hCaptcha verification for registration
+    // Optional hCaptcha verification for registration (e.g. web app)
     $hcaptchaResponse = $request->input('h_captcha_token');
-    $secret = config('services.hcaptcha.secret');
+    if ($hcaptchaResponse) {
+        $secret = config('services.hcaptcha.secret');
 
-    if (empty($secret)) {
-        Log::error('hCaptcha secret key is not configured (register).');
-        return response()->json([
-            'message' => 'hCaptcha server configuration error. Please contact the administrator.',
-            'debug' => ['reason' => 'missing_hcaptcha_secret'],
-        ], 500);
-    }
+        if (empty($secret)) {
+            Log::error('hCaptcha secret key is not configured (register). Skipping captcha verification.');
+        } else {
+            $verify = Http::asForm()->post('https://hcaptcha.com/siteverify', [
+                'secret' => $secret,
+                'response' => $hcaptchaResponse,
+                'remoteip' => $request->ip(),
+            ]);
 
-    $verify = Http::asForm()->post('https://hcaptcha.com/siteverify', [
-        'secret' => $secret,
-        'response' => $hcaptchaResponse,
-        'remoteip' => $request->ip(),
-    ]);
+            $verifyBody = $verify->json();
+            Log::info('hCaptcha verification response (register)', ['body' => $verifyBody]);
 
-    $verifyBody = $verify->json();
-    Log::info('hCaptcha verification response (register)', ['body' => $verifyBody]);
-
-    if (!($verifyBody['success'] ?? false)) {
-        return response()->json([
-            'message' => 'hCaptcha verification failed.',
-            'errors' => [
-                'captcha' => $verifyBody['error-codes'] ?? ['unknown_captcha_error'],
-            ],
-        ], 422);
+            if (!($verifyBody['success'] ?? false)) {
+                return response()->json([
+                    'message' => 'hCaptcha verification failed.',
+                    'errors' => [
+                        'captcha' => $verifyBody['error-codes'] ?? ['unknown_captcha_error'],
+                    ],
+                ], 422);
+            }
+        }
     }
 
    try {
