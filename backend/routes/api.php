@@ -82,7 +82,7 @@ Route::get('/request-history',  [ResidentDocumentController::class,'getHistory']
 Route::get('/admin/users', [AdminUserController::class, 'index']);
     Route::post('/admin/users', [AdminUserController::class, 'store']);
     Route::put('/admin/users/{id}', [AdminUserController::class, 'update']);
-    Route::delete('/admin/users/{id}', [AdminUserController::class, 'destroy']);
+Route::put('/admin/users/{id}/archive', [AdminUserController::class, 'archive']); // soft delete
     Route::put('/admin/users/{id}/change-password', [AdminUserController::class, 'changePassword']);
     // GET /api/admin/dashboard/overview
 Route::get('/admin/dashboard/overview', [AdminDashboardController::class, 'overview']);

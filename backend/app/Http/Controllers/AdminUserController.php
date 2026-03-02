@@ -8,6 +8,7 @@ use App\Models\Zone;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rules\Password;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
+use Illuminate\Support\Facades\Auth; // ← was missing, caused the 500
 
 class AdminUserController extends Controller
 {
@@ -105,16 +106,24 @@ class AdminUserController extends Controller
     }
 
     // DELETE: Remove user
-    public function destroy($id)
-    {
-        try {
-            $user = User::findOrFail($id);
-            $user->delete();
-            return response()->json(['message' => 'User deleted successfully']);
-        } catch (ModelNotFoundException $e) {
-            return response()->json(['message' => 'User not found'], 404);
+// ARCHIVE: Deactivate a user (soft delete)
+public function archive($id)
+{
+    try {
+        $user = User::findOrFail($id);
+
+        // Prevent admin from deactivating themselves
+        if ($user->user_id === Auth::id()) {
+            return response()->json(['message' => 'You cannot deactivate your own account'], 403);
         }
+
+        $user->update(['is_active' => 0]);
+
+        return response()->json(['message' => 'User archived successfully']);
+    } catch (ModelNotFoundException $e) {
+        return response()->json(['message' => 'User not found'], 404);
     }
+}
 
     // SPECIAL: Change Password
     public function changePassword(Request $request, $id)

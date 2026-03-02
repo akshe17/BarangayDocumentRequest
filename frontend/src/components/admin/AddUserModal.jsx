@@ -7,23 +7,72 @@ import {
   Lock,
   Eye,
   EyeOff,
-  Check,
   MapPin,
   Loader2,
+  CheckCircle2,
 } from "lucide-react";
-// 1. Import the custom hook from context
 import { useZones } from "../../context/ZoneContext";
 
-const AddUserModal = ({ isOpen, onClose, onSubmit }) => {
-  // 2. Consume the context data
-  const { zones, loadingZones } = useZones();
+// ── Reusable submit button with loading / success / error states ─────────────
+const SubmitButton = ({
+  status,
+  label,
+  loadingLabel = "Saving…",
+  color = "emerald",
+}) => {
+  const base =
+    "w-full sm:w-auto px-5 py-3 text-sm rounded-xl font-semibold transition-all shadow-md flex items-center justify-center gap-2 min-w-[130px]";
+  if (status === "loading") {
+    return (
+      <button
+        type="submit"
+        disabled
+        className={`${base} bg-${color}-400 text-white cursor-not-allowed opacity-80`}
+      >
+        <Loader2 size={16} className="animate-spin" /> {loadingLabel}
+      </button>
+    );
+  }
+  if (status === "success") {
+    return (
+      <button
+        type="submit"
+        disabled
+        className={`${base} bg-${color}-500 text-white cursor-not-allowed`}
+      >
+        <CheckCircle2 size={16} /> Done
+      </button>
+    );
+  }
+  if (status === "error") {
+    return (
+      <button
+        type="submit"
+        className={`${base} bg-red-500 hover:bg-red-600 text-white`}
+      >
+        Retry
+      </button>
+    );
+  }
+  return (
+    <button
+      type="submit"
+      className={`${base} bg-${color}-600 hover:bg-${color}-700 text-white`}
+    >
+      {label}
+    </button>
+  );
+};
 
-  // 1. Updated state to handle first name and last name separately
+const AddUserModal = ({ isOpen, onClose, onSubmit }) => {
+  const { zones, loadingZones } = useZones();
+  const [submitStatus, setSubmitStatus] = useState("idle"); // idle | loading | success | error
+
   const [formData, setFormData] = useState({
     first_name: "",
     last_name: "",
     email: "",
-    role_name: "Clerk",
+    role: "Clerk",
     zone_id: "",
     password: "",
     confirmPassword: "",
@@ -32,19 +81,17 @@ const AddUserModal = ({ isOpen, onClose, onSubmit }) => {
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [passwordStrength, setPasswordStrength] = useState(0);
+  const [passwordError, setPasswordError] = useState("");
 
-  const roles = ["Admin", "Clerk", "Zone Leader", "Barangay Captain"];
+  const roles = ["Admin", "Clerk", "Zone Leader"];
 
-  // Handle ESC key and scroll lock
   useEffect(() => {
     const handleEscape = (e) => {
       if (e.key === "Escape" && isOpen) onClose();
     };
-
     if (isOpen) {
       document.addEventListener("keydown", handleEscape);
       document.body.style.overflow = "hidden";
-      // Reset form on open with updated state structure
       setFormData({
         first_name: "",
         last_name: "",
@@ -57,105 +104,88 @@ const AddUserModal = ({ isOpen, onClose, onSubmit }) => {
       setPasswordStrength(0);
       setShowPassword(false);
       setShowConfirmPassword(false);
+      setSubmitStatus("idle");
+      setPasswordError("");
     }
-
     return () => {
       document.removeEventListener("keydown", handleEscape);
       document.body.style.overflow = "unset";
     };
   }, [isOpen, onClose]);
 
-  // Clear zone if role changes to not "Zone Leader"
   useEffect(() => {
-    if (formData.role !== "Zone Leader") {
-      setFormData((prev) => ({ ...prev, zone_id: "" }));
-    }
+    if (formData.role !== "Zone Leader")
+      setFormData((p) => ({ ...p, zone_id: "" }));
   }, [formData.role]);
 
-  // Password Utility Functions
-  const calculatePasswordStrength = (password) => {
-    let strength = 0;
-    if (password.length >= 8) strength += 25;
-    if (password.length >= 12) strength += 25;
-    if (/[a-z]/.test(password) && /[A-Z]/.test(password)) strength += 25;
-    if (/[0-9]/.test(password)) strength += 15;
-    if (/[^a-zA-Z0-9]/.test(password)) strength += 10;
-    return Math.min(strength, 100);
+  const calcStrength = (pw) => {
+    let s = 0;
+    if (pw.length >= 8) s += 25;
+    if (pw.length >= 12) s += 25;
+    if (/[a-z]/.test(pw) && /[A-Z]/.test(pw)) s += 25;
+    if (/[0-9]/.test(pw)) s += 15;
+    if (/[^a-zA-Z0-9]/.test(pw)) s += 10;
+    return Math.min(s, 100);
   };
 
-  const handlePasswordChange = (e) => {
-    const newPassword = e.target.value;
-    setFormData({ ...formData, password: newPassword });
-    setPasswordStrength(calculatePasswordStrength(newPassword));
-  };
+  const strengthColor =
+    passwordStrength < 40
+      ? "bg-red-500"
+      : passwordStrength < 70
+        ? "bg-amber-500"
+        : "bg-emerald-500";
+  const strengthText =
+    passwordStrength < 40
+      ? "Weak"
+      : passwordStrength < 70
+        ? "Medium"
+        : "Strong";
 
-  const getPasswordStrengthColor = () => {
-    if (passwordStrength < 40) return "bg-red-500";
-    if (passwordStrength < 70) return "bg-amber-500";
-    return "bg-emerald-500";
-  };
-
-  const getPasswordStrengthText = () => {
-    if (passwordStrength < 40) return "Weak";
-    if (passwordStrength < 70) return "Medium";
-    return "Strong";
-  };
-
-  // --- Inside AddUserModal.jsx ---
-
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
     if (formData.password !== formData.confirmPassword) {
-      alert("Passwords do not match!");
+      setPasswordError("Passwords do not match");
       return;
     }
-
-    // Format data specifically for the PHP Backend
-    const backendData = {
-      first_name: formData.first_name, // Based on updated modal state
-      last_name: formData.last_name, // Based on updated modal state
-      email: formData.email,
-      password: formData.password,
-      password_confirmation: formData.confirmPassword,
-      role_name: formData.role, // PHP expects 'role_name'
-      zone_id: formData.zone_id,
-    };
-
-    onSubmit(backendData);
+    setPasswordError("");
+    setSubmitStatus("loading");
+    try {
+      await onSubmit({
+        first_name: formData.first_name,
+        last_name: formData.last_name,
+        email: formData.email,
+        password: formData.password,
+        password_confirmation: formData.confirmPassword,
+        role_name: formData.role,
+        zone_id: formData.zone_id,
+      });
+      setSubmitStatus("success");
+      setTimeout(onClose, 800);
+    } catch {
+      setSubmitStatus("error");
+    }
   };
 
   if (!isOpen) return null;
-
-  // Utility to create consistent styling for labels
   const labelClass = "block text-sm font-medium text-gray-700 mb-1";
 
   return (
     <div className="fixed inset-0 z-[100] overflow-y-auto">
       <div
-        className="fixed inset-0 bg-black/70 backdrop-blur-sm transition-opacity duration-300 ease-out"
+        className="fixed inset-0 bg-black/70 backdrop-blur-sm"
         onClick={onClose}
-        aria-hidden="true"
       />
-
       <div className="flex items-end sm:items-center justify-center min-h-screen px-4 py-4 sm:p-0">
-        <span
-          className="hidden sm:inline-block sm:align-middle sm:h-screen"
-          aria-hidden="true"
-        >
-          &#8203;
-        </span>
-
         <div
-          className="relative inline-block align-bottom bg-white rounded-t-3xl sm:rounded-3xl text-left overflow-hidden shadow-2xl transform transition-all duration-300 ease-out w-full sm:max-w-lg sm:w-full max-h-[90vh] sm:max-h-[85vh] animate-slide-up sm:animate-fade-in"
+          className="relative bg-white rounded-t-3xl sm:rounded-3xl text-left overflow-hidden shadow-2xl w-full sm:max-w-lg max-h-[90vh] sm:max-h-[85vh]"
           role="dialog"
           aria-modal="true"
         >
           <div className="overflow-y-auto max-h-[90vh] sm:max-h-[85vh]">
-            <div className="bg-white p-6 sm:p-8">
+            <div className="p-6 sm:p-8">
               <div className="flex justify-center mb-3 sm:hidden">
-                <div className="w-12 h-1.5 bg-gray-300 rounded-full"></div>
+                <div className="w-12 h-1.5 bg-gray-300 rounded-full" />
               </div>
-
               <div className="flex justify-between items-start mb-6">
                 <div>
                   <h3 className="text-xl sm:text-2xl font-bold text-gray-900 tracking-tight">
@@ -167,69 +197,45 @@ const AddUserModal = ({ isOpen, onClose, onSubmit }) => {
                 </div>
                 <button
                   onClick={onClose}
-                  className="text-gray-400 hover:text-gray-600 rounded-full p-2 hover:bg-gray-100 transition-all duration-200"
-                  aria-label="Close modal"
+                  className="text-gray-400 hover:text-gray-600 rounded-full p-2 hover:bg-gray-100 transition-all"
                 >
                   <X size={20} strokeWidth={2.5} />
                 </button>
               </div>
 
               <form onSubmit={handleSubmit} className="space-y-5">
-                {/* 2. Updated Name Fields: First and Last Name */}
+                {/* Name */}
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  <div>
-                    <label htmlFor="firstName" className={labelClass}>
-                      First Name
-                    </label>
-                    <div className="relative">
-                      <User
-                        className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400"
-                        size={18}
-                      />
-                      <input
-                        id="firstName"
-                        type="text"
-                        placeholder="John"
-                        value={formData.first_name}
-                        onChange={(e) =>
-                          setFormData({
-                            ...formData,
-                            first_name: e.target.value,
-                          })
-                        }
-                        className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-xl text-sm focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 transition-all"
-                        required
-                      />
+                  {[
+                    ["firstName", "First Name", "first_name", "John"],
+                    ["lastName", "Last Name", "last_name", "Doe"],
+                  ].map(([id, label, key, ph]) => (
+                    <div key={id}>
+                      <label htmlFor={id} className={labelClass}>
+                        {label}
+                      </label>
+                      <div className="relative">
+                        <User
+                          className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400"
+                          size={18}
+                        />
+                        <input
+                          id={id}
+                          type="text"
+                          placeholder={ph}
+                          value={formData[key]}
+                          onChange={(e) =>
+                            setFormData({ ...formData, [key]: e.target.value })
+                          }
+                          className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-xl text-sm focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 transition-all"
+                          required
+                        />
+                      </div>
                     </div>
-                  </div>
-                  <div>
-                    <label htmlFor="lastName" className={labelClass}>
-                      Last Name
-                    </label>
-                    <div className="relative">
-                      <User
-                        className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400"
-                        size={18}
-                      />
-                      <input
-                        id="lastName"
-                        type="text"
-                        placeholder="Doe"
-                        value={formData.last_name}
-                        onChange={(e) =>
-                          setFormData({
-                            ...formData,
-                            last_name: e.target.value,
-                          })
-                        }
-                        className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-xl text-sm focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 transition-all"
-                        required
-                      />
-                    </div>
-                  </div>
+                  ))}
                 </div>
 
-                {/* Email Field */}
+                {/* Email */}
                 <div>
                   <label htmlFor="email" className={labelClass}>
                     Email Address
@@ -253,7 +259,7 @@ const AddUserModal = ({ isOpen, onClose, onSubmit }) => {
                   </div>
                 </div>
 
-                {/* Role Field */}
+                {/* Role */}
                 <div>
                   <label htmlFor="role" className={labelClass}>
                     Role
@@ -272,18 +278,18 @@ const AddUserModal = ({ isOpen, onClose, onSubmit }) => {
                       className="w-full pl-10 pr-10 py-3 border border-gray-300 rounded-xl text-sm bg-white focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 transition-all appearance-none cursor-pointer"
                       required
                     >
-                      {roles.map((role) => (
-                        <option key={role} value={role}>
-                          {role}
+                      {roles.map((r) => (
+                        <option key={r} value={r}>
+                          {r}
                         </option>
                       ))}
                     </select>
                   </div>
                 </div>
 
-                {/* Conditional Zone Selection */}
+                {/* Zone (conditional) */}
                 {formData.role === "Zone Leader" && (
-                  <div className="animate-fade-in">
+                  <div>
                     <label htmlFor="zone" className={labelClass}>
                       Assign Zone
                     </label>
@@ -303,11 +309,11 @@ const AddUserModal = ({ isOpen, onClose, onSubmit }) => {
                         disabled={loadingZones}
                       >
                         <option value="" disabled>
-                          {loadingZones ? "Loading zones..." : "Select Zone"}
+                          {loadingZones ? "Loading zones…" : "Select Zone"}
                         </option>
-                        {zones.map((zone) => (
-                          <option key={zone.zone_id} value={zone.zone_id}>
-                            {zone.zone_name}
+                        {zones.map((z) => (
+                          <option key={z.zone_id} value={z.zone_id}>
+                            {z.zone_name}
                           </option>
                         ))}
                       </select>
@@ -321,7 +327,7 @@ const AddUserModal = ({ isOpen, onClose, onSubmit }) => {
                   </div>
                 )}
 
-                {/* Password Field */}
+                {/* Password */}
                 <div>
                   <label htmlFor="password" className={labelClass}>
                     Password
@@ -336,7 +342,10 @@ const AddUserModal = ({ isOpen, onClose, onSubmit }) => {
                       type={showPassword ? "text" : "password"}
                       placeholder="Min. 8 characters"
                       value={formData.password}
-                      onChange={handlePasswordChange}
+                      onChange={(e) => {
+                        setFormData({ ...formData, password: e.target.value });
+                        setPasswordStrength(calcStrength(e.target.value));
+                      }}
                       className="w-full pl-10 pr-12 py-3 border border-gray-300 rounded-xl text-sm focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 transition-all"
                       required
                       minLength="8"
@@ -349,31 +358,33 @@ const AddUserModal = ({ isOpen, onClose, onSubmit }) => {
                       {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
                     </button>
                   </div>
+                  {formData.password && (
+                    <div className="mt-2 space-y-1">
+                      <div className="flex justify-between text-xs">
+                        <span className="text-gray-500">Strength:</span>
+                        <span
+                          className={
+                            passwordStrength < 40
+                              ? "text-red-600 font-bold"
+                              : passwordStrength < 70
+                                ? "text-amber-600 font-bold"
+                                : "text-emerald-600 font-bold"
+                          }
+                        >
+                          {strengthText}
+                        </span>
+                      </div>
+                      <div className="w-full bg-gray-200 rounded-full h-1.5">
+                        <div
+                          className={`h-full rounded-full transition-all duration-300 ${strengthColor}`}
+                          style={{ width: `${passwordStrength}%` }}
+                        />
+                      </div>
+                    </div>
+                  )}
                 </div>
 
-                {/* Password Strength Indicator */}
-                {formData.password && (
-                  <div className="space-y-2 animate-fade-in">
-                    <div className="flex justify-between items-center text-xs">
-                      <span className="text-gray-600 font-medium">
-                        Strength:
-                      </span>
-                      <span
-                        className={`font-bold ${getPasswordStrengthColor() === "bg-red-500" ? "text-red-600" : getPasswordStrengthColor() === "bg-amber-500" ? "text-amber-600" : "text-emerald-600"}`}
-                      >
-                        {getPasswordStrengthText()}
-                      </span>
-                    </div>
-                    <div className="w-full bg-gray-200 rounded-full h-1.5">
-                      <div
-                        className={`h-full rounded-full transition-all duration-300 ${getPasswordStrengthColor()}`}
-                        style={{ width: `${passwordStrength}%` }}
-                      ></div>
-                    </div>
-                  </div>
-                )}
-
-                {/* Confirm Password Field */}
+                {/* Confirm Password */}
                 <div>
                   <label htmlFor="confirmPassword" className={labelClass}>
                     Confirm Password
@@ -388,13 +399,14 @@ const AddUserModal = ({ isOpen, onClose, onSubmit }) => {
                       type={showConfirmPassword ? "text" : "password"}
                       placeholder="Re-enter password"
                       value={formData.confirmPassword}
-                      onChange={(e) =>
+                      onChange={(e) => {
                         setFormData({
                           ...formData,
                           confirmPassword: e.target.value,
-                        })
-                      }
-                      className="w-full pl-10 pr-12 py-3 border border-gray-300 rounded-xl text-sm focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 transition-all"
+                        });
+                        if (passwordError) setPasswordError("");
+                      }}
+                      className={`w-full pl-10 pr-12 py-3 border rounded-xl text-sm focus:ring-2 transition-all ${passwordError ? "border-red-400 focus:ring-red-400" : "border-gray-300 focus:ring-emerald-500 focus:border-emerald-500"}`}
                       required
                       minLength="8"
                     />
@@ -412,23 +424,27 @@ const AddUserModal = ({ isOpen, onClose, onSubmit }) => {
                       )}
                     </button>
                   </div>
+                  {passwordError && (
+                    <p className="mt-1 text-xs text-red-600 font-medium">
+                      {passwordError}
+                    </p>
+                  )}
                 </div>
 
-                {/* Action Buttons */}
-                <div className="flex flex-col-reverse sm:flex-row justify-end gap-3 mt-8 pt-5 border-t border-gray-200">
+                <div className="flex flex-col-reverse sm:flex-row justify-end gap-3 pt-5 border-t border-gray-200">
                   <button
                     type="button"
                     onClick={onClose}
-                    className="w-full sm:w-auto px-5 py-3 text-sm rounded-xl border border-gray-300 text-gray-700 hover:bg-gray-50 font-semibold transition-all"
+                    disabled={submitStatus === "loading"}
+                    className="w-full sm:w-auto px-5 py-3 text-sm rounded-xl border border-gray-300 text-gray-700 hover:bg-gray-50 font-semibold transition-all disabled:opacity-50"
                   >
                     Cancel
                   </button>
-                  <button
-                    type="submit"
-                    className="w-full sm:w-auto px-5 py-3 text-sm rounded-xl text-white font-semibold transition-all shadow-md bg-emerald-600 hover:bg-emerald-700"
-                  >
-                    Create User
-                  </button>
+                  <SubmitButton
+                    status={submitStatus}
+                    label="Create User"
+                    loadingLabel="Creating…"
+                  />
                 </div>
               </form>
             </div>
