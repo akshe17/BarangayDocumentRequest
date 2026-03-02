@@ -12,6 +12,7 @@ use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Http;
 use Laravel\Sanctum\PersonalAccessToken;
 use App\Models\ActionLog;
 class AuthController extends Controller
@@ -19,10 +20,47 @@ class AuthController extends Controller
   
    public function login(Request $request)
 {
-    $credentials = $request->validate([
-        'email' => 'required|email',
-        'password' => 'required',
-    ]);
+   // Validate input, including hCaptcha token
+   $request->validate([
+       'email' => 'required|email',
+       'password' => 'required',
+       'h_captcha_token' => 'required',
+   ]);
+
+   // Verify hCaptcha token with hCaptcha API
+   $hcaptchaResponse = $request->input('h_captcha_token');
+   $secret = config('services.hcaptcha.secret');
+
+   if (empty($secret)) {
+       Log::error('hCaptcha secret key is not configured.');
+       return response()->json([
+           'success' => false,
+           'message' => 'hCaptcha server configuration error. Please contact the administrator.',
+           'debug' => ['reason' => 'missing_hcaptcha_secret'],
+       ], 500);
+   }
+
+   $verify = Http::asForm()->post('https://hcaptcha.com/siteverify', [
+       'secret' => $secret,
+       'response' => $hcaptchaResponse,
+       'remoteip' => $request->ip(),
+   ]);
+
+   $verifyBody = $verify->json();
+   Log::info('hCaptcha verification response', ['body' => $verifyBody]);
+
+   if (!($verifyBody['success'] ?? false)) {
+       return response()->json([
+           'success' => false,
+           'message' => 'hCaptcha verification failed.',
+           'debug' => [
+               'error_codes' => $verifyBody['error-codes'] ?? null,
+               'hostname' => $verifyBody['hostname'] ?? null,
+           ],
+       ], 422);
+   }
+
+   $credentials = $request->only(['email', 'password']);
 
     // 1. Initial attempt to authenticate
     if (!auth()->attempt($credentials)) {

@@ -3,6 +3,7 @@ import { Lock, User, ShieldCheck, Eye, EyeOff, Download } from "lucide-react";
 import logo from "../assets/logo.png";
 import bonbonVideo from "../assets/bonbonVideo.mp4";
 import { Link, useNavigate } from "react-router-dom";
+import HCaptcha from "@hcaptcha/react-hcaptcha";
 import { useAuth } from "../context/AuthContext";
 import PendingVerification from "../components/login/PendingVerification";
 // MAKE SURE THIS COMPONENT EXISTS OR CREATE IT
@@ -18,6 +19,7 @@ const LoginPage = () => {
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
   const [rejectedUserId, setRejectedUserId] = useState(null);
+  const [captchaToken, setCaptchaToken] = useState(null);
   // Verification States
   const [isPending, setIsPending] = useState(false);
   const [isRejected, setIsRejected] = useState(false);
@@ -25,12 +27,19 @@ const LoginPage = () => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+
+    // Ensure hCaptcha is completed
+    if (!captchaToken) {
+      setError("Please complete the hCaptcha challenge.");
+      return;
+    }
+
     setLoading(true);
     setError("");
 
     try {
       // Assuming login() returns the JSON response from the backend
-      const result = await login(email, password);
+      const result = await login(email, password, captchaToken);
 
       // Debug: Log the result
       console.log("=== LOGIN RESULT ===", result);
@@ -220,6 +229,15 @@ const LoginPage = () => {
                 {error}
               </div>
             )}
+            <div className="mt-4">
+              <HCaptcha
+                sitekey={
+                  import.meta.env.VITE_HCAPTCHA_SITEKEY ||
+                  "4ca09924-90e0-46a4-8f9a-a98cd0900a04"
+                }
+                onVerify={(token) => setCaptchaToken(token)}
+              />
+            </div>
 
             <button
               type="submit"
