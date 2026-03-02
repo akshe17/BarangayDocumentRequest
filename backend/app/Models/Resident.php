@@ -20,6 +20,7 @@ class Resident extends Model
         'birthdate', 
         'house_no', 
         'id_image_path',
+         'verified_by',
       
         'is_verified'
         // --- REMOVED NAMES FROM HERE ---
