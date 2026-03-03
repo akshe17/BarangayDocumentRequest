@@ -4,6 +4,7 @@ import logo from "../assets/logo.png";
 import bonbonVideo from "../assets/bonbonVideo.mp4";
 import { Link, useNavigate } from "react-router-dom";
 import HCaptcha from "@hcaptcha/react-hcaptcha";
+
 import { useAuth } from "../context/AuthContext";
 import PendingVerification from "../components/login/PendingVerification";
 // MAKE SURE THIS COMPONENT EXISTS OR CREATE IT
@@ -148,22 +149,21 @@ const LoginPage = () => {
           </div>
 
           {/* Download Section */}
-          <div className="flex flex-col gap-4">
-            <a
-              href="/barangay-connect.apk"
-              className="group flex items-center gap-4 text-white hover:text-emerald-400 transition-all duration-300"
-            >
-              <div className="p-3 bg-emerald-500/20 group-hover:bg-emerald-500 border border-emerald-500/30 rounded-full transition-all">
-                <Download size={20} className="text-white" />
-              </div>
-              <div>
-                <p className="text-[10px] uppercase font-bold tracking-widest text-emerald-200/50">
-                  Available for Android
-                </p>
-                <p className="text-sm font-bold">Download Official APK</p>
-              </div>
-            </a>
-          </div>
+          <Link to="/download">
+            <div className="flex flex-col gap-4">
+              <a className="group flex items-center gap-4 text-white hover:text-emerald-400 transition-all duration-300">
+                <div className="p-3 bg-emerald-500/20 group-hover:bg-emerald-500 border border-emerald-500/30 rounded-full transition-all">
+                  <Download size={20} className="text-white" />
+                </div>
+                <div>
+                  <p className="text-[10px] uppercase font-bold tracking-widest text-emerald-200/50">
+                    Available for Android
+                  </p>
+                  <p className="text-sm font-bold">Download Official APK</p>
+                </div>
+              </a>
+            </div>
+          </Link>
         </div>
       </div>
       {/* RIGHT SIDE: Login Form */}
