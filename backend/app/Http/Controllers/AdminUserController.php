@@ -13,11 +13,12 @@ use Illuminate\Support\Facades\Auth; // ← was missing, caused the 500
 class AdminUserController extends Controller
 {
     // READ: Get all users with their roles and zones
-   public function index()
+  public function index()
 {
-    // Added 'zone' to eager loading and filtered out role_id = 2
+    // Added 'zone' to eager loading, filtered out role_id 2, and excluded inactive users
     $users = User::with(['role', 'zone'])
         ->whereNot('role_id', 2)
+        ->where('is_active', '!=', 0) // Or ->where('is_active', true) depending on your DB type
         ->get();
         
     return response()->json($users);
