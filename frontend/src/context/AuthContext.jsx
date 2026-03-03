@@ -90,7 +90,6 @@ export const AuthProvider = ({ children }) => {
       const response = await api.post("/login", {
         email,
         password,
-        h_captcha_token: captchaToken,
       });
       const token = response.data.access_token;
       const userData = response.data.user ?? response.data;

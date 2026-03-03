@@ -81,27 +81,31 @@ class AuthController extends Controller
     if ((int)$user->role_id === 2) {
         $resident = $user->resident;
 
-        // Account was specifically Rejected
-        if ($resident && $resident->is_verified === 0) {
-            auth()->logout();
-            return response()->json([
-                'success' => false,
-                'status' => 'rejected',
-                'message' => 'Your account registration was rejected.',
-                'user_id' => $user->user_id
-            ], 403);
-        }
+        if ($resident) {
+            $verification = $resident->is_verified;
 
-        // Account is still Pending
-        if ($resident && $resident->is_verified === null) {
-            auth()->logout();
-            return response()->json([
-                'success' => false,
-                'status' => 'pending_verification',
-                'message' => 'Your account is awaiting verification.',
-                'email' => $user->email,
-                'user_id' => $user->user_id
-            ], 403);
+            // Treat 0 / "0" / false as REJECTED
+            if ($verification === 0 || $verification === '0' || $verification === false) {
+                auth()->logout();
+                return response()->json([
+                    'success' => false,
+                    'status' => 'rejected',
+                    'message' => 'Your account registration was rejected.',
+                    'user_id' => $user->user_id
+                ], 403);
+            }
+
+            // Treat NULL as PENDING
+            if (is_null($verification)) {
+                auth()->logout();
+                return response()->json([
+                    'success' => false,
+                    'status' => 'pending_verification',
+                    'message' => 'Your account is awaiting verification.',
+                    'email' => $user->email,
+                    'user_id' => $user->user_id
+                ], 403);
+            }
         }
     }
 

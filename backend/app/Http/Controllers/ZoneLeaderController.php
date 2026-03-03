@@ -124,13 +124,7 @@ class ZoneLeaderController extends Controller
         } catch (\Exception $e) {
             Log::error('ActionLog failed for verification: ' . $e->getMessage());
         }
-        
-        Log::info("Zone Leader {$zoneLeader->user_id} verified resident {$residentId}");
-
-        if ($resident->user && $resident->user->email) {
-            Mail::to($resident->user->email)->send(new ResidentVerified());
-        }
-
+   
         return response()->json(['message' => 'Resident verified and account activated successfully']);
     }
 
@@ -169,12 +163,6 @@ class ZoneLeaderController extends Controller
             ]);
         } catch (\Exception $e) {
             Log::error('ActionLog failed for rejection: ' . $e->getMessage());
-        }
-
-        Log::info("Zone Leader {$zoneLeader->user_id} rejected resident {$residentId}. Reason: {$request->rejection_reason}");
-
-        if ($resident->user && $resident->user->email) {
-            Mail::to($resident->user->email)->send(new ResidentRejected($request->rejection_reason));
         }
 
         return response()->json(['message' => 'Resident rejected successfully']);

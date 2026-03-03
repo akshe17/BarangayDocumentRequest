@@ -473,7 +473,6 @@ const Register = () => {
       if (key !== "confirmPassword") data.append(key, formData[key]);
     });
     data.append("id_image", imageFile);
-    data.append("h_captcha_token", captchaToken);
 
     try {
       // Register the user
