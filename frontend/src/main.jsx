@@ -11,28 +11,31 @@ import { ResidentHistoryProvider } from "./context/ResidentHistoryContext.jsx";
 import { ResidentNotificationsProvider } from "./context/ResidentNotificationsContext.jsx";
 import { ZoneResidentProvider } from "./context/ZoneResidentContext.jsx";
 import { UserManagementProvider } from "./context/UserManagementContext.jsx";
+import { OverviewProvider } from "./context/OverViewContext.jsx";
 // ... inside your router/layout
 
 createRoot(document.getElementById("root")).render(
   <AuthProvider>
-    <UserManagementProvider>
-      <ZoneResidentProvider>
-        <ResidentNotificationsProvider>
-          <ResidentHistoryProvider>
-            <ResidentDashboardProvider>
-              <NewRequestProvider>
-                <AdminResidentProvider>
-                  <DocumentRequestProvider>
-                    <ZoneProvider>
-                      <App />
-                    </ZoneProvider>
-                  </DocumentRequestProvider>
-                </AdminResidentProvider>
-              </NewRequestProvider>
-            </ResidentDashboardProvider>
-          </ResidentHistoryProvider>
-        </ResidentNotificationsProvider>
-      </ZoneResidentProvider>
-    </UserManagementProvider>
+    <OverviewProvider>
+      <UserManagementProvider>
+        <ZoneResidentProvider>
+          <ResidentNotificationsProvider>
+            <ResidentHistoryProvider>
+              <ResidentDashboardProvider>
+                <NewRequestProvider>
+                  <AdminResidentProvider>
+                    <DocumentRequestProvider>
+                      <ZoneProvider>
+                        <App />
+                      </ZoneProvider>
+                    </DocumentRequestProvider>
+                  </AdminResidentProvider>
+                </NewRequestProvider>
+              </ResidentDashboardProvider>
+            </ResidentHistoryProvider>
+          </ResidentNotificationsProvider>
+        </ZoneResidentProvider>
+      </UserManagementProvider>
+    </OverviewProvider>
   </AuthProvider>,
 );

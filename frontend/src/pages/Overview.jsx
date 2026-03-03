@@ -1,12 +1,10 @@
 import React, { useState, useEffect, useRef } from "react";
-import api from "../axious/api";
 import {
   Users,
   FileText,
   Clock,
   CheckCircle2,
   XCircle,
-  Loader2,
   TrendingUp,
   TrendingDown,
   RefreshCw,
@@ -34,6 +32,12 @@ import {
   Pie,
   Legend,
 } from "recharts";
+import Skeleton from "../components/Skeleton";
+import { OverviewProvider, useOverview } from "../context/OverviewContext";
+
+/* ═══════════════════════════════════════════════════════════════
+   PURE UI HELPERS (unchanged from original)
+   ═══════════════════════════════════════════════════════════════ */
 
 const useCountUp = (target, duration = 900) => {
   const [count, setCount] = useState(0);
@@ -216,73 +220,102 @@ const Avatar = ({ name, index = 0 }) => {
     .join("")
     .slice(0, 2)
     .toUpperCase();
-  const color = AVATAR_COLORS[index % AVATAR_COLORS.length];
   return (
     <div
-      className={`w-8 h-8 rounded-xl flex items-center justify-center text-[10px] font-black shrink-0 ${color}`}
+      className={`w-8 h-8 rounded-xl flex items-center justify-center text-[10px] font-black shrink-0 ${AVATAR_COLORS[index % AVATAR_COLORS.length]}`}
     >
       {initials}
     </div>
   );
 };
 
-const Skeleton = ({ className = "" }) => (
-  <div className={`animate-pulse bg-slate-100 rounded-xl ${className}`} />
-);
+const PIE_COLORS = [
+  "#10b981",
+  "#3b82f6",
+  "#f59e0b",
+  "#ef4444",
+  "#8b5cf6",
+  "#06b6d4",
+  "#f97316",
+];
 
+/* ═══════════════════════════════════════════════════════════════
+   DASHBOARD SKELETON — uses the shared Skeleton component
+   Mirrors the exact layout: header · 7 stat cards · staff strip ·
+   area+pie row · zone bar + recent requests row
+   ═══════════════════════════════════════════════════════════════ */
 const DashboardSkeleton = () => (
   <div className="min-h-screen bg-slate-50 p-6 space-y-5">
+    {/* Header */}
     <div className="flex items-center justify-between">
       <div className="flex items-center gap-3">
-        <Skeleton className="w-9 h-9 rounded-xl" />
+        <Skeleton.Block className="w-9 h-9 rounded-xl" />
         <div className="space-y-1.5">
-          <Skeleton className="w-28 h-4" />
-          <Skeleton className="w-44 h-3" />
+          <Skeleton.Block className="w-28 h-4" />
+          <Skeleton.Block className="w-44 h-3" />
         </div>
       </div>
-      <Skeleton className="w-24 h-9" />
+      <Skeleton.Block className="w-24 h-9 rounded-xl" />
     </div>
+
+    {/* 7 stat cards */}
     <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-7 gap-4">
       {Array.from({ length: 7 }).map((_, i) => (
-        <Skeleton key={i} className="h-28 rounded-2xl" />
+        <div
+          key={i}
+          className="bg-white rounded-2xl border border-slate-100 p-5 space-y-3"
+        >
+          <Skeleton.Block className="w-9 h-9 rounded-xl" />
+          <Skeleton.Block className="w-16 h-2.5" />
+          <Skeleton.Block className="w-10 h-8" />
+        </div>
       ))}
     </div>
-    <Skeleton className="h-24 rounded-2xl" />
-    <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
-      <Skeleton className="lg:col-span-2 h-72 rounded-2xl" />
-      <Skeleton className="h-72 rounded-2xl" />
+
+    {/* Staff strip */}
+    <div className="bg-white rounded-2xl border border-slate-100 px-6 py-5 space-y-4">
+      <div className="flex items-center gap-2.5">
+        <Skeleton.Block className="w-7 h-7 rounded-lg" />
+        <div className="space-y-1.5">
+          <Skeleton.Block className="w-28 h-3" />
+          <Skeleton.Block className="w-20 h-2.5" />
+        </div>
+      </div>
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+        {Array.from({ length: 4 }).map((_, i) => (
+          <div
+            key={i}
+            className="bg-slate-50 rounded-xl px-4 py-3 border border-slate-100 flex items-center gap-3"
+          >
+            <Skeleton.Block className="w-8 h-8 rounded-lg" />
+            <div className="space-y-1.5">
+              <Skeleton.Block className="w-8 h-5" />
+              <Skeleton.Block className="w-16 h-2.5" />
+            </div>
+          </div>
+        ))}
+      </div>
     </div>
+
+    {/* Area chart + Pie */}
     <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
-      <Skeleton className="h-72 rounded-2xl" />
-      <Skeleton className="lg:col-span-2 h-72 rounded-2xl" />
+      <Skeleton.Card className="lg:col-span-2 h-72" lines={0} />
+      <Skeleton.Card className="h-72" lines={0} />
+    </div>
+
+    {/* Zone bar + Recent requests */}
+    <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
+      <Skeleton.Card className="h-72" lines={0} />
+      <Skeleton.Card className="lg:col-span-2 h-72" lines={0} />
     </div>
   </div>
 );
 
-const Overview = () => {
-  const [data, setData] = useState(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
-  const [refreshing, setRefreshing] = useState(false);
-
-  const load = async (refresh = false) => {
-    refresh ? setRefreshing(true) : setLoading(true);
-    setError(null);
-    try {
-      const res = await api.get("/admin/dashboard/overview");
-      setData(res.data);
-    } catch (e) {
-      console.error(e);
-      setError(e?.response?.data?.message ?? "Failed to load dashboard data.");
-    } finally {
-      setLoading(false);
-      setRefreshing(false);
-    }
-  };
-
-  useEffect(() => {
-    load();
-  }, []);
+/* ═══════════════════════════════════════════════════════════════
+   INNER — consumes context
+   ═══════════════════════════════════════════════════════════════ */
+const OverviewInner = () => {
+  const { data, loading, refreshing, error, refresh } = useOverview();
 
   if (loading) return <DashboardSkeleton />;
 
@@ -298,7 +331,7 @@ const Overview = () => {
           </p>
           <p className="text-xs text-slate-400 mb-5 leading-relaxed">{error}</p>
           <button
-            onClick={() => load()}
+            onClick={refresh}
             className="px-5 py-2.5 bg-emerald-500 text-white rounded-xl text-xs font-bold hover:bg-emerald-600 transition-colors shadow-sm"
           >
             Try Again
@@ -364,16 +397,6 @@ const Overview = () => {
     },
   ];
 
-  const PIE_COLORS = [
-    "#10b981",
-    "#3b82f6",
-    "#f59e0b",
-    "#ef4444",
-    "#8b5cf6",
-    "#06b6d4",
-    "#f97316",
-  ];
-
   return (
     <div className="min-h-screen bg-slate-50 p-6 space-y-5">
       {/* Header */}
@@ -397,7 +420,7 @@ const Overview = () => {
           </div>
         </div>
         <button
-          onClick={() => load(true)}
+          onClick={refresh}
           disabled={refreshing}
           className="flex items-center gap-2 px-4 py-2 bg-white border border-slate-200 rounded-xl text-xs font-bold text-slate-500 hover:border-slate-300 hover:text-slate-700 hover:shadow-sm transition-all disabled:opacity-50"
         >
@@ -653,5 +676,14 @@ const Overview = () => {
     </div>
   );
 };
+
+/* ═══════════════════════════════════════════════════════════════
+   DEFAULT EXPORT — self-contained with its own provider
+   ═══════════════════════════════════════════════════════════════ */
+const Overview = () => (
+  <OverviewProvider>
+    <OverviewInner />
+  </OverviewProvider>
+);
 
 export default Overview;
