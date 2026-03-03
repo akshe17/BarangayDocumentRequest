@@ -24,11 +24,9 @@ use App\Http\Controllers\AdminLogsController;
 
 Route::middleware('custom.auth')->get('/user', function (Request $request) {
     return response()->json([
-        'user' => $request->user()->load('resident'),
+        'user' => $request->user()->load('resident', 'zone'),
         'debug' => 'Used custom middleware successfully!'
     ]);
-
-     
 });
   Route::put('/resident/resubmit-id', [ResidentController::class, 'resubmitID']);
 

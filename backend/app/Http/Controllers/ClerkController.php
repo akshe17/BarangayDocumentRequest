@@ -90,10 +90,7 @@ class ClerkController extends Controller
         ]);
 
         // Notify Resident via Email
-        if ($docRequest->resident->user->email) {
-            Mail::to($docRequest->resident->user->email)
-                ->send(new DocumentRequestStatusMail($docRequest, $statusKey));
-        }
+    
 
         return response()->json([
             'message' => $hasDate
@@ -127,11 +124,7 @@ class ClerkController extends Controller
             'details'    => "Rejected. Reason: {$request->reason}. Document: {$docRequest->documentType->document_name}",
         ]);
 
-        // Notify Resident via Email
-        if ($docRequest->resident->user->email) {
-            Mail::to($docRequest->resident->user->email)
-                ->send(new DocumentRequestStatusMail($docRequest, 'rejected', $request->reason));
-        }
+     
 
         return response()->json([
             'message' => 'Request rejected.',
@@ -250,10 +243,7 @@ class ClerkController extends Controller
                             . $docRequest->documentType->document_name,
         ]);
 
-        if ($docRequest->resident->user->email) {
-            Mail::to($docRequest->resident->user->email)
-                ->send(new DocumentRequestStatusMail($docRequest, 'collected'));
-        }
+
 
         return response()->json([
             'message' => 'Collection confirmed. Request marked as Done.',
@@ -291,11 +281,7 @@ class ClerkController extends Controller
             : "Pickup date updated to {$request->pickup_date}. Document: " . $docRequest->documentType->document_name,
     ]);
 
-    // Email resident if moved to Ready
-    if ($isToday && $docRequest->resident->user->email) {
-        Mail::to($docRequest->resident->user->email)
-            ->send(new DocumentRequestStatusMail($docRequest, 'ready'));
-    }
+   
 
     return response()->json([
         'message' => $isToday
@@ -326,10 +312,7 @@ class ClerkController extends Controller
             ]);
 
             // Notify Resident via Email
-            if ($doc->resident->user->email) {
-                Mail::to($doc->resident->user->email)
-                    ->send(new DocumentRequestStatusMail($doc, 'ready'));
-            }
+          
         }
 
         return response()->json([

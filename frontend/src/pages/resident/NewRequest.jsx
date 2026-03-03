@@ -87,7 +87,7 @@ function getBlockedStatus(doc, existingRequests) {
 function ReadOnlyField({ label, value }) {
   return (
     <div className="space-y-1.5">
-      <label className="text-xs font-semibold text-gray-500 flex items-center gap-1.5">
+      <label className="text-xs font-semibold text-gray-700 flex items-center gap-1.5">
         {label}
         <span className="text-[10px] font-normal text-gray-300 bg-gray-50 border border-gray-100 px-1.5 py-0.5 rounded-md">
           auto-filled
@@ -113,7 +113,7 @@ function ResidentInfoFields({ user }) {
   const gender = GENDER_MAP[resident?.gender_id] ?? "";
   const civilStatus = CIVIL_STATUS_MAP[resident?.civil_status_id] ?? "";
   const birthdate = formatDate(resident?.birthdate);
-  const zone = user?.zone?.zone_name ?? "";
+  const zone = user?.zone?.zone_name ?? user?.zone_name ?? "";
   const houseNo = resident?.house_no ?? "";
 
   return (
@@ -141,12 +141,12 @@ function FieldInput({ field, value, onChange }) {
 
   return (
     <div className="space-y-1.5">
-      <label className="text-xs font-semibold text-gray-500 flex items-center gap-1">
+      <label className="text-xs font-semibold text-gray-700 flex items-center gap-1">
         {field.field_label}
         {field.is_required ? (
           <span className="text-red-400">*</span>
         ) : (
-          <span className="text-gray-300 font-normal">(optional)</span>
+          <span className="text-gray-500 font-normal">(optional)</span>
         )}
       </label>
       {field.field_type === "textarea" ? (
@@ -458,7 +458,7 @@ function RequestForm({ doc, onSubmit, isSubmitting, user }) {
 
       {/* Purpose */}
       <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5 sm:p-6 space-y-3">
-        <p className="text-xs font-bold text-gray-400 uppercase tracking-wider">
+        <p className="text-xs font-bold text-gray-500 uppercase tracking-wider">
           Purpose of Request <span className="text-red-400">*</span>
         </p>
         <textarea
