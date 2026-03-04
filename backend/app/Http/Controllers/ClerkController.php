@@ -59,7 +59,7 @@ class ClerkController extends Controller
     /**
      * POST /api/clerk/requests/{id}/approve
      */
-    public function approve(Request $request, $id)
+     public function approve(Request $request, $id)
     {
         $request->validate([
             'pickup_date' => 'nullable|date|after_or_equal:today',
@@ -91,7 +91,12 @@ class ClerkController extends Controller
         ]);
 
         // Notify Resident via Email
-    
+        try {
+            Mail::to($docRequest->resident->user->email)
+                ->send(new DocumentRequestStatusMail($docRequest, $statusKey));
+        } catch (\Exception $e) {
+            \Illuminate\Support\Facades\Log::error('Email failed (approve): ' . $e->getMessage());
+        }
 
         return response()->json([
             'message' => $hasDate
@@ -102,6 +107,7 @@ class ClerkController extends Controller
                 ->find($id),
         ]);
     }
+
 
     /**
      * POST /api/clerk/requests/{id}/reject
@@ -125,7 +131,13 @@ class ClerkController extends Controller
             'details'    => "Rejected. Reason: {$request->reason}. Document: {$docRequest->documentType->document_name}",
         ]);
 
-     
+        // Notify Resident via Email
+        try {
+            Mail::to($docRequest->resident->user->email)
+                ->send(new DocumentRequestStatusMail($docRequest, 'rejected', $request->reason));
+        } catch (\Exception $e) {
+            \Illuminate\Support\Facades\Log::error('Email failed (reject): ' . $e->getMessage());
+        }
 
         return response()->json([
             'message' => 'Request rejected.',
@@ -134,7 +146,6 @@ class ClerkController extends Controller
                 ->find($id),
         ]);
     }
-
     /**
      * Helper for PDF template serving
      */
