@@ -18,6 +18,7 @@ import {
 } from "lucide-react";
 import { useDocumentRequests } from "../../context/DocumentRequestContext";
 import { useFillDocument } from "../../utils/UseFillDocument";
+import api from "../../axious/api";
 
 /* ─────────────────────────────────────────────────────────────
    CONSTANTS & HELPERS
@@ -216,8 +217,13 @@ const CompletedDetailView = ({ request, onBack }) => {
 
   const handlePrint = async () => {
     try {
-      await fill(request);
-      // debugInfo is set inside useFillDocument after fill completes
+      // Always fetch a fresh, fully-eager-loaded record before filling.
+      // The context cache may not have resident.user / form_data populated,
+      // which causes static fields (name, age, address…) to come through blank.
+      const { data: freshRequest } = await api.get(
+        `/clerk/requests/${request.request_id}`,
+      );
+      await fill(freshRequest);
     } catch {
       notify("Failed to generate document.", "error");
     }

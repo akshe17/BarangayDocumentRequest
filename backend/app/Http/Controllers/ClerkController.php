@@ -22,12 +22,13 @@ class ClerkController extends Controller
     private function baseQuery()
     {
         return DocumentRequest::with([
-            'resident.user.zone',
-            'resident.gender',
-            'resident.civilStatus',
-            'documentType',
-            'status',
-        ]);
+        'resident.user.zone',
+        'resident.gender',
+        'resident.civilStatus',
+        'documentType',
+        'status',
+        'formData.fieldDefinition',  // ← ADD THIS LINE
+    ]);
     }
 
     /**
