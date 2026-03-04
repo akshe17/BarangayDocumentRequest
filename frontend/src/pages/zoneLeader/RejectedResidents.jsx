@@ -182,13 +182,13 @@ const DetailPage = ({ resident, onBack, onUpdate, showToast }) => {
           Back to Rejected
         </button>
         <div className="flex items-center gap-2.5">
-          <span className="text-[11px] text-slate-300 font-mono hidden sm:block">
+          <span className="text-[11px] text-slate-500 font-mono hidden sm:block">
             ID-{String(resident.id).padStart(5, "0")}
           </span>
           <span
             className="inline-flex items-center gap-1.5 text-[10px] font-black
             tracking-widest uppercase px-3 py-1 rounded-full border
-            bg-green-50 text-emerald-700 border-red-200"
+            bg-green-50 text-red-700 border-red-200"
           >
             <XCircle size={11} /> Rejected
           </span>
@@ -274,11 +274,11 @@ const DetailPage = ({ resident, onBack, onUpdate, showToast }) => {
 
               {/* Rejection reason */}
               {resident.rejectionReason && (
-                <div className="bg-emerald-50 border border-emerald-200 rounded-xl px-4 py-3">
-                  <p className="text-[9px] font-black uppercase tracking-widest text-emerald-500 mb-1">
+                <div className="bg-red-50 border border-red-200 rounded-xl px-4 py-3">
+                  <p className="text-[9px] font-black uppercase tracking-widest text-red-500 mb-1">
                     Rejection Reason
                   </p>
-                  <p className="text-xs text-emerald-700 font-medium leading-relaxed">
+                  <p className="text-xs text-red-700 font-medium leading-relaxed">
                     {resident.rejectionReason}
                   </p>
                 </div>
@@ -293,7 +293,7 @@ const DetailPage = ({ resident, onBack, onUpdate, showToast }) => {
                 className="w-8 h-8 rounded-xl bg-emerald-50 border border-emerald-100
                               flex items-center justify-center shrink-0"
               >
-                <FileCheck size={14} className="text-emerald-600" />
+                <FileCheck size={14} className="text-red-600" />
               </div>
               <div>
                 <p className="text-sm font-black text-slate-900">
@@ -430,7 +430,7 @@ const RejectedResidents = () => {
                 ? "Loading…"
                 : `${rejected.length} rejected resident${rejected.length !== 1 ? "s" : ""}`}
               {lastFetched && !isLoading && (
-                <span className="text-slate-300 ml-2 text-[10px]">
+                <span className="text-slate-500 ml-2 text-[10px]">
                   · synced {lastFetched.toLocaleTimeString()}
                 </span>
               )}
@@ -457,16 +457,16 @@ const RejectedResidents = () => {
         <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-4">
           <div className="relative">
             <Search
-              className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-300 pointer-events-none"
+              className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-500 pointer-events-none"
               size={16}
             />
             <input
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
               placeholder="Search by name or email…"
-              className="w-full pl-11 pr-4 py-3 bg-slate-50 border border-slate-100 rounded-xl
+              className="w-full pl-11 pr-4 py-3 bg-slate-100 border border-slate-100 rounded-xl
                          focus:ring-2 focus:ring-red-200 focus:border-red-400 focus:bg-white
-                         outline-none transition-all text-sm font-medium placeholder:text-slate-300"
+                         outline-none transition-all text-sm font-medium placeholder:text-slate-500"
             />
           </div>
         </div>

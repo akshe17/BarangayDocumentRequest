@@ -211,7 +211,7 @@ const DetailPage = ({ resident, onBack, onUpdate, showToast }) => {
           <span
             className="inline-flex items-center gap-1.5 text-[10px] font-black
             tracking-widest uppercase px-3 py-1 rounded-full border
-            bg-amber-50 text-amber-700 border-amber-200"
+            bg-emerald-50 text-emerald-700 border-emerald-200"
           >
             <Clock size={11} /> Pending
           </span>
@@ -234,10 +234,10 @@ const DetailPage = ({ resident, onBack, onUpdate, showToast }) => {
           <div className="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden">
             <div className="flex items-center gap-3 px-5 py-4 border-b border-slate-100 bg-slate-50/50">
               <div
-                className="w-8 h-8 rounded-xl bg-amber-50 border border-amber-100
+                className="w-8 h-8 rounded-xl bg-emerald-50 border border-emerald-100
                               flex items-center justify-center shrink-0"
               >
-                <UserCheck size={14} className="text-amber-600" />
+                <UserCheck size={14} className="text-emerald-600" />
               </div>
               <p className="text-sm font-black text-slate-900">
                 Resident Details
@@ -247,9 +247,9 @@ const DetailPage = ({ resident, onBack, onUpdate, showToast }) => {
               {/* Avatar + name */}
               <div className="flex items-center gap-4">
                 <div
-                  className="w-14 h-14 rounded-2xl bg-amber-400 flex items-center
+                  className="w-14 h-14 rounded-2xl bg-emerald-400 flex items-center
                                 justify-center text-white font-black text-xl shadow-lg
-                                shadow-amber-100 shrink-0 select-none"
+                                shadow-emerald-100 shrink-0 select-none"
                 >
                   {resident.avatar}
                 </div>
@@ -514,18 +514,18 @@ const PendingResidents = () => {
         {/* Header */}
         <div className="flex flex-col md:flex-row md:items-end justify-between gap-4">
           <div>
-            <p className="text-[10px] font-black tracking-[0.14em] uppercase text-amber-500 mb-1">
+            <p className="text-[10px] font-black tracking-[0.14em] uppercase text-emerald-500 mb-1">
               Zone Leader
             </p>
             <h1 className="text-3xl font-black tracking-tight text-slate-900">
-              Pending <span className="text-amber-500">Residents</span>
+              Pending <span className="text-emerald-500">Residents</span>
             </h1>
             <p className="text-slate-400 text-sm font-medium mt-1">
               {isLoading
                 ? "Loading…"
                 : `${pending.length} resident${pending.length !== 1 ? "s" : ""} awaiting verification`}
               {lastFetched && !isLoading && (
-                <span className="text-slate-300 ml-2 text-[10px]">
+                <span className="text-slate-500 ml-2 text-[10px]">
                   · synced {lastFetched.toLocaleTimeString()}
                 </span>
               )}
@@ -538,8 +538,8 @@ const PendingResidents = () => {
             onClick={refresh}
             disabled={isLoading}
             title="Refresh"
-            className="p-3 bg-white border border-slate-200 rounded-xl hover:bg-amber-50
-                       hover:border-amber-200 hover:text-amber-500 transition-all
+            className="p-3 bg-white border border-slate-200 rounded-xl hover:bg-emerald-50
+                       hover:border-emerald-200 hover:text-emerald-500 transition-all
                        text-slate-500 shadow-sm disabled:opacity-50 self-start md:self-auto"
           >
             <RefreshCcw size={16} className={isLoading ? "animate-spin" : ""} />
@@ -550,16 +550,16 @@ const PendingResidents = () => {
         <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-4">
           <div className="relative">
             <Search
-              className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-300 pointer-events-none"
+              className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-500 pointer-events-none"
               size={16}
             />
             <input
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
               placeholder="Search by name or email…"
-              className="w-full pl-11 pr-4 py-3 bg-slate-50 border border-slate-100 rounded-xl
-                         focus:ring-2 focus:ring-amber-200 focus:border-amber-400 focus:bg-white
-                         outline-none transition-all text-sm font-medium placeholder:text-slate-300"
+              className="w-full pl-11 pr-4 py-3 bg-slate-100 border border-slate-100 rounded-xl
+                         focus:ring-2 focus:ring-emerald-200 focus:border-emerald-400 focus:bg-white
+                         outline-none transition-all text-sm font-medium placeholder:text-slate-500"
             />
           </div>
         </div>
@@ -606,7 +606,7 @@ const PendingResidents = () => {
                       <td className="px-6 py-4">
                         <div className="flex items-center gap-3">
                           <div
-                            className="w-10 h-10 rounded-xl bg-amber-400 flex items-center
+                            className="w-10 h-10 rounded-xl bg-emerald-400 flex items-center
                                           justify-center text-white font-black text-sm
                                           shadow-sm shrink-0 select-none"
                           >
@@ -634,8 +634,8 @@ const PendingResidents = () => {
                           onClick={() => setReviewing(r)}
                           className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl
                                      text-xs font-black transition-all active:scale-95
-                                     bg-amber-500 text-white shadow-md shadow-amber-100
-                                     hover:bg-amber-600"
+                                     bg-emerald-500 text-white shadow-md shadow-emerald-100
+                                     hover:bg-emerald-600"
                         >
                           <FileCheck size={13} /> Review
                         </button>

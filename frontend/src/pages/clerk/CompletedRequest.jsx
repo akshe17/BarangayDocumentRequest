@@ -201,7 +201,7 @@ const CompletedTableRow = ({ req, onSelect, isLast }) => {
    DETAIL VIEW
 ───────────────────────────────────────────────────────────── */
 const CompletedDetailView = ({ request, onBack }) => {
-  const { fill, filling } = useFillDocument();
+  const { fill, filling, debugInfo, clearDebug } = useFillDocument();
   const [toast, setToast] = useState(null);
 
   const notify = (msg, type = "success") => {
@@ -217,6 +217,7 @@ const CompletedDetailView = ({ request, onBack }) => {
   const handlePrint = async () => {
     try {
       await fill(request);
+      // debugInfo is set inside useFillDocument after fill completes
     } catch {
       notify("Failed to generate document.", "error");
     }
@@ -225,6 +226,136 @@ const CompletedDetailView = ({ request, onBack }) => {
   return (
     <div className="min-h-screen bg-gray-50">
       <Toast toast={toast} />
+      {/* ── Template Debug Panel ─────────────────────────────────────────── */}
+      {debugInfo && (
+        <div className="fixed bottom-0 left-0 right-0 z-50 bg-gray-950 text-gray-100 text-xs font-mono max-h-72 overflow-y-auto shadow-2xl border-t-2 border-emerald-500">
+          {/* Header */}
+          <div className="flex items-center justify-between px-4 py-2 bg-gray-900 border-b border-gray-800 sticky top-0">
+            <div className="flex items-center gap-2">
+              <span
+                className={`w-2 h-2 rounded-full ${
+                  debugInfo.status === "success"
+                    ? "bg-emerald-400"
+                    : debugInfo.status === "partial"
+                      ? "bg-amber-400"
+                      : "bg-red-400"
+                }`}
+              />
+              <span className="font-black text-white uppercase tracking-wider text-[10px]">
+                Template Debugger — {debugInfo.status.toUpperCase()}
+              </span>
+              <span className="text-gray-500 text-[10px]">
+                {debugInfo.documentType}
+              </span>
+            </div>
+            <button
+              onClick={clearDebug}
+              className="text-gray-400 hover:text-white px-2 py-0.5 rounded hover:bg-gray-700 transition-colors text-[11px]"
+            >
+              ✕ close
+            </button>
+          </div>
+
+          <div className="p-4 space-y-3">
+            {/* Template path + resident */}
+            <div className="flex gap-6 text-[10px]">
+              <span>
+                <span className="text-gray-500">path:</span>{" "}
+                <span className="text-cyan-400">{debugInfo.templatePath}</span>
+              </span>
+              <span>
+                <span className="text-gray-500">resident:</span>{" "}
+                <span className="text-cyan-400">{debugInfo.resident}</span>
+              </span>
+            </div>
+
+            {/* Tag table */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div>
+                <p className="text-[9px] uppercase tracking-widest text-gray-500 mb-1">
+                  Tags in template ({debugInfo.tagsInTemplate.length})
+                </p>
+                <div className="flex flex-wrap gap-1">
+                  {debugInfo.tagsInTemplate.length ? (
+                    debugInfo.tagsInTemplate.map((t) => (
+                      <span
+                        key={t}
+                        className={`px-1.5 py-0.5 rounded text-[9px] font-bold ${
+                          debugInfo.tagsMissing.includes(t)
+                            ? "bg-red-900 text-red-300"
+                            : "bg-emerald-900 text-emerald-300"
+                        }`}
+                      >
+                        {"{{"}
+                        {t}
+                        {"}}"}
+                      </span>
+                    ))
+                  ) : (
+                    <span className="text-gray-600">none detected</span>
+                  )}
+                </div>
+              </div>
+              <div>
+                <p className="text-[9px] uppercase tracking-widest text-gray-500 mb-1">
+                  Missing data ({debugInfo.tagsMissing.length})
+                </p>
+                <div className="flex flex-wrap gap-1">
+                  {debugInfo.tagsMissing.length ? (
+                    debugInfo.tagsMissing.map((t) => (
+                      <span
+                        key={t}
+                        className="px-1.5 py-0.5 rounded text-[9px] font-bold bg-red-900 text-red-300"
+                      >
+                        {"{{"}
+                        {t}
+                        {"}}"}
+                      </span>
+                    ))
+                  ) : (
+                    <span className="text-gray-600 text-[10px]">none ✓</span>
+                  )}
+                </div>
+              </div>
+            </div>
+
+            {/* Errors */}
+            {debugInfo.errors.length > 0 && (
+              <div>
+                <p className="text-[9px] uppercase tracking-widest text-red-500 mb-1">
+                  Errors ({debugInfo.errors.length})
+                </p>
+                <div className="space-y-0.5">
+                  {debugInfo.errors.map((e, i) => (
+                    <p
+                      key={i}
+                      className="text-red-400 text-[10px] leading-relaxed"
+                    >
+                      ⚠ {e}
+                    </p>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Warnings */}
+            {debugInfo.warnings.length > 0 && (
+              <div>
+                <p className="text-[9px] uppercase tracking-widest text-amber-500 mb-1">
+                  Info
+                </p>
+                <div className="space-y-0.5">
+                  {debugInfo.warnings.map((w, i) => (
+                    <p key={i} className="text-amber-300 text-[10px]">
+                      → {w}
+                    </p>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
 
       {/* Top bar */}
       <div

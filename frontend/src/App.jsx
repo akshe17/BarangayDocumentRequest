@@ -70,7 +70,7 @@ const App = () => {
     if (role === 1) return "/dashboard";
     if (role === 2) return "/resident";
     if (role === 3) return "/clerk/dashboard";
-    if (role === 4) return "/zone-leader/residents";
+    if (role === 4) return "/zone-leader/dashboard";
     if (role === 5) return "/captain/dashboard";
 
     return "/login";
@@ -158,7 +158,7 @@ const App = () => {
         >
           <Route index element={<Navigate to="dashboard" replace />} />
           <Route path="dashboard" element={<ZoneLeaderDashboard />} />
-          <Route path="residents" element={<ZoneResidentDirectory />} />
+
           <Route path="pending" element={<PendingResidents />} />
           <Route path="verified" element={<VerifiedResidents />} />
           <Route path="rejected" element={<RejectedResidents />} />

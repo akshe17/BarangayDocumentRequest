@@ -28,11 +28,7 @@ const ZoneLeaderLayout = () => {
       label: "Dashboard",
       icon: <LayoutDashboard size={20} />,
     },
-    {
-      path: "/zone-leader/residents",
-      label: "Residents",
-      icon: <Users size={20} />,
-    },
+
     {
       path: "/zone-leader/pending",
       label: "Pending Residents",

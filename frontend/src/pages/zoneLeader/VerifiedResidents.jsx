@@ -190,7 +190,7 @@ const DetailPage = ({ resident, onBack, onUpdate, showToast }) => {
           Back to Verified
         </button>
         <div className="flex items-center gap-2.5">
-          <span className="text-[11px] text-slate-300 font-mono hidden sm:block">
+          <span className="text-[11px] text-slate-500 font-mono hidden sm:block">
             ID-{String(resident.id).padStart(5, "0")}
           </span>
           <span
@@ -489,7 +489,7 @@ const VerifiedResidents = () => {
                 ? "Loading…"
                 : `${verified.length} verified resident${verified.length !== 1 ? "s" : ""}`}
               {lastFetched && !isLoading && (
-                <span className="text-slate-300 ml-2 text-[10px]">
+                <span className="text-slate-500 ml-2 text-[10px]">
                   · synced {lastFetched.toLocaleTimeString()}
                 </span>
               )}
@@ -514,16 +514,16 @@ const VerifiedResidents = () => {
         <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-4">
           <div className="relative">
             <Search
-              className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-300 pointer-events-none"
+              className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-500 pointer-events-none"
               size={16}
             />
             <input
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
               placeholder="Search by name or email…"
-              className="w-full pl-11 pr-4 py-3 bg-slate-50 border border-slate-100 rounded-xl
+              className="w-full pl-11 pr-4 py-3 bg-slate-10 border border-slate-100 rounded-xl
                          focus:ring-2 focus:ring-emerald-200 focus:border-emerald-400 focus:bg-white
-                         outline-none transition-all text-sm font-medium placeholder:text-slate-300"
+                         outline-none transition-all text-sm font-medium placeholder:text-slate-500"
             />
           </div>
         </div>

@@ -41,7 +41,7 @@ class ZoneLeaderController extends Controller
         ])
         ->where('zone_id', $zoneLeader->zone_id)
         ->where('role_id', 2)
-        ->orderBy('created_at', 'desc')
+        ->orderBy('updated_at', 'desc')
         ->get();
 
     return response()->json($users->map(function ($user) {
