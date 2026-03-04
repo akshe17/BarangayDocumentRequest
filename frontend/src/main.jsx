@@ -11,7 +11,7 @@ import { ResidentHistoryProvider } from "./context/ResidentHistoryContext.jsx";
 import { ResidentNotificationsProvider } from "./context/ResidentNotificationsContext.jsx";
 import { ZoneResidentProvider } from "./context/ZoneResidentContext.jsx";
 import { UserManagementProvider } from "./context/UserManagementContext.jsx";
-import { OverviewProvider } from "./context/OverViewContext.jsx";
+import { OverviewProvider } from "./context/OverviewContext.jsx";
 // ... inside your router/layout
 
 createRoot(document.getElementById("root")).render(

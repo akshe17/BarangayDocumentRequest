@@ -87,11 +87,12 @@ class ZoneLeaderController extends Controller
 }
 
     // 2. Verify a resident
+
+    
     public function verifyResident($residentId)
     {
         $zoneLeader = Auth::user();
 
-        // Find resident and load user
         $resident = Resident::where('resident_id', $residentId)
             ->with('user')
             ->whereHas('user', function ($query) use ($zoneLeader) {
@@ -103,36 +104,46 @@ class ZoneLeaderController extends Controller
             return response()->json(['message' => 'Resident not found in your zone'], 404);
         }
 
-        // UPDATE: Update resident verification AND user activity
         $resident->update([
             'is_verified' => true,
-            'verified_by' => $zoneLeader->user_id 
+            'verified_by' => $zoneLeader->user_id,
         ]);
 
         $resident->user->update([
-            'is_active' => true
+            'is_active' => true,
         ]);
-        
+
+        // ── Send verification email ───────────────────────────────
+        try {
+            Mail::to($resident->user->email)
+                ->send(new ResidentVerified($resident->user));
+
+            Log::info("Verification email sent to: {$resident->user->email}");
+        } catch (\Exception $e) {
+            Log::error("Failed to send verification email to {$resident->user->email}: " . $e->getMessage());
+        }
+        // ─────────────────────────────────────────────────────────
+
         try {
             ActionLog::create([
-                'user_id' => $zoneLeader->user_id,
+                'user_id'    => $zoneLeader->user_id,
                 'request_id' => null,
-                'action' => 'Verify Resident',
-                // Updated to use user names from the user relationship
-                'details' => "Verification completed by Zone Leader {$zoneLeader->last_name} for resident {$resident->user->first_name} {$resident->user->last_name}.",
+                'action'     => 'Verify Resident',
+                'details'    => "Verification completed by Zone Leader {$zoneLeader->last_name} for resident {$resident->user->first_name} {$resident->user->last_name}.",
             ]);
         } catch (\Exception $e) {
             Log::error('ActionLog failed for verification: ' . $e->getMessage());
         }
-   
+
         return response()->json(['message' => 'Resident verified and account activated successfully']);
     }
 
     // 3. Reject a resident
-    public function rejectResident(Request $request, $residentId)
+
+     public function rejectResident(Request $request, $residentId)
     {
         $zoneLeader = Auth::user();
-        
+
         $request->validate([
             'rejection_reason' => 'required|string|max:500',
         ]);
@@ -148,18 +159,28 @@ class ZoneLeaderController extends Controller
             return response()->json(['message' => 'Resident not found in your zone'], 404);
         }
 
-        // UPDATE: Set verified to false. You may or may not want to set is_active to false here.
         $resident->update([
-            'is_verified' => false,
-            'rejection_reason' => $request->rejection_reason, 
+            'is_verified'      => false,
+            'rejection_reason' => $request->rejection_reason,
         ]);
-        
+
+        // ── Send rejection email ──────────────────────────────────
+        try {
+            Mail::to($resident->user->email)
+                ->send(new ResidentRejected($resident->user, $request->rejection_reason));
+
+            Log::info("Rejection email sent to: {$resident->user->email}");
+        } catch (\Exception $e) {
+            Log::error("Failed to send rejection email to {$resident->user->email}: " . $e->getMessage());
+        }
+        // ─────────────────────────────────────────────────────────
+
         try {
             ActionLog::create([
-                'user_id' => $zoneLeader->user_id,
+                'user_id'    => $zoneLeader->user_id,
                 'request_id' => null,
-                'action' => 'Reject Resident',
-                'details' => "Resident {$resident->user->first_name} {$resident->user->last_name} rejected by Zone Leader {$zoneLeader->last_name}. Reason: {$request->rejection_reason}"
+                'action'     => 'Reject Resident',
+                'details'    => "Resident {$resident->user->first_name} {$resident->user->last_name} rejected by Zone Leader {$zoneLeader->last_name}. Reason: {$request->rejection_reason}",
             ]);
         } catch (\Exception $e) {
             Log::error('ActionLog failed for rejection: ' . $e->getMessage());
@@ -167,7 +188,6 @@ class ZoneLeaderController extends Controller
 
         return response()->json(['message' => 'Resident rejected successfully']);
     }
-
     public function zoneLeaderPersonalLogs()
     {
         $userId = Auth::id();

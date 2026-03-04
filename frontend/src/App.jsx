@@ -17,6 +17,7 @@ import DownloadApp from "./pages/Download";
 import Practice from "./pages/Practice";
 
 // Pages
+import RejectedResidents from "./pages/zoneLeader/RejectedResidents";
 import Overview from "./pages/Overview";
 import UserManagement from "./pages/admin/UserManagement";
 import RequestTable from "./pages/RequestTable";
@@ -156,6 +157,7 @@ const App = () => {
           <Route index element={<Navigate to="dashboard" replace />} />
           <Route path="dashboard" element={<ZoneLeaderDashboard />} />
           <Route path="residents" element={<ZoneResidentDirectory />} />
+          <Route path="rejected" element={<RejectedResidents />} />
           <Route path="logs" element={<ZoneLeaderLogs />} />
           <Route path="zone-map" element={<ZoneMap />} />
           <Route path="profile" element={<ZoneLeaaderProfile />} />

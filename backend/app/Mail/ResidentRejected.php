@@ -2,8 +2,8 @@
 
 namespace App\Mail;
 
+use App\Models\User;
 use Illuminate\Bus\Queueable;
-use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Mail\Mailable;
 use Illuminate\Mail\Mailables\Content;
 use Illuminate\Mail\Mailables\Envelope;
@@ -13,43 +13,28 @@ class ResidentRejected extends Mailable
 {
     use Queueable, SerializesModels;
 
-    // --- FIX: Define public property here ---
-    public $reason;
+    public function __construct(
+        public User   $resident,
+        public string $reason,
+    ) {}
 
-    /**
-     * Create a new message instance.
-     */
-    // --- FIX: Accept reason in constructor ---
-    public function __construct($reason)
-    {
-        $this->reason = $reason;
-    }
-
-    /**
-     * Get the message envelope.
-     */
     public function envelope(): Envelope
     {
         return new Envelope(
-            subject: 'Resident Application Update',
+            subject: 'Your Account Verification Was Rejected',
         );
     }
 
-    /**
-     * Get the message content definition.
-     */
     public function content(): Content
     {
         return new Content(
-            view: 'emails.resident_rejected', // Ensure this file exists
+            view: 'emails.resident_rejected',
+            with: [
+                'firstName' => $this->resident->first_name,
+                'lastName'  => $this->resident->last_name,
+                'reason'    => $this->reason,
+                'loginUrl'  => config('app.url') . '/login',
+            ],
         );
-    }
-
-    /**
-     * Get the attachments for the message.
-     */
-    public function attachments(): array
-    {
-        return [];
     }
 }

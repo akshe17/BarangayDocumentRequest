@@ -8,6 +8,7 @@ import {
   X,
   UserCog,
   Users,
+  XCircle,
   ClipboardList,
 } from "lucide-react";
 import logo from "../assets/logo.png";
@@ -31,6 +32,11 @@ const ZoneLeaderLayout = () => {
       path: "/zone-leader/residents",
       label: "Residents",
       icon: <Users size={20} />,
+    },
+    {
+      path: "/zone-leader/rejected",
+      label: "Rejected",
+      icon: <XCircle size={20} />,
     },
     {
       path: "/zone-leader/logs",
