@@ -17,6 +17,7 @@ import DownloadApp from "./pages/Download";
 import Practice from "./pages/Practice";
 
 // Pages
+import VerifiedResidents from "./pages/zoneLeader/VerifiedResidents";
 import PendingResidents from "./pages/zoneLeader/PendingResidents";
 import RejectedResidents from "./pages/zoneLeader/RejectedResidents";
 import Overview from "./pages/Overview";
@@ -159,6 +160,7 @@ const App = () => {
           <Route path="dashboard" element={<ZoneLeaderDashboard />} />
           <Route path="residents" element={<ZoneResidentDirectory />} />
           <Route path="pending" element={<PendingResidents />} />
+          <Route path="verified" element={<VerifiedResidents />} />
           <Route path="rejected" element={<RejectedResidents />} />
           <Route path="logs" element={<ZoneLeaderLogs />} />
           <Route path="zone-map" element={<ZoneMap />} />
