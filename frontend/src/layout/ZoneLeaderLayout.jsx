@@ -34,6 +34,11 @@ const ZoneLeaderLayout = () => {
       icon: <Users size={20} />,
     },
     {
+      path: "/zone-leader/pending",
+      label: "Pending Residents",
+      icon: <Users size={20} />,
+    },
+    {
       path: "/zone-leader/rejected",
       label: "Rejected",
       icon: <XCircle size={20} />,
