@@ -14,109 +14,312 @@ import logo from "../assets/logo.png";
 import bonbonVideo from "../assets/bonbonVideo.mp4";
 
 const DownloadApp = () => {
-  // Simple FAQ-style chatbot state
   const [chatMessages, setChatMessages] = useState([
     {
       from: "bot",
-      text: "Hi! I'm your Barangay Bonbon assistant. You can ask me about where to pay, the process for requesting documents, and what documents are available.",
+      text: "Hi! I'm your Barangay Bonbon assistant 👋\nAsk me anything about documents, requirements, fees, or the request process.",
     },
   ]);
   const [chatInput, setChatInput] = useState("");
   const [isChatOpen, setIsChatOpen] = useState(false);
+
+  const QUICK_CHATS = [
+    "What documents are available?",
+    "How do I request a document?",
+    "Where do I pay?",
+    "What ID do I need?",
+    "How do I track my request?",
+    "How long does it take?",
+  ];
+
+  const DOCS = [
+    "Barangay Clearance",
+    "Certificate of Residency",
+    "Certificate of Indigency",
+    "Certificate of First-Time Job Seeker",
+    "Certificate of Common Law",
+    "Certificate of Attestation",
+    "Certificate of Oneness",
+  ];
 
   const addMessage = (from, text) => {
     setChatMessages((prev) => [...prev, { from, text }]);
   };
 
   const getBotReply = (raw) => {
-    const text = raw.toLowerCase();
+    const t = raw.toLowerCase();
 
-    // Payment-related
-    if (text.includes("pay") || text.includes("payment") || text.includes("bayad")) {
-      return (
-        "You can pay your document fees at the Barangay Bonbon office cashier window. " +
-        "For some requests, payment can also be made when you claim the document. " +
-        "Make sure to bring a valid ID and your reference number from the app or website."
-      );
+    // ── Greetings ──────────────────────────────────────────────────────────
+    if (
+      /^(hi|hello|hey|good morning|good afternoon|kumusta|musta|oy|hoy)/.test(t)
+    ) {
+      return "Hello! 😊 How can I help you today? You can ask me about documents, fees, requirements, or the request process.";
     }
 
-    // Process-related
+    // ── Available documents ────────────────────────────────────────────────
     if (
-      text.includes("process") ||
-      text.includes("how do i request") ||
-      text.includes("how to request") ||
-      text.includes("steps") ||
-      text.includes("paano")
+      t.includes("what document") ||
+      t.includes("available document") ||
+      t.includes("list of document") ||
+      t.includes("anong dokumento") ||
+      t.includes("types of") ||
+      t.includes("kinds of") ||
+      t.includes("what can i request")
     ) {
       return (
-        "Basic process:\n" +
-        "1) Log in or register an account.\n" +
-        "2) Choose the document you need and submit your request.\n" +
-        "3) Wait for confirmation and status updates in the app/website.\n" +
-        "4) Once approved, go to the barangay office to pay (if needed) and claim your document."
+        "We currently offer these documents:\n\n" +
+        DOCS.map((d) => `• ${d}`).join("\n") +
+        "\n\nJust log in and go to 'New Request' to get started!"
       );
     }
 
-    // Available documents
+    // ── Specific document: Barangay Clearance ──────────────────────────────
+    if (t.includes("clearance")) {
+      return (
+        "📄 Barangay Clearance\n\n" +
+        "Used for: employment, business, or general legal purposes.\n" +
+        "Requirements: 1 valid government-issued ID.\n" +
+        "Fee: ₱10 processing fee.\n" +
+        "Processing time: 1–3 business days."
+      );
+    }
+
+    // ── Specific document: Residency ───────────────────────────────────────
+    if (t.includes("residency") || t.includes("certificate of resid")) {
+      return (
+        "📄 Certificate of Residency\n\n" +
+        "Proves that you are a resident of Barangay Bonbon.\n" +
+        "Requirements: 1 valid ID showing your Bonbon address.\n" +
+        "Processing time: 1–3 business days."
+      );
+    }
+
+    // ── Specific document: Indigency ───────────────────────────────────────
+    if (t.includes("indigency") || t.includes("indigent")) {
+      return (
+        "📄 Certificate of Indigency\n\n" +
+        "Used for: medical assistance, scholarships, or government benefits.\n" +
+        "Requirements: 1 valid ID. No fee — this certificate is free.\n" +
+        "Processing time: 1–3 business days."
+      );
+    }
+
+    // ── Specific document: First-Time Job Seeker ──────────────────────────
     if (
-      text.includes("what documents") ||
-      text.includes("available documents") ||
-      text.includes("documents available") ||
-      text.includes("kinds of documents") ||
-      text.includes("types of documents")
+      t.includes("job seeker") ||
+      t.includes("first time job") ||
+      t.includes("first-time job")
     ) {
       return (
-        "Common documents available in the system include:\n" +
-        "• Barangay Clearance\n" +
-        "• Certificate of Residency\n" +
-        "• Indigency Certificate\n" +
-        "• Business Permit/Barangay Permit\n" +
-        "Availability may still depend on local policies — please check inside the app for the full list."
+        "📄 Certificate of First-Time Job Seeker\n\n" +
+        "For fresh graduates or first-time job applicants. Exempts you from paying certain document fees.\n" +
+        "Requirements: 1 valid ID + proof you are a first-time job seeker (e.g. school certificate).\n" +
+        "Fee: Free under RA 11261."
       );
     }
 
-    // Status / tracking
-    if (text.includes("status") || text.includes("track") || text.includes("tracking")) {
+    // ── Specific document: Common Law ─────────────────────────────────────
+    if (t.includes("common law")) {
       return (
-        "You can track your document request status inside the app or website under the 'My Requests' or 'History' section. " +
-        "Each request will show if it is pending, approved, or ready for pickup."
+        "📄 Certificate of Common Law\n\n" +
+        "Certifies that two individuals are living as common-law partners.\n" +
+        "Requirements: Valid IDs of both partners + proof of cohabitation if available.\n" +
+        "Processing time: 1–3 business days."
       );
     }
 
-    // Requirements
+    // ── Specific document: Attestation ────────────────────────────────────
+    if (t.includes("attestation")) {
+      return (
+        "📄 Certificate of Attestation\n\n" +
+        "Used to attest or confirm certain facts about a resident (identity, residence, status).\n" +
+        "Requirements: 1 valid government-issued ID.\n" +
+        "Processing time: 1–3 business days."
+      );
+    }
+
+    // ── Specific document: Oneness ────────────────────────────────────────
     if (
-      text.includes("requirement") ||
-      text.includes("id") ||
-      text.includes("valid id") ||
-      text.includes("need to bring")
+      t.includes("oneness") ||
+      t.includes("one and the same") ||
+      t.includes("same person")
     ) {
       return (
-        "Most requests require at least one valid government-issued ID. Some documents may need additional requirements (for example, supporting papers or authorizations). " +
-        "You can see the exact requirements when you select a specific document type in the app or website."
+        "📄 Certificate of Oneness\n\n" +
+        "Certifies that two different names (e.g. a typo on an ID) refer to the same person.\n" +
+        "Requirements: 1 valid ID + the document showing the incorrect name.\n" +
+        "Processing time: 1–3 business days."
       );
     }
 
-    // Default fallback
+    // ── Payment ────────────────────────────────────────────────────────────
+    if (
+      t.includes("pay") ||
+      t.includes("payment") ||
+      t.includes("bayad") ||
+      t.includes("fee") ||
+      t.includes("bayarin") ||
+      t.includes("magkano")
+    ) {
+      return (
+        "💳 Payment Information\n\n" +
+        "Fees are paid at the Barangay Bonbon office cashier when you claim your document.\n\n" +
+        "• All documents — ₱10 processing fee\n" +
+        "• Certificate of Indigency & First-Time Job Seeker — FREE (under RA 11261)\n\n" +
+        "Bring your reference number and a valid ID when you visit."
+      );
+    }
+
+    // ── Process / How to request ───────────────────────────────────────────
+    if (
+      t.includes("process") ||
+      t.includes("how do i request") ||
+      t.includes("how to request") ||
+      t.includes("steps") ||
+      t.includes("paano") ||
+      t.includes("how to apply") ||
+      t.includes("mag-request")
+    ) {
+      return (
+        "📋 How to Request a Document\n\n" +
+        "1️⃣ Log in or register on the app/website.\n" +
+        "2️⃣ Go to 'New Request' and pick the document you need.\n" +
+        "3️⃣ Fill in the required form and submit.\n" +
+        "4️⃣ Wait for the barangay to review — you'll get a status update.\n" +
+        "5️⃣ Once approved or ready, visit the office to claim and pay.\n\n" +
+        "You'll be notified by email whenever your status changes!"
+      );
+    }
+
+    // ── Tracking / Status ──────────────────────────────────────────────────
+    if (
+      t.includes("status") ||
+      t.includes("track") ||
+      t.includes("where is my") ||
+      t.includes("update") ||
+      t.includes("pending") ||
+      t.includes("approved")
+    ) {
+      return (
+        "🔍 Tracking Your Request\n\n" +
+        "You can check your request status anytime under 'My Requests' or 'History' in the app/website.\n\n" +
+        "Status meanings:\n" +
+        "• Pending — being reviewed by the barangay\n" +
+        "• Approved — scheduled for pickup on your given date\n" +
+        "• Ready for Pickup — visit the office now!\n" +
+        "• Rejected — see the reason and resubmit if needed\n\n" +
+        "You'll also receive an email for every status change."
+      );
+    }
+
+    // ── Requirements / ID ─────────────────────────────────────────────────
+    if (
+      t.includes("requirement") ||
+      t.includes("valid id") ||
+      t.includes("need to bring") ||
+      t.includes("what do i need") ||
+      t.includes("ano ang kailangan") ||
+      t.includes("bring")
+    ) {
+      return (
+        "📎 General Requirements\n\n" +
+        "For most documents, you need:\n" +
+        "• 1 valid government-issued ID (e.g. PhilSys, Driver's License, Passport, UMID, Voter's ID)\n\n" +
+        "Some documents have extra requirements:\n" +
+        "• Common Law — IDs of both partners\n" +
+        "• Oneness — the document with the incorrect name\n" +
+        "• First-Time Job Seeker — proof of being a first-time applicant\n\n" +
+        "Check the specific requirements when selecting a document in the app."
+      );
+    }
+
+    // ── Processing time ────────────────────────────────────────────────────
+    if (
+      t.includes("how long") ||
+      t.includes("ilang araw") ||
+      t.includes("gaano katagal") ||
+      t.includes("processing time") ||
+      t.includes("when will") ||
+      t.includes("kailan")
+    ) {
+      return (
+        "⏱ Processing Time\n\n" +
+        "Most documents are processed within 1–3 business days after submission.\n\n" +
+        "Processing depends on barangay office hours (Mon–Fri, 8:00 AM – 5:00 PM). " +
+        "You'll get an email notification as soon as your document is ready for pickup!"
+      );
+    }
+
+    // ── Registration / Account ─────────────────────────────────────────────
+    if (
+      t.includes("register") ||
+      t.includes("sign up") ||
+      t.includes("create account") ||
+      t.includes("account") ||
+      t.includes("mag-register") ||
+      t.includes("login") ||
+      t.includes("log in")
+    ) {
+      return (
+        "👤 Account & Registration\n\n" +
+        "To use the system:\n" +
+        "1️⃣ Register using your email and personal details.\n" +
+        "2️⃣ Upload a valid government-issued ID for verification.\n" +
+        "3️⃣ Wait for your account to be verified by your zone leader.\n" +
+        "4️⃣ Once verified, you can log in and start requesting documents!\n\n" +
+        "Verification typically takes 1–2 business days."
+      );
+    }
+
+    // ── Office location / hours ────────────────────────────────────────────
+    if (
+      t.includes("office") ||
+      t.includes("location") ||
+      t.includes("address") ||
+      t.includes("saan") ||
+      t.includes("hours") ||
+      t.includes("bukas") ||
+      t.includes("open")
+    ) {
+      return (
+        "🏢 Barangay Bonbon Office\n\n" +
+        "📍 Barangay Bonbon, Cagayan de Oro City\n" +
+        "🕗 Office Hours: Monday – Friday, 8:00 AM – 5:00 PM\n\n" +
+        "Please bring your reference number and valid ID when claiming your document."
+      );
+    }
+
+    // ── Thanks / goodbye ───────────────────────────────────────────────────
+    if (/^(thank|thanks|salamat|okay|ok|sige|noted|got it)/.test(t)) {
+      return "You're welcome! 😊 Feel free to ask if you have more questions. Have a great day!";
+    }
+
+    // ── Default fallback ───────────────────────────────────────────────────
     return (
-      "I can help with:\n" +
-      "• Where and how to pay\n" +
-      "• The step-by-step request process\n" +
-      "• What documents are available\n" +
-      "• How to track your request\n\n" +
-      "Try asking, for example: \"Where do I pay?\" or \"What documents are available?\""
+      "I'm not sure about that, but here's what I can help with:\n\n" +
+      "📄 Available documents\n" +
+      "📋 How to request step-by-step\n" +
+      "💳 Payment & fees\n" +
+      "📎 Requirements & valid IDs\n" +
+      "🔍 Tracking your request\n" +
+      "⏱ Processing time\n" +
+      "🏢 Office hours & location\n\n" +
+      "Try one of the quick buttons below, or rephrase your question!"
     );
   };
 
   const handleSend = (e) => {
-    e.preventDefault();
+    e?.preventDefault();
     if (!chatInput.trim()) return;
-
     const userText = chatInput.trim();
     addMessage("user", userText);
     setChatInput("");
+    setTimeout(() => addMessage("bot", getBotReply(userText)), 300);
+  };
 
-    const reply = getBotReply(userText);
-    addMessage("bot", reply);
+  const handleQuickChat = (text) => {
+    addMessage("user", text);
+    setTimeout(() => addMessage("bot", getBotReply(text)), 300);
   };
 
   const features = [
@@ -148,7 +351,7 @@ const DownloadApp = () => {
       <div className="fixed inset-0 -z-10">
         <video
           src={bonbonVideo}
-          className="w-full h-full object-cover"
+          className="w-full h-full blur-sm object-cover"
           autoPlay
           loop
           muted
@@ -398,43 +601,55 @@ const DownloadApp = () => {
       <div className="fixed bottom-5 right-5 z-40 flex flex-col items-end gap-3">
         {/* Chat Panel */}
         {isChatOpen && (
-          <div className="w-80 max-w-[90vw] bg-black/80 backdrop-blur-xl border border-emerald-400/40 rounded-2xl p-4 shadow-2xl">
-            <div className="flex items-center justify-between mb-3">
-              <div className="flex items-center gap-2">
-                <div className="w-8 h-8 rounded-full bg-emerald-500 flex items-center justify-center text-white text-sm font-bold">
-                  ?
+          <div className="w-96 max-w-[95vw] bg-gray-950 border border-emerald-500/30 rounded-2xl shadow-2xl shadow-black/60 flex flex-col overflow-hidden">
+            {/* Header */}
+            <div className="flex items-center justify-between px-4 py-3 bg-gradient-to-r from-emerald-900/60 to-gray-900/60 border-b border-white/10">
+              <div className="flex items-center gap-2.5">
+                <div className="w-9 h-9 rounded-full bg-emerald-500 flex items-center justify-center text-white text-sm font-black shadow-lg shadow-emerald-900">
+                  B
                 </div>
                 <div>
-                  <p className="text-xs font-bold text-emerald-300 uppercase tracking-widest">
-                    Brgy Bonbon Assistant
+                  <p className="text-xs font-black text-white leading-none tracking-wide">
+                    Bonbon Assistant
                   </p>
-                  <p className="text-[11px] text-gray-300">
-                    Ask about payments, process, and documents.
-                  </p>
+                  <div className="flex items-center gap-1 mt-0.5">
+                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+                    <p className="text-[10px] text-emerald-400">Online</p>
+                  </div>
                 </div>
               </div>
               <button
                 type="button"
                 onClick={() => setIsChatOpen(false)}
-                className="text-xs text-gray-400 hover:text-white transition-colors"
+                className="w-7 h-7 rounded-full bg-white/10 hover:bg-white/20 text-gray-400 hover:text-white transition-all flex items-center justify-center text-sm"
               >
                 ✕
               </button>
             </div>
 
-            <div className="h-56 overflow-y-auto space-y-2 pr-1 custom-scrollbar">
+            {/* Messages */}
+            <div
+              className="h-72 overflow-y-auto space-y-2.5 p-4"
+              style={{
+                scrollbarWidth: "thin",
+                scrollbarColor: "#065f46 transparent",
+              }}
+            >
               {chatMessages.map((msg, idx) => (
                 <div
                   key={idx}
-                  className={`flex ${
-                    msg.from === "user" ? "justify-end" : "justify-start"
-                  }`}
+                  className={`flex gap-2 ${msg.from === "user" ? "justify-end" : "justify-start"}`}
                 >
+                  {msg.from === "bot" && (
+                    <div className="w-6 h-6 rounded-full bg-emerald-600 flex items-center justify-center text-white text-[10px] font-black shrink-0 mt-1">
+                      B
+                    </div>
+                  )}
                   <div
-                    className={`max-w-[80%] text-xs rounded-2xl px-3 py-2 whitespace-pre-line ${
+                    className={`max-w-[78%] text-xs rounded-2xl px-3.5 py-2.5 whitespace-pre-line leading-relaxed ${
                       msg.from === "user"
-                        ? "bg-emerald-500 text-white rounded-br-sm"
-                        : "bg-white/10 text-gray-100 border border-white/10 rounded-bl-sm"
+                        ? "bg-emerald-600 text-white rounded-tr-sm"
+                        : "bg-gray-800 text-gray-100 border border-gray-700 rounded-tl-sm"
                     }`}
                   >
                     {msg.text}
@@ -443,21 +658,46 @@ const DownloadApp = () => {
               ))}
             </div>
 
-            <form onSubmit={handleSend} className="mt-3 flex gap-2">
-              <input
-                type="text"
-                value={chatInput}
-                onChange={(e) => setChatInput(e.target.value)}
-                placeholder="Ask: Where do I pay?"
-                className="flex-1 bg-black/40 border border-white/20 rounded-xl px-3 py-2 text-xs text-white placeholder:text-gray-500 focus:outline-none focus:border-emerald-400"
-              />
-              <button
-                type="submit"
-                className="px-3 py-2 rounded-xl bg-emerald-500 text-xs font-bold text-white hover:bg-emerald-600 transition-colors"
-              >
-                Ask
-              </button>
-            </form>
+            {/* Quick Chats — 2-column grid, no scroll */}
+            <div className="px-3 pb-2">
+              <p className="text-[9px] font-black uppercase tracking-widest text-gray-500 mb-1.5">
+                Quick Questions
+              </p>
+              <div className="grid grid-cols-2 gap-1.5">
+                {QUICK_CHATS.map((q) => (
+                  <button
+                    key={q}
+                    type="button"
+                    onClick={() => handleQuickChat(q)}
+                    className="text-[10px] font-semibold px-2.5 py-1.5 rounded-lg text-left
+                               bg-gray-800 border border-gray-700 text-gray-300
+                               hover:bg-emerald-900/60 hover:border-emerald-500/50 hover:text-emerald-300
+                               transition-all leading-tight"
+                  >
+                    {q}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Input */}
+            <div className="px-3 pb-3 pt-2 border-t border-white/5">
+              <form onSubmit={handleSend} className="flex gap-2">
+                <input
+                  type="text"
+                  value={chatInput}
+                  onChange={(e) => setChatInput(e.target.value)}
+                  placeholder="Type your question…"
+                  className="flex-1 bg-gray-800 border border-gray-700 rounded-xl px-3 py-2 text-xs text-white placeholder:text-gray-500 focus:outline-none focus:border-emerald-500 transition-colors"
+                />
+                <button
+                  type="submit"
+                  className="px-4 py-2 rounded-xl bg-emerald-500 text-xs font-black text-white hover:bg-emerald-400 transition-colors shadow-lg shadow-emerald-900/50"
+                >
+                  Send
+                </button>
+              </form>
+            </div>
           </div>
         )}
 
