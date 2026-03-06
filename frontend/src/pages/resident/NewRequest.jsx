@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useMemo } from "react";
 import Toast from "../../components/toast";
 import Skeleton from "../../components/Skeleton";
 import {
@@ -12,10 +12,12 @@ import {
   ChevronRight,
   Send,
   ClipboardList,
+  Search,
+  X,
 } from "lucide-react";
 import { useAuth } from "../../context/AuthContext";
 import { useNewRequest } from "../../context/NewRequestContext";
-import { useResidentHistory } from "../../context/ResidentHistoryContext";
+
 // ─── helpers ────────────────────────────────────────────────────────────────
 
 const STATUS_BLOCKED = [
@@ -82,24 +84,20 @@ function getBlockedStatus(doc, existingRequests) {
   return (match.status?.status_name ?? "").toLowerCase();
 }
 
-// ─── Read-only input field ────────────────────────────────────────────────────
+// ─── Read-only field ──────────────────────────────────────────────────────────
 
 function ReadOnlyField({ label, value }) {
   return (
     <div className="space-y-1.5">
-      <label className="text-xs font-semibold text-gray-700 flex items-center gap-1.5">
+      <label className="text-[11px] font-bold text-gray-400 uppercase tracking-wider flex items-center gap-2">
         {label}
-        <span className="text-[10px] font-normal text-gray-300 bg-gray-50 border border-gray-100 px-1.5 py-0.5 rounded-md">
+        <span className="text-[9px] font-semibold text-emerald-500 bg-emerald-50 border border-emerald-100 px-1.5 py-0.5 rounded-md tracking-wide normal-case">
           auto-filled
         </span>
       </label>
-      <input
-        type="text"
-        value={value || "—"}
-        readOnly
-        disabled
-        className="w-full bg-gray-50 border border-gray-100 rounded-xl px-4 py-3 text-sm text-gray-500 cursor-not-allowed select-none"
-      />
+      <div className="w-full bg-gray-50 border border-gray-100 rounded-xl px-4 py-2.5 text-sm text-gray-700 font-medium select-none">
+        {value || "—"}
+      </div>
     </div>
   );
 }
@@ -108,27 +106,38 @@ function ReadOnlyField({ label, value }) {
 
 function ResidentInfoFields({ user }) {
   const resident = user?.resident;
+
   const fullName =
-    [user?.first_name, user?.last_name].filter(Boolean).join(" ") || "";
-  const gender = GENDER_MAP[resident?.gender_id] ?? "";
-  const civilStatus = CIVIL_STATUS_MAP[resident?.civil_status_id] ?? "";
+    [user?.first_name, user?.middle_name, user?.last_name]
+      .filter(Boolean)
+      .join(" ") || "—";
+
+  const gender = GENDER_MAP[resident?.gender_id] ?? "—";
+  const civilStatus = CIVIL_STATUS_MAP[resident?.civil_status_id] ?? "—";
   const birthdate = formatDate(resident?.birthdate);
-  const zone = user?.zone?.zone_name ?? user?.zone_name ?? "";
-  const houseNo = resident?.house_no ?? "";
+
+  // ✅ Correct path: resident.zone.zone_name, fallback to top-level zone_name
+  const zone = resident?.zone?.zone_name ?? user?.zone_name ?? "—";
+  const houseNo = resident?.house_no ?? "—";
 
   return (
-    <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5 sm:p-6 space-y-4">
-      <p className="text-xs font-bold text-gray-400 uppercase tracking-wider">
-        Your Information
-      </p>
-      <ReadOnlyField label="Full Name" value={fullName} />
-      <div className="grid grid-cols-2 gap-4">
-        <ReadOnlyField label="Date of Birth" value={birthdate} />
-        <ReadOnlyField label="Gender" value={gender} />
-        <ReadOnlyField label="Civil Status" value={civilStatus} />
-        <ReadOnlyField label="Zone" value={zone} />
+    <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
+      <div className="px-5 py-3.5 border-b border-gray-50 flex items-center gap-2">
+        <div className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
+        <p className="text-[11px] font-black text-gray-400 uppercase tracking-widest">
+          Your Information
+        </p>
       </div>
-      <ReadOnlyField label="House No." value={houseNo} />
+      <div className="p-5 sm:p-6 space-y-4">
+        <ReadOnlyField label="Full Name" value={fullName} />
+        <div className="grid grid-cols-2 gap-4">
+          <ReadOnlyField label="Date of Birth" value={birthdate} />
+          <ReadOnlyField label="Gender" value={gender} />
+          <ReadOnlyField label="Civil Status" value={civilStatus} />
+          <ReadOnlyField label="Zone" value={zone} />
+        </div>
+        <ReadOnlyField label="House No." value={houseNo} />
+      </div>
     </div>
   );
 }
@@ -137,16 +146,18 @@ function ResidentInfoFields({ user }) {
 
 function FieldInput({ field, value, onChange }) {
   const base =
-    "w-full bg-white border border-gray-200 rounded-xl px-4 py-3 text-sm text-gray-800 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-emerald-400 focus:border-transparent transition-all";
+    "w-full bg-white border border-gray-200 rounded-xl px-4 py-2.5 text-sm text-gray-800 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-emerald-400 focus:border-transparent transition-all";
 
   return (
     <div className="space-y-1.5">
-      <label className="text-xs font-semibold text-gray-700 flex items-center gap-1">
+      <label className="text-[11px] font-bold text-gray-500 uppercase tracking-wider flex items-center gap-1.5">
         {field.field_label}
         {field.is_required ? (
-          <span className="text-red-400">*</span>
+          <span className="text-red-400 font-bold">*</span>
         ) : (
-          <span className="text-gray-500 font-normal">(optional)</span>
+          <span className="text-gray-300 font-normal normal-case text-[10px]">
+            (optional)
+          </span>
         )}
       </label>
       {field.field_type === "textarea" ? (
@@ -185,9 +196,7 @@ function FieldInput({ field, value, onChange }) {
   );
 }
 
-// ─── Skeleton: Document Picker ────────────────────────────────────────────────
-// Mirrors the real DocumentPicker card layout exactly so the transition
-// from skeleton → real content feels natural.
+// ─── Skeleton ─────────────────────────────────────────────────────────────────
 
 function SkeletonDocumentPicker({ count = 5 }) {
   return (
@@ -198,23 +207,16 @@ function SkeletonDocumentPicker({ count = 5 }) {
           className="w-full rounded-2xl border border-gray-100 bg-white p-5 sm:p-6"
         >
           <div className="flex items-center gap-4">
-            {/* Icon placeholder */}
             <Skeleton.Block className="w-12 h-12 rounded-2xl shrink-0" />
-
-            {/* Text content */}
             <div className="flex-1 min-w-0 space-y-2">
-              {/* Doc name */}
               <Skeleton.Block
                 className={`h-3.5 ${i % 3 === 0 ? "w-48" : i % 3 === 1 ? "w-36" : "w-56"}`}
               />
-              {/* Fee + meta row */}
               <div className="flex items-center gap-3">
                 <Skeleton.Block className="h-3 w-10" />
                 <Skeleton.Block className="h-3 w-24" />
               </div>
             </div>
-
-            {/* Arrow placeholder */}
             <Skeleton.Block className="w-4 h-4 rounded shrink-0" />
           </div>
         </div>
@@ -233,6 +235,16 @@ function DocumentPicker({
   error,
   onRetry,
 }) {
+  const [search, setSearch] = useState("");
+
+  const filtered = useMemo(() => {
+    if (!search.trim()) return documentList;
+    const q = search.toLowerCase();
+    return documentList?.filter((doc) =>
+      doc.document_name.toLowerCase().includes(q),
+    );
+  }, [documentList, search]);
+
   if (isLoading) return <SkeletonDocumentPicker count={5} />;
 
   if (error) {
@@ -256,7 +268,49 @@ function DocumentPicker({
 
   return (
     <div className="space-y-3">
-      {documentList.map((doc) => {
+      {/* Search bar */}
+      <div className="relative mb-4">
+        <Search
+          size={15}
+          className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none"
+        />
+        <input
+          type="text"
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+          placeholder="Search documents…"
+          className="w-full bg-white border border-gray-200 rounded-xl pl-9 pr-9 py-2.5 text-sm text-gray-800 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-emerald-400 focus:border-transparent transition-all"
+        />
+        {search && (
+          <button
+            onClick={() => setSearch("")}
+            className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 transition-colors"
+          >
+            <X size={14} />
+          </button>
+        )}
+      </div>
+
+      {/* Empty search result */}
+      {filtered?.length === 0 && (
+        <div className="flex flex-col items-center justify-center py-16 gap-3 text-center">
+          <div className="w-12 h-12 rounded-2xl bg-gray-50 flex items-center justify-center">
+            <FileText size={20} className="text-gray-300" />
+          </div>
+          <p className="text-sm font-semibold text-gray-400">
+            No documents match "<span className="text-gray-600">{search}</span>"
+          </p>
+          <button
+            onClick={() => setSearch("")}
+            className="text-xs font-semibold text-emerald-600 hover:underline"
+          >
+            Clear search
+          </button>
+        </div>
+      )}
+
+      {/* Document cards */}
+      {filtered?.map((doc) => {
         const blockedStatus = getBlockedStatus(doc, existingRequests);
         const isBlocked = !!blockedStatus;
         const meta = blockedStatus ? statusMeta[blockedStatus] : null;
@@ -272,20 +326,20 @@ function DocumentPicker({
             disabled={isBlocked}
             className={`w-full text-left group rounded-2xl border transition-all duration-200 ${
               isBlocked
-                ? "bg-gray-50 border-gray-200 cursor-not-allowed opacity-70"
+                ? "bg-gray-50 border-gray-100 cursor-not-allowed opacity-60"
                 : "bg-white border-gray-200 hover:border-emerald-300 hover:shadow-md cursor-pointer active:scale-[0.99]"
             }`}
           >
             <div className="p-5 sm:p-6 flex items-center gap-4">
               <div
-                className={`w-12 h-12 rounded-2xl flex items-center justify-center shrink-0 transition-all ${
+                className={`w-11 h-11 rounded-xl flex items-center justify-center shrink-0 transition-all ${
                   isBlocked
                     ? "bg-gray-100"
                     : "bg-emerald-50 group-hover:bg-emerald-500"
                 }`}
               >
                 <FileText
-                  size={22}
+                  size={20}
                   className={
                     isBlocked
                       ? "text-gray-400"
@@ -304,15 +358,14 @@ function DocumentPicker({
                       className="inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-full uppercase tracking-wide"
                       style={{ color: meta.color, background: meta.bg }}
                     >
-                      <StatusIcon size={9} />
-                      {meta.label}
+                      <StatusIcon size={9} /> {meta.label}
                     </span>
                   )}
                 </div>
 
                 <div className="flex items-center gap-3 mt-1.5 flex-wrap">
                   <span
-                    className={`text-sm font-bold ${fee === 0 ? "text-emerald-500" : "text-gray-700"}`}
+                    className={`text-xs font-bold ${fee === 0 ? "text-emerald-500" : "text-gray-600"}`}
                   >
                     {fee === 0 ? "Free" : `₱${fee.toFixed(2)}`}
                   </span>
@@ -330,8 +383,8 @@ function DocumentPicker({
 
                 {isBlocked && (
                   <p className="text-[11px] text-gray-400 mt-1">
-                    You have an active request for this document. You may
-                    re-request once it's completed or rejected.
+                    You have an active request. Re-request once it's completed
+                    or rejected.
                   </p>
                 )}
               </div>
@@ -388,7 +441,7 @@ function RequestForm({ doc, onSubmit, isSubmitting, user }) {
   };
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-5">
       {/* Doc header card */}
       <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
         <div className="h-1 bg-gradient-to-r from-emerald-400 to-emerald-600" />
@@ -444,33 +497,46 @@ function RequestForm({ doc, onSubmit, isSubmitting, user }) {
 
       {/* Dynamic form fields */}
       {doc.form_fields?.length > 0 && (
-        <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5 sm:p-6 space-y-4">
-          {doc.form_fields.map((field) => (
-            <FieldInput
-              key={field.field_id}
-              field={field}
-              value={formValues[field.field_id]}
-              onChange={handleFieldChange}
-            />
-          ))}
+        <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
+          <div className="px-5 py-3.5 border-b border-gray-50 flex items-center gap-2">
+            <div className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
+            <p className="text-[11px] font-black text-gray-400 uppercase tracking-widest">
+              Additional Details
+            </p>
+          </div>
+          <div className="p-5 sm:p-6 space-y-4">
+            {doc.form_fields.map((field) => (
+              <FieldInput
+                key={field.field_id}
+                field={field}
+                value={formValues[field.field_id]}
+                onChange={handleFieldChange}
+              />
+            ))}
+          </div>
         </div>
       )}
 
       {/* Purpose */}
-      <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5 sm:p-6 space-y-3">
-        <p className="text-xs font-bold text-gray-500 uppercase tracking-wider">
-          Purpose of Request <span className="text-red-400">*</span>
-        </p>
-        <textarea
-          rows={3}
-          value={purpose}
-          onChange={(e) => {
-            setPurpose(e.target.value);
-            setValidationError(null);
-          }}
-          placeholder="Briefly explain why you need this document…"
-          className="w-full bg-gray-50 border border-gray-200 rounded-xl px-4 py-3 text-sm text-gray-700 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-emerald-400 focus:border-transparent transition-all resize-none"
-        />
+      <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
+        <div className="px-5 py-3.5 border-b border-gray-50 flex items-center gap-2">
+          <div className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
+          <p className="text-[11px] font-black text-gray-400 uppercase tracking-widest">
+            Purpose of Request <span className="text-red-400">*</span>
+          </p>
+        </div>
+        <div className="p-5 sm:p-6">
+          <textarea
+            rows={3}
+            value={purpose}
+            onChange={(e) => {
+              setPurpose(e.target.value);
+              setValidationError(null);
+            }}
+            placeholder="Briefly explain why you need this document…"
+            className="w-full bg-gray-50 border border-gray-200 rounded-xl px-4 py-3 text-sm text-gray-700 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-emerald-400 focus:border-transparent transition-all resize-none"
+          />
+        </div>
       </div>
 
       {/* Validation error */}
@@ -496,7 +562,7 @@ function RequestForm({ doc, onSubmit, isSubmitting, user }) {
       <button
         onClick={handleSubmit}
         disabled={isSubmitting}
-        className="w-full flex items-center justify-center gap-2 bg-emerald-500 hover:bg-emerald-600 disabled:bg-emerald-300 text-white font-semibold text-sm py-3.5 rounded-2xl transition-all shadow-sm active:scale-[0.99]"
+        className="w-full flex items-center justify-center gap-2 bg-emerald-500 hover:bg-emerald-600 disabled:bg-emerald-300 text-white font-bold text-sm py-3.5 rounded-2xl transition-all shadow-sm active:scale-[0.99]"
       >
         {isSubmitting ? (
           <>
@@ -526,7 +592,7 @@ const NewRequest = () => {
     submitRequest,
   } = useNewRequest();
 
-  const [view, setView] = useState("pick"); // "pick" | "form"
+  const [view, setView] = useState("pick");
   const [selectedDoc, setSelectedDoc] = useState(null);
   const [toast, setToast] = useState({
     show: false,
@@ -560,7 +626,6 @@ const NewRequest = () => {
       formValues,
       purpose,
     });
-
     if (result.success) {
       triggerToast(
         "Request submitted! Track it in your request history.",
@@ -589,10 +654,9 @@ const NewRequest = () => {
           <button
             onClick={handleBack}
             disabled={isSubmitting}
-            className="flex items-center gap-1.5 text-sm text-gray-400 hover:text-emerald-600 transition-colors mb-5 disabled:opacity-50"
+            className="flex items-center gap-1.5 text-xs font-bold text-gray-400 hover:text-emerald-600 uppercase tracking-wider transition-colors mb-5 disabled:opacity-50"
           >
-            <ArrowLeft size={16} />
-            Back to documents
+            <ArrowLeft size={14} /> Back to documents
           </button>
         )}
 
@@ -608,10 +672,10 @@ const NewRequest = () => {
         {/* Step indicator */}
         <div className="flex items-center gap-2 mt-4">
           <div
-            className={`h-1.5 rounded-full transition-all duration-300 ${view === "pick" ? "w-8 bg-emerald-500" : "w-4 bg-gray-200"}`}
+            className={`h-1 rounded-full transition-all duration-300 ${view === "pick" ? "w-8 bg-emerald-500" : "w-4 bg-gray-200"}`}
           />
           <div
-            className={`h-1.5 rounded-full transition-all duration-300 ${view === "form" ? "w-8 bg-emerald-500" : "w-4 bg-gray-200"}`}
+            className={`h-1 rounded-full transition-all duration-300 ${view === "form" ? "w-8 bg-emerald-500" : "w-4 bg-gray-200"}`}
           />
         </div>
       </div>

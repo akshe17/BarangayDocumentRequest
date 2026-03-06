@@ -13,7 +13,7 @@ import {
 } from "lucide-react";
 import logo from "../assets/logo.png";
 import { useAuth } from "../context/AuthContext";
-
+import Footer from "../components/Footer";
 const ZoneLeaderLayout = () => {
   const { logout } = useAuth();
   const location = useLocation();

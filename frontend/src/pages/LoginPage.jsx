@@ -19,7 +19,7 @@ import HCaptcha from "@hcaptcha/react-hcaptcha";
 import { useAuth } from "../context/AuthContext";
 import PendingVerification from "../components/login/PendingVerification";
 import RejectedPage from "../components/login/RejectedPage";
-
+import Footer from "../components/Footer";
 const LoginPage = () => {
   const { login } = useAuth();
   const navigate = useNavigate();

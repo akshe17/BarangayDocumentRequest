@@ -13,6 +13,7 @@ import {
   ShieldAlert,
   ChevronDown,
 } from "lucide-react";
+import Footer from "../components/Footer";
 import logo from "../assets/logo.png";
 import { useAuth } from "../context/AuthContext";
 
@@ -244,6 +245,9 @@ const ResidentLayout = () => {
       <main className="flex-1 max-w-6xl mx-auto w-full px-4 lg:px-10 py-8">
         <Outlet />
       </main>
+      <div className="mt-[10rem]">
+        <Footer></Footer>
+      </div>
     </div>
   );
 };
