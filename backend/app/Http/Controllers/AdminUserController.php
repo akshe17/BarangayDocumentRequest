@@ -16,9 +16,9 @@ class AdminUserController extends Controller
   public function index()
 {
     // Added 'zone' to eager loading, filtered out role_id 2, and excluded inactive users
-    $users = User::with(['role', 'zone'])
+    $users = User::with(['role', 'zoneLeader.zone'])
         ->whereNot('role_id', 2)
-        ->where('is_active', '!=', 0) // Or ->where('is_active', true) depending on your DB type
+        ->where('is_active', '!=', 0)
         ->get();
         
     return response()->json($users);
@@ -28,12 +28,13 @@ class AdminUserController extends Controller
     public function store(Request $request)
     {
         $validated = $request->validate([
-            'first_name' => 'required|string|max:255',
-            'last_name' => 'required|string|max:255',
+            'first_name'  => 'required|string|max:255',
+            'middle_name' => 'nullable|string|max:255',
+            'last_name'   => 'required|string|max:255',
             'email' => 'required|string|email|max:100|unique:users',
             'password' => ['required', 'confirmed', Password::defaults()],
-            'role_name' => 'required|string|in:Admin,Clerk,Zone Leader,Barangay Captain', // Accept role name
-            'zone_id' => 'nullable|integer|exists:zones,zone_id', // Validate zone exists
+            'role_name' => 'required|string|in:Admin,Clerk,Zone Leader,Barangay Captain',
+            'zone_id' => 'nullable|integer|exists:zones,zone_id',
         ]);
 
         // Convert role_name to role_id
@@ -53,17 +54,27 @@ class AdminUserController extends Controller
         }
 
         $user = User::create([
-            'first_name' => $validated['first_name'],
-            'last_name' => $validated['last_name'],
-            'email' => $validated['email'],
-            'password' => $validated['password'], // Hashed by model cast
-            'role_id' => $role->role_id, // Use the ID from the Role model
-            'zone_id' => $zoneId,
-                        'is_active' => true,
+            'first_name'  => $validated['first_name'],
+            'middle_name' => $validated['middle_name'] ?? null,
+            'last_name'   => $validated['last_name'],
+            'email'       => $validated['email'],
+            'password'    => $validated['password'],
+            'role_id'     => $role->role_id,
+            'is_active'   => true,
         ]);
 
         // Return user with loaded relationships
-        return response()->json($user->load(['role', 'zone']), 201);
+        $user->load(['role', 'zoneLeader.zone']);
+
+        // If Zone Leader, create the ZoneLeader record with zone assignment
+        if ($validated['role_name'] === 'Zone Leader') {
+            \App\Models\ZoneLeader::create([
+                'user_id' => $user->user_id,
+                'zone_id' => $zoneId,
+            ]);
+        }
+
+        return response()->json($user->load(['role', 'zoneLeader.zone']), 201);
     }
 
     // UPDATE: Update user details
@@ -72,10 +83,11 @@ class AdminUserController extends Controller
         $user = User::findOrFail($id);
 
         $validated = $request->validate([
-            'first_name' => 'required|string|max:255',
-            'last_name' => 'required|string|max:255',
+            'first_name'  => 'required|string|max:255',
+            'middle_name' => 'nullable|string|max:255',
+            'last_name'   => 'required|string|max:255',
             'email' => 'required|string|email|max:100|unique:users,email,'.$id.',user_id',
-            'role_name' => 'required|string|in:Admin,Clerk,Zone Leader,Barangay Captain,Resident', // Accept role name
+            'role_name' => 'required|string|in:Admin,Clerk,Zone Leader,Barangay Captain,Resident',
             'zone_id' => 'nullable|integer|exists:zones,zone_id',
         ]);
 
@@ -96,14 +108,25 @@ class AdminUserController extends Controller
         }
 
         $user->update([
-            'first_name' => $validated['first_name'],
-            'last_name' => $validated['last_name'],
-            'email' => $validated['email'],
-            'role_id' => $role->role_id, // Use the ID from the Role model
-            'zone_id' => $zoneId,
+            'first_name'  => $validated['first_name'],
+            'middle_name' => $validated['middle_name'] ?? null,
+            'last_name'   => $validated['last_name'],
+            'email'       => $validated['email'],
+            'role_id'     => $role->role_id,
         ]);
 
-        return response()->json($user->load(['role', 'zone']));
+        // Update or remove ZoneLeader record based on role
+        if ($validated['role_name'] === 'Zone Leader') {
+            \App\Models\ZoneLeader::updateOrCreate(
+                ['user_id' => $user->user_id],
+                ['zone_id' => $zoneId]
+            );
+        } else {
+            // If role changed away from Zone Leader, remove the record
+            \App\Models\ZoneLeader::where('user_id', $user->user_id)->delete();
+        }
+
+        return response()->json($user->load(['role', 'zoneLeader.zone']));
     }
 
     // DELETE: Remove user
