@@ -44,6 +44,8 @@ export const AuthProvider = ({ children }) => {
     if (hasCheckedAuth.current) return;
     hasCheckedAuth.current = true;
 
+    // Inside AuthContext.jsx -> useEffect for checkAuth
+    // Inside AuthContext.jsx -> useEffect for checkAuth
     const checkAuth = async () => {
       const token = localStorage.getItem("token");
 
@@ -63,9 +65,14 @@ export const AuthProvider = ({ children }) => {
         setIsAuthenticated(true);
       } catch (error) {
         console.error("Auth check failed:", error);
-        localStorage.removeItem("token");
-        setUser(null);
-        setIsAuthenticated(false);
+
+        // Only remove token if it's a 401 Unauthorized
+        // This prevents being kicked out if the server is just down (500) or 404
+        if (error.response?.status === 401) {
+          localStorage.removeItem("token");
+          setUser(null);
+          setIsAuthenticated(false);
+        }
       } finally {
         setLoading(false);
       }

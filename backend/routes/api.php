@@ -23,8 +23,18 @@ use App\Http\Controllers\AdminLogsController;
 
 
 Route::middleware('custom.auth')->get('/user', function (Request $request) {
+    $user = $request->user();
+
+    // Load resident relations for residents
+    $user->load('resident.zone', 'resident.gender', 'resident.civilStatus');
+
+    // Load zone leader relation if applicable
+    if ((int)$user->role_id === 4) { // 4 = Zone Leader
+        $user->load('zoneLeader.zone');
+    }
+
     return response()->json([
-        'user' => $request->user()->load('resident', 'zone'),
+        'user'  => $user,
         'debug' => 'Used custom middleware successfully!'
     ]);
 });

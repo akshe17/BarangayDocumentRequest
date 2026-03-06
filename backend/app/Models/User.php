@@ -43,7 +43,10 @@ class User extends Authenticatable
     {
         return 'user_id';
     }
-
+public function zoneLeader()
+{
+    return $this->hasOne(\App\Models\ZoneLeader::class, 'user_id', 'user_id');
+}
     public function resident()
     {
         return $this->hasOne(Resident::class, 'user_id', 'user_id');

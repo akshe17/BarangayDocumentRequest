@@ -34,7 +34,8 @@ class AdminUserController extends Controller
             'email' => 'required|string|email|max:100|unique:users',
             'password' => ['required', 'confirmed', Password::defaults()],
             'role_name' => 'required|string|in:Admin,Clerk,Zone Leader,Barangay Captain',
-            'zone_id' => 'nullable|integer|exists:zones,zone_id',
+            'zone_id'   => 'nullable|integer|exists:zones,zone_id',
+            'house_no'  => 'nullable|string|max:255',
         ]);
 
         // Convert role_name to role_id
@@ -69,8 +70,9 @@ class AdminUserController extends Controller
         // If Zone Leader, create the ZoneLeader record with zone assignment
         if ($validated['role_name'] === 'Zone Leader') {
             \App\Models\ZoneLeader::create([
-                'user_id' => $user->user_id,
-                'zone_id' => $zoneId,
+                'user_id'  => $user->user_id,
+                'zone_id'  => $zoneId,
+                'house_no' => $validated['house_no'] ?? null,
             ]);
         }
 
@@ -86,9 +88,10 @@ class AdminUserController extends Controller
             'first_name'  => 'required|string|max:255',
             'middle_name' => 'nullable|string|max:255',
             'last_name'   => 'required|string|max:255',
-            'email' => 'required|string|email|max:100|unique:users,email,'.$id.',user_id',
-            'role_name' => 'required|string|in:Admin,Clerk,Zone Leader,Barangay Captain,Resident',
-            'zone_id' => 'nullable|integer|exists:zones,zone_id',
+            'email'       => 'required|string|email|max:100|unique:users,email,'.$id.',user_id',
+            'role_name'   => 'required|string|in:Admin,Clerk,Zone Leader,Barangay Captain',
+            'zone_id'     => 'nullable|integer|exists:zones,zone_id',
+            'house_no'    => 'nullable|string|max:255',
         ]);
 
         // Convert role_name to role_id
@@ -119,10 +122,9 @@ class AdminUserController extends Controller
         if ($validated['role_name'] === 'Zone Leader') {
             \App\Models\ZoneLeader::updateOrCreate(
                 ['user_id' => $user->user_id],
-                ['zone_id' => $zoneId]
+                ['zone_id' => $zoneId, 'house_no' => $validated['house_no'] ?? null]
             );
         } else {
-            // If role changed away from Zone Leader, remove the record
             \App\Models\ZoneLeader::where('user_id', $user->user_id)->delete();
         }
 
@@ -159,7 +161,7 @@ public function archive($id)
         ]);
 
         $user->update([
-            'password' => $validated['password'],
+            'password' => \Illuminate\Support\Facades\Hash::make($validated['password']),
         ]);
 
         return response()->json(['message' => 'Password updated successfully']);
