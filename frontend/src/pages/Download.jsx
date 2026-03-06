@@ -12,7 +12,7 @@ import {
 } from "lucide-react";
 import logo from "../assets/logo.png";
 import bonbonVideo from "../assets/bonbonVideo.mp4";
-
+import Footer from "../components/Footer";
 const DownloadApp = () => {
   const [chatMessages, setChatMessages] = useState([
     {
@@ -409,45 +409,11 @@ const DownloadApp = () => {
                 <br />
                 Made Simple.
               </h1>
-              <div className="h-1.5 w-24 bg-gradient-to-r from-emerald-400 to-green-500 rounded-full mt-6"></div>
+              <p className="text-gray-100 text-xl">
+                Download and get the most accessible document request system.
+              </p>{" "}
             </div>
             {/* Badge */}
-            <div className="inline-flex items-center gap-2 px-4 py-2 bg-white/10 backdrop-blur-md rounded-full border border-white/20">
-              <div className="w-2 h-2 bg-emerald-400 rounded-full animate-pulse"></div>
-              <span className="text-xs font-bold text-white uppercase tracking-widest">
-                Now Available
-              </span>
-            </div>
-
-            {/* Description */}
-            <p className="text-lg text-gray-300 leading-relaxed max-w-xl">
-              Skip the long lines. Request clearances, permits, and
-              certifications directly from your phone.{" "}
-              <span className="text-white font-semibold">
-                Secure, fast, and officially recognized
-              </span>{" "}
-              by Barangay Bonbon.
-            </p>
-
-            {/* Features Grid */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              {features.map((feature, index) => (
-                <div
-                  key={index}
-                  className="flex items-start gap-3 p-4 bg-white/5 backdrop-blur-sm rounded-xl border border-white/10 hover:bg-white/10 transition-all group"
-                >
-                  <div className="w-10 h-10 bg-emerald-500/20 rounded-lg flex items-center justify-center text-emerald-400 flex-shrink-0 group-hover:bg-emerald-500 group-hover:text-white transition-all">
-                    {feature.icon}
-                  </div>
-                  <div>
-                    <h3 className="text-sm font-bold text-white mb-0.5">
-                      {feature.title}
-                    </h3>
-                    <p className="text-xs text-gray-400">{feature.desc}</p>
-                  </div>
-                </div>
-              ))}
-            </div>
 
             {/* Download Buttons */}
             <div className="flex flex-col sm:flex-row gap-4 pt-4">
@@ -489,24 +455,6 @@ const DownloadApp = () => {
                 </div>
               </a>
             </div>
-
-            {/* Trust Badge */}
-            <div className="flex items-center gap-3 pt-4">
-              <div className="flex -space-x-2">
-                {[1, 2, 3, 4].map((i) => (
-                  <div
-                    key={i}
-                    className="w-8 h-8 bg-gradient-to-br from-emerald-400 to-green-500 rounded-full border-2 border-emerald-900 flex items-center justify-center text-white text-xs font-bold"
-                  >
-                    {i}
-                  </div>
-                ))}
-              </div>
-              <div>
-                <p className="text-sm font-bold text-white">1,284+ Residents</p>
-                <p className="text-xs text-gray-400">Already using the app</p>
-              </div>
-            </div>
           </div>
 
           {/* Right Side: Phone Mockup */}
@@ -517,7 +465,7 @@ const DownloadApp = () => {
             {/* Phone Mockup */}
             <div className="relative self-center lg:self-auto">
               <div className="relative bg-gray-900 rounded-[3.5rem] p-3 shadow-2xl transform hover:rotate-2 transition-all duration-500 border border-white/10">
-                <div className="bg-white rounded-[3rem] overflow-hidden border-[6px] border-gray-900 aspect-[9/19] w-[300px] relative shadow-inner">
+                <div className="bg-white rounded-[3rem] overflow-hidden border-[6px] border-gray-900 aspect-[9/19] w-[250px] relative shadow-inner">
                   {/* Mockup Content */}
                   <div className="absolute inset-0 bg-gradient-to-br from-gray-50 to-gray-100 flex flex-col">
                     {/* Status Bar */}
@@ -557,24 +505,6 @@ const DownloadApp = () => {
                           Track your requests
                         </p>
                       </div>
-                    </div>
-
-                    {/* Request Cards */}
-                    <div className="p-4 space-y-3 flex-1 overflow-hidden">
-                      {[1, 2, 3].map((i) => (
-                        <div
-                          key={i}
-                          className="p-4 bg-white rounded-2xl shadow-sm border border-gray-200 flex items-center gap-3"
-                        >
-                          <div className="w-10 h-10 bg-gradient-to-br from-emerald-500 to-green-600 rounded-xl flex items-center justify-center text-white shadow-md">
-                            <Smartphone size={18} />
-                          </div>
-                          <div className="flex-1 space-y-2">
-                            <div className="h-2 w-full bg-gray-200 rounded-full"></div>
-                            <div className="h-2 w-2/3 bg-gray-100 rounded-full"></div>
-                          </div>
-                        </div>
-                      ))}
                     </div>
                   </div>
                 </div>
@@ -711,30 +641,6 @@ const DownloadApp = () => {
           ?
         </button>
       </div>
-
-      {/* Stats Section */}
-      <section className="relative z-10 max-w-7xl mx-auto px-6 md:px-8 py-16">
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
-          {[
-            { number: "1,284", label: "Active Users" },
-            { number: "5,432", label: "Requests Processed" },
-            { number: "98%", label: "Satisfaction Rate" },
-            { number: "24/7", label: "Available" },
-          ].map((stat, index) => (
-            <div
-              key={index}
-              className="text-center p-6 bg-white/5 backdrop-blur-sm rounded-2xl border border-white/10"
-            >
-              <p className="text-3xl md:text-4xl font-black text-white mb-2">
-                {stat.number}
-              </p>
-              <p className="text-xs font-bold text-gray-400 uppercase tracking-wide">
-                {stat.label}
-              </p>
-            </div>
-          ))}
-        </div>
-      </section>
 
       {/* Footer */}
       <footer className="relative z-10 border-t border-white/10 bg-black/30 backdrop-blur-md py-8">
