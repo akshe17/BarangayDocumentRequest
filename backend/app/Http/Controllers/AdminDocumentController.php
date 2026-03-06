@@ -19,7 +19,7 @@ class AdminDocumentController extends Controller
     // ─────────────────────────────────────────────────────────────────────
     public function index(Request $request): JsonResponse
     {
-        $query = DocumentType::with(['requirements', 'formFields'])
+        $query = DocumentType::with(['requirements', 'formFields', 'handlerRole'])
             ->orderBy('document_name');
 
         if ($request->filled('search')) {
@@ -38,13 +38,12 @@ class AdminDocumentController extends Controller
     // ─────────────────────────────────────────────────────────────────────
     public function show(int $id): JsonResponse
     {
-        $doc = DocumentType::with(['requirements', 'formFields'])->findOrFail($id);
+        $doc = DocumentType::with(['requirements', 'formFields', 'handlerRole'])->findOrFail($id);
         return response()->json($doc);
     }
 
     // ─────────────────────────────────────────────────────────────────────
     // POST /api/document-types
-    // Accepts multipart/form-data so we can receive the template file.
     // ─────────────────────────────────────────────────────────────────────
     public function store(Request $request): JsonResponse
     {
@@ -52,8 +51,8 @@ class AdminDocumentController extends Controller
             'document_name'                   => 'required|string|max:255|unique:document_types,document_name',
             'fee'                             => 'required|numeric|min:0',
             'in_use'                          => 'sometimes|boolean',
+            'handler_role_id'                 => 'integer|in:3,4',   // 3 = clerk, 4 = zone leader
 
-            // Optional template file
             'template_file'                   => 'sometimes|nullable|file|mimes:pdf,doc,docx|max:10240',
 
             'requirements'                    => 'sometimes|array',
@@ -68,20 +67,18 @@ class AdminDocumentController extends Controller
 
         DB::beginTransaction();
         try {
-            // Handle file upload
             $templatePath = null;
             if ($request->hasFile('template_file')) {
-                // Stored at storage/app/public/document_templates/{filename}
-                // Run: php artisan storage:link  to serve via /storage/...
                 $templatePath = $request->file('template_file')
                     ->store('document_templates', 'public');
             }
 
             $doc = DocumentType::create([
-                'document_name' => $request->document_name,
-                'fee'           => $request->fee,
-                'in_use'        => $request->input('in_use', 1),
-                'template_path' => $templatePath,
+                'document_name'  => $request->document_name,
+                'fee'            => $request->fee,
+                'in_use'         => $request->input('in_use', 1),
+                'template_path'  => $templatePath,
+                'handler_role_id' => $request->input('handler_role_id') ?: null,
             ]);
 
             foreach ($request->input('requirements', []) as $req) {
@@ -100,7 +97,10 @@ class AdminDocumentController extends Controller
             }
 
             DB::commit();
-            return response()->json($doc->load(['requirements', 'formFields']), 201);
+            return response()->json(
+                $doc->load(['requirements', 'formFields', 'handlerRole']),
+                201
+            );
 
         } catch (\Exception $e) {
             DB::rollBack();
@@ -113,8 +113,6 @@ class AdminDocumentController extends Controller
 
     // ─────────────────────────────────────────────────────────────────────
     // POST|PUT /api/document-types/{id}
-    // Full update — syncs requirements, form fields, and optional file.
-    // Route accepts both POST and PUT so multipart/form-data works correctly.
     // ─────────────────────────────────────────────────────────────────────
     public function update(Request $request, int $id): JsonResponse
     {
@@ -127,6 +125,7 @@ class AdminDocumentController extends Controller
             ],
             'fee'                               => 'required|numeric|min:0',
             'in_use'                            => 'sometimes|boolean',
+            'handler_role_id'                   => 'integer|in:3,4',   // 3 = clerk, 4 = zone leader
 
             'template_file'                     => 'sometimes|nullable|file|mimes:pdf,doc,docx|max:10240',
             'remove_template'                   => 'sometimes|boolean',
@@ -146,10 +145,9 @@ class AdminDocumentController extends Controller
         DB::beginTransaction();
         try {
             // ── Handle file ────────────────────────────────────────────
-            $templatePath = $doc->template_path; // keep existing by default
+            $templatePath = $doc->template_path;
 
             if ($request->hasFile('template_file')) {
-                // Delete old file if it exists
                 if ($doc->template_path) {
                     Storage::disk('public')->delete($doc->template_path);
                 }
@@ -157,7 +155,6 @@ class AdminDocumentController extends Controller
                     ->store('document_templates', 'public');
 
             } elseif ($request->boolean('remove_template')) {
-                // User explicitly removed the file
                 if ($doc->template_path) {
                     Storage::disk('public')->delete($doc->template_path);
                 }
@@ -166,10 +163,15 @@ class AdminDocumentController extends Controller
 
             // ── Update base record ─────────────────────────────────────
             $doc->update([
-                'document_name' => $request->document_name,
-                'fee'           => $request->fee,
-                'in_use'        => $request->input('in_use', $doc->in_use),
-                'template_path' => $templatePath,
+                'document_name'   => $request->document_name,
+                'fee'             => $request->fee,
+                'in_use'          => $request->input('in_use', $doc->in_use),
+                'template_path'   => $templatePath,
+                // Use has() so sending "" explicitly clears it,
+                // but omitting the key leaves the existing value untouched.
+                'handler_role_id' => $request->has('handler_role_id')
+                    ? ($request->input('handler_role_id') ?: null)
+                    : $doc->handler_role_id,
             ]);
 
             // ── Sync requirements ──────────────────────────────────────
@@ -195,8 +197,8 @@ class AdminDocumentController extends Controller
             }
 
             // ── Sync form fields ───────────────────────────────────────
-            $incomingFields  = $request->input('form_fields', []);
-            $keepFieldIds    = collect($incomingFields)->pluck('field_id')->filter()->values();
+            $incomingFields = $request->input('form_fields', []);
+            $keepFieldIds   = collect($incomingFields)->pluck('field_id')->filter()->values();
 
             $doc->formFields()
                 ->whereNotIn('field_id', $keepFieldIds)
@@ -226,7 +228,9 @@ class AdminDocumentController extends Controller
             }
 
             DB::commit();
-            return response()->json($doc->fresh(['requirements', 'formFields']));
+            return response()->json(
+                $doc->fresh(['requirements', 'formFields', 'handlerRole'])
+            );
 
         } catch (\Exception $e) {
             DB::rollBack();
@@ -239,7 +243,7 @@ class AdminDocumentController extends Controller
 
     // ─────────────────────────────────────────────────────────────────────
     // PATCH /api/document-types/{id}
-    // Quick toggle — only updates in_use (JSON, not multipart)
+    // Quick toggle — only updates in_use
     // ─────────────────────────────────────────────────────────────────────
     public function patch(Request $request, int $id): JsonResponse
     {
@@ -256,7 +260,6 @@ class AdminDocumentController extends Controller
 
     // ─────────────────────────────────────────────────────────────────────
     // DELETE /api/document-types/{id}
-    // Blocked if has requests; also deletes the stored file.
     // ─────────────────────────────────────────────────────────────────────
     public function destroy(int $id): JsonResponse
     {
@@ -270,7 +273,6 @@ class AdminDocumentController extends Controller
 
         DB::beginTransaction();
         try {
-            // Delete the template file from storage
             if ($doc->template_path) {
                 Storage::disk('public')->delete($doc->template_path);
             }

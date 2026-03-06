@@ -15,6 +15,7 @@ class Resident extends Model
     protected $fillable = [
         'user_id', 
         'gender_id', 
+         'zone_id',
         'civil_status_id',
        
         'birthdate', 
@@ -33,7 +34,10 @@ class Resident extends Model
     {
         return $this->hasMany(DocumentRequest::class, 'resident_id', 'resident_id');
     }
-
+public function zone()
+{
+    return $this->belongsTo(Zone::class, 'zone_id', 'zone_id');
+}
     public function user() 
     { 
         return $this->belongsTo(User::class, 'user_id', 'user_id'); 

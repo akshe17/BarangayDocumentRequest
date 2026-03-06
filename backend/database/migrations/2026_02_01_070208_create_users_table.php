@@ -16,11 +16,10 @@ return new class extends Migration
         // FK: Points to roles table
         $table->foreignId('role_id')->constrained('roles', 'role_id')->onDelete('cascade');
         
-        // FK: Points to zones table, nullable for non-zone leaders
-        $table->foreignId('zone_id')->nullable()->constrained('zones', 'zone_id')->onDelete('set null');
-        
+
         // --- ADDED THESE LINES ---
         $table->string('first_name', 50);
+          $table->string('middlename', 50)->nullable();
         $table->string('last_name', 50);
         // -------------------------
         $table->boolean('is_active')->default(true);

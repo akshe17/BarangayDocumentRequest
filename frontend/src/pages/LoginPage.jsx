@@ -37,11 +37,9 @@ const LoginPage = () => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    if (!captchaToken) {
-      setError("Please complete the hCaptcha challenge.");
-      return;
-    }
+
     setLoading(true);
+    console.log(email, password);
     setError("");
     try {
       const result = await login(email, password, captchaToken);
@@ -473,7 +471,7 @@ const LoginPage = () => {
                   Email
                 </label>
                 <div className="relative group">
-                  <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none text-gray-300 group-focus-within:text-emerald-500 transition-colors">
+                  <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none text-gray-500 group-focus-within:text-emerald-500 transition-colors">
                     <User size={17} />
                   </div>
                   <input
@@ -493,7 +491,7 @@ const LoginPage = () => {
                   Password
                 </label>
                 <div className="relative group">
-                  <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none text-gray-300 group-focus-within:text-emerald-500 transition-colors">
+                  <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none text-gray-500 group-focus-within:text-emerald-500 transition-colors">
                     <Lock size={17} />
                   </div>
                   <input
@@ -523,15 +521,6 @@ const LoginPage = () => {
               )}
 
               {/* hCaptcha */}
-              <div className="f4">
-                <HCaptcha
-                  sitekey={
-                    import.meta.env.VITE_HCAPTCHA_SITEKEY ||
-                    "4ca09924-90e0-46a4-8f9a-a98cd0900a04"
-                  }
-                  onVerify={(token) => setCaptchaToken(token)}
-                />
-              </div>
 
               {/* Submit + links */}
               <div className="f5 space-y-4">
@@ -551,7 +540,7 @@ const LoginPage = () => {
                   )}
                 </button>
 
-                <p className="text-center text-sm text-gray-400">
+                <p className="text-center text-sm text-gray-500">
                   Don't have an account?{" "}
                   <Link
                     to="/register"

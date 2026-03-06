@@ -21,7 +21,7 @@ import {
   Download,
 } from "lucide-react";
 import api from "../../axious/api";
-import HCaptcha from "@hcaptcha/react-hcaptcha";
+
 import { Link } from "react-router-dom";
 import logo from "../../assets/logo.png";
 import bonbonVideo from "../../assets/bonbonVideo.mp4";
@@ -363,7 +363,7 @@ const Register = () => {
   const [showVerificationPending, setShowVerificationPending] = useState(false);
   const [registeredEmail, setRegisteredEmail] = useState("");
   const { isAuthenticated, isAdmin } = useAuth();
-  const [captchaToken, setCaptchaToken] = useState(null);
+
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const [formData, setFormData] = useState({
@@ -434,10 +434,7 @@ const Register = () => {
 
   const handleRegistration = async () => {
     setErrors({});
-    if (!captchaToken) {
-      setErrors({ general: "Please complete the hCaptcha verification." });
-      return;
-    }
+
     if (!imageFile) {
       setErrors({ id_image: "Please upload a valid ID image" });
       return;
@@ -516,8 +513,7 @@ const Register = () => {
     formData.birthdate !== "" &&
     !birthdateError &&
     formData.gender_id !== "";
-  const isFormValid =
-    section1Valid && section2Valid && selectedImage !== null && !!captchaToken;
+  const isFormValid = section1Valid && section2Valid && selectedImage !== null;
 
   useEffect(() => {
     if (section1Valid && section2Valid) setCurrentStep(3);
@@ -1142,22 +1138,6 @@ const Register = () => {
               </SectionCard>
 
               {/* ── Section 4: Security ── */}
-              <SectionCard>
-                <StepHeader
-                  number="4"
-                  title="Security Check"
-                  subtitle="Verify you are not a robot."
-                />
-                <div className="flex justify-center">
-                  <HCaptcha
-                    sitekey={
-                      import.meta.env.VITE_HCAPTCHA_SITEKEY ||
-                      "your-site-key-here"
-                    }
-                    onVerify={(token) => setCaptchaToken(token)}
-                  />
-                </div>
-              </SectionCard>
 
               {/* ── Submit ── */}
               <div className="pt-3">

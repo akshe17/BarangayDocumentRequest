@@ -17,7 +17,11 @@ return new class extends Migration
             $table->foreignId('user_id')->constrained('users', 'user_id')->onDelete('cascade');
             $table->foreignId('gender_id')->constrained('genders', 'gender_id');
             $table->foreignId('civil_status_id')->constrained('civil_statuses', 'civil_status_id');
-            // Optional: Add a foreign key constraint to ensure data integrity
+                 $table->foreignId('zone_id')
+                  ->unique()
+                  ->constrained('zones', 'zone_id')
+                  ->onDelete('cascade');
+
     $table->unsignedBigInteger('verified_by')->nullable();
 
         // 2. Then define the foreign key relationship

@@ -5,6 +5,7 @@ import {
   ChevronRight,
   Paperclip,
   ExternalLink,
+  UserCog, // Added icon for visual consistency
 } from "lucide-react";
 
 const ICONS = [FileText, Sparkles, FileText, Sparkles];
@@ -15,6 +16,14 @@ const DocumentCard = ({ doc, idx, onEdit, onToggleStatus, onOpenFile }) => {
   const reqCount = doc.requirements?.length ?? 0;
   const fieldCount = doc.form_fields?.length ?? 0;
   const hasFile = !!doc.template_path;
+
+  // Determine the handler label based on role ID
+  const handlerLabel =
+    doc.handler_role_id === 3 || doc.handler_role_id === "3"
+      ? "Clerk"
+      : doc.handler_role_id === 4 || doc.handler_role_id === "4"
+        ? "Zone Leader"
+        : "Unassigned";
 
   return (
     <div
@@ -49,9 +58,11 @@ const DocumentCard = ({ doc, idx, onEdit, onToggleStatus, onOpenFile }) => {
       <h3 className="text-sm sm:text-base font-semibold text-gray-800 mb-1 leading-snug">
         {doc.document_name}
       </h3>
-      <p className="text-sm text-gray-400">
-        Fee: ₱ {parseFloat(doc.fee || 0).toFixed(2)}
-      </p>
+      <div className="flex items-center justify-between">
+        <p className="text-sm text-gray-400">
+          Fee: ₱ {parseFloat(doc.fee || 0).toFixed(2)}
+        </p>
+      </div>
 
       <div className="mt-5 sm:mt-6 pt-4 border-t border-gray-50 flex items-center justify-between">
         <div className="flex gap-4 sm:gap-5 flex-wrap">
@@ -65,12 +76,24 @@ const DocumentCard = ({ doc, idx, onEdit, onToggleStatus, onOpenFile }) => {
           </div>
           <div>
             <p className="text-[9px] font-bold uppercase tracking-wider text-gray-500">
-              Additional Form Fields
+              Form Fields
             </p>
             <p className="text-sm font-medium text-gray-600 mt-0.5">
               {fieldCount} {fieldCount === 1 ? "field" : "fields"}
             </p>
           </div>
+          {/* --- NEW ASSIGNED TO SECTION --- */}
+          <div>
+            <p className="text-[9px] font-bold uppercase tracking-wider text-gray-500">
+              Assigned To
+            </p>
+            <p
+              className={`text-sm font-medium mt-0.5 ${handlerLabel === "Unassigned" ? "text-gray-400 italic" : "text-emerald-600"}`}
+            >
+              {handlerLabel}
+            </p>
+          </div>
+          {/* ------------------------------- */}
           {hasFile && (
             <div>
               <p className="text-[9px] font-bold uppercase tracking-wider text-gray-500">

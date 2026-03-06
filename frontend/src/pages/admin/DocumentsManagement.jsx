@@ -3,6 +3,7 @@ import api from "../../axious/api";
 import DocumentToast from "../../components/admin/DocumentToast";
 import DocumentList from "../../components/admin/DocumentList";
 import DocumentForm from "../../components/admin/DocumentForm";
+
 const DocumentsManagement = () => {
   // ── View ─────────────────────────────────────────────────────────────────
   const [view, setView] = useState("list");
@@ -14,11 +15,13 @@ const DocumentsManagement = () => {
   const [listError, setListError] = useState(null);
   const [search, setSearch] = useState("");
   const [filter, setFilter] = useState("all");
+  const [handlerFilter, setHandlerFilter] = useState("all"); // <-- Added handler filter state
 
   // ── Form ─────────────────────────────────────────────────────────────────
   const [docName, setDocName] = useState("");
   const [docFee, setDocFee] = useState("");
   const [docStatus, setDocStatus] = useState(true);
+  const [handlerRoleId, setHandlerRoleId] = useState("");
   const [documentFile, setDocumentFile] = useState(null);
   const [existingFilePath, setExistingFilePath] = useState("");
   const [removeFile, setRemoveFile] = useState(false);
@@ -53,6 +56,7 @@ const DocumentsManagement = () => {
     setDocName("");
     setDocFee("");
     setDocStatus(true);
+    setHandlerRoleId("");
     setDocumentFile(null);
     setExistingFilePath("");
     setRemoveFile(false);
@@ -88,6 +92,7 @@ const DocumentsManagement = () => {
     setDocName(doc.document_name);
     setDocFee(doc.fee);
     setDocStatus(!!doc.in_use);
+    setHandlerRoleId(doc.handler_role_id ?? "");
     setDocumentFile(null);
     setExistingFilePath(doc.template_path ?? "");
     setRemoveFile(false);
@@ -118,7 +123,6 @@ const DocumentsManagement = () => {
   const handleOpenFile = (doc) => {
     const path = doc?.template_path;
     if (!path) return;
-    // Build full URL — adjust base if your API URL differs
     const baseUrl = api.defaults?.baseURL?.replace(/\/api$/, "") ?? "";
     const fileUrl = path.startsWith("http")
       ? path
@@ -161,6 +165,12 @@ const DocumentsManagement = () => {
     formData.append("document_name", docName.trim());
     formData.append("fee", parseFloat(docFee) || 0);
     formData.append("in_use", docStatus ? 1 : 0);
+
+    if (handlerRoleId !== "") {
+      formData.append("handler_role_id", handlerRoleId);
+    } else {
+      formData.append("handler_role_id", "");
+    }
 
     if (documentFile) formData.append("template_file", documentFile);
     if (removeFile) formData.append("remove_template", 1);
@@ -270,11 +280,22 @@ const DocumentsManagement = () => {
     const matchSearch = doc.document_name
       ?.toLowerCase()
       .includes(search.toLowerCase());
+
     const matchFilter =
       filter === "all" ||
       (filter === "active" && doc.in_use) ||
       (filter === "inactive" && !doc.in_use);
-    return matchSearch && matchFilter;
+
+    // NEW: Handler filter integration
+    const matchHandler =
+      handlerFilter === "all" ||
+      (handlerFilter === "clerk" &&
+        (doc.handler_role_id === 3 || doc.handler_role_id === "3")) ||
+      (handlerFilter === "zone" &&
+        (doc.handler_role_id === 4 || doc.handler_role_id === "4")) ||
+      (handlerFilter === "unassigned" && !doc.handler_role_id);
+
+    return matchSearch && matchFilter && matchHandler;
   });
 
   // ── Render ────────────────────────────────────────────────────────────────
@@ -288,6 +309,8 @@ const DocumentsManagement = () => {
         setDocFee={setDocFee}
         docStatus={docStatus}
         setDocStatus={setDocStatus}
+        handlerRoleId={handlerRoleId}
+        setHandlerRoleId={setHandlerRoleId}
         documentFile={documentFile}
         existingFilePath={existingFilePath}
         displayFileName={displayFileName}
@@ -315,7 +338,7 @@ const DocumentsManagement = () => {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-gray-200">
       <DocumentToast toast={toast} />
       <DocumentList
         documentTypes={documentTypes}
@@ -325,6 +348,8 @@ const DocumentsManagement = () => {
         setSearch={setSearch}
         filter={filter}
         setFilter={setFilter}
+        handlerFilter={handlerFilter} // <-- Passed new filter state
+        setHandlerFilter={setHandlerFilter} // <-- Passed setter
         filteredDocs={filteredDocs}
         onEdit={handleEditDoc}
         onToggleStatus={handleToggleStatus}

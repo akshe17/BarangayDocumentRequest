@@ -9,7 +9,7 @@ class DocumentType extends Model
     protected $table = 'document_types';
     protected $primaryKey = 'document_id';
     
-    protected $fillable = ['document_name', 'fee', 'in_use',   'template_path'];
+    protected $fillable = ['document_name', 'fee', 'in_use',   'template_path',    'handler_role_id',];
 
     public function requirements()
     {
@@ -25,6 +25,8 @@ class DocumentType extends Model
     {
         return $this->hasMany(DocumentRequest::class, 'document_id', 'document_id');
     }
-
+public function handlerRole() {
+    return $this->belongsTo(Role::class, 'handler_role_id', 'role_id');
+}
    
 }

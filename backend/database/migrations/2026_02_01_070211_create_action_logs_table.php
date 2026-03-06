@@ -17,7 +17,7 @@ return new class extends Migration
   $table->foreignId('request_id')->nullable()->constrained('document_requests', 'request_id');
         $table->string('action', 100); // e.g., 'Status Updated', 'Request Created'
         $table->text('details')->nullable(); // e.g., 'From Pending to Approved'
-        $table->timestamp('created_at')->useCurrent();
+        $table->timestamps();
     });
     }
 
