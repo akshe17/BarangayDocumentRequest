@@ -18,13 +18,15 @@ class AppServiceProvider extends ServiceProvider
 
     /**
      * Bootstrap any application services.
-     */
- public function boot(): void
+     */public function boot(): void
 {
     Mail::extend('gmail', function () {
+        $username = config('mail.mailers.smtp.username') ?? config('mail.username');
+        $password = config('mail.mailers.smtp.password') ?? config('mail.password');
+
         $transport = new EsmtpTransport('smtp.gmail.com', 587, false);
-        $transport->setUsername(env('MAIL_USERNAME'));
-        $transport->setPassword(env('MAIL_PASSWORD'));
+        $transport->setUsername($username ?? '');
+        $transport->setPassword($password ?? '');
         $transport->getStream()->setStreamOptions([
             'ssl' => [
                 'verify_peer'       => false,

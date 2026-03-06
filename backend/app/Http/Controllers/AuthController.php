@@ -193,7 +193,8 @@ public function register(Request $request)
     }
 
    try {
-        return DB::transaction(function () use ($request) {
+        // Collect data needed for email AFTER the transaction commits
+        $mailData = DB::transaction(function () use ($request) {
 
             $path = $request->file('id_image')->store('verification_ids', 'public');
 
@@ -220,11 +221,12 @@ public function register(Request $request)
                 'is_verified'     => null,
             ]);
 
-            // Find Zone Leaders to notify - match zone from resident record
+            // Find Zone Leaders to notify
             $zoneLeaders = User::where('role_id', 4)
                                ->whereHas('zoneLeader', fn($q) => $q->where('zone_id', $resident->zone_id))
                                ->get();
 
+            // Action logs (DB — safe inside transaction)
             foreach ($zoneLeaders as $leader) {
                 ActionLog::create([
                     'user_id'    => $leader->user_id,
@@ -234,33 +236,44 @@ public function register(Request $request)
                 ]);
             }
 
-            // --- EMAIL LOGIC ---
-            // Send email to Zone Leaders in the same zone
-            Log::info("Looking for zone leaders in zone: {$resident->zone_id}");
-            Log::info("Found " . $zoneLeaders->count() . " zone leaders");
-
-            if ($zoneLeaders->isEmpty()) {
-                Log::warning("No zone leaders found for zone_id: {$resident->zone_id}");
-            }
-
-            foreach ($zoneLeaders as $leader) {
-                try {
-                    Mail::to($leader->email)
-                        ->send(new ZoneLeaderNotificationMail($user, $leader));
-                    
-                    Log::info("Zone leader notification sent to: {$leader->email}");
-                } catch (\Exception $e) {
-                    Log::error("Failed to send zone leader email to {$leader->email}: " . $e->getMessage());
-                }
-            }
-
-            return response()->json([
-                'message' => 'Registration successful! Please wait for account verification.',
-                'email' => $user->email,
-                'status' => 'pending_verification',
-                'note' => 'We will send you an email once your account has been verified. You will be able to login after verification is complete.',
-            ], 201);
+            // Return data needed for email — do NOT send mail inside transaction
+            return [
+                'user'        => $user,
+                'resident'    => $resident,
+                'zoneLeaders' => $zoneLeaders,
+            ];
         });
+
+        // --- EMAIL LOGIC (outside transaction so mail errors don't rollback DB) ---
+        $user        = $mailData['user'];
+        $resident    = $mailData['resident'];
+        $zoneLeaders = $mailData['zoneLeaders'];
+
+        Log::info("Looking for zone leaders in zone: {$resident->zone_id}");
+        Log::info("Found " . $zoneLeaders->count() . " zone leaders");
+
+        if ($zoneLeaders->isEmpty()) {
+            Log::warning("No zone leaders found for zone_id: {$resident->zone_id}");
+        }
+
+        foreach ($zoneLeaders as $leader) {
+            try {
+                Mail::to($leader->email)
+                    ->send(new ZoneLeaderNotificationMail($user, $leader));
+
+                Log::info("Zone leader notification sent to: {$leader->email}");
+            } catch (\Exception $e) {
+                // Log and continue — mail failure must never block registration
+                Log::error("Failed to send zone leader email to {$leader->email}: " . $e->getMessage());
+            }
+        }
+
+        return response()->json([
+            'message' => 'Registration successful! Please wait for account verification.',
+            'email'   => $user->email,
+            'status'  => 'pending_verification',
+            'note'    => 'We will send you an email once your account has been verified. You will be able to login after verification is complete.',
+        ], 201);
     } catch (\Exception $e) {
         return response()->json([
             'message' => 'Registration failed',

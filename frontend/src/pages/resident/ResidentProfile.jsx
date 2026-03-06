@@ -17,26 +17,94 @@ import {
   Lock,
   Eye,
   EyeOff,
+  Home,
+  BadgeCheck,
+  X,
 } from "lucide-react";
 import bonbonVideo from "../../assets/bonbonVideo.mp4";
 
-// ── View keys ──────────────────────────────────────────────────────────────────
 const VIEWS = {
   PROFILE: "profile",
   EMAIL: "change-email",
   PASSWORD: "change-password",
 };
 
+/* ── Toast ───────────────────────────────────────────────────────────────── */
+const Toast = ({ show, message, type, onClose }) => {
+  if (!show) return null;
+  return (
+    <div className="fixed top-5 right-5 z-50">
+      <div
+        className={`flex items-center gap-3 px-4 py-3 rounded-2xl border shadow-xl max-w-sm text-sm font-semibold
+        ${type === "success" ? "bg-emerald-50 border-emerald-200 text-emerald-800" : "bg-rose-50 border-rose-200 text-rose-800"}`}
+      >
+        {type === "success" ? <Check size={16} /> : <AlertTriangle size={16} />}
+        <span className="flex-1">{message}</span>
+        <button
+          onClick={onClose}
+          className="text-current opacity-50 hover:opacity-100 transition-opacity"
+        >
+          <X size={14} />
+        </button>
+      </div>
+    </div>
+  );
+};
+
+/* ── Read-only field ─────────────────────────────────────────────────────── */
+const InfoField = ({ label, value, note }) => (
+  <div className="space-y-1">
+    <p className="text-[11px] font-bold text-gray-400 uppercase tracking-widest">
+      {label}
+    </p>
+    <p className="text-sm font-semibold text-gray-900">
+      {value || <span className="text-gray-300 font-normal">—</span>}
+    </p>
+    {note && <p className="text-[11px] text-gray-300">{note}</p>}
+  </div>
+);
+
+/* ── Section card ────────────────────────────────────────────────────────── */
+const Card = ({ icon: Icon, title, children, className = "" }) => (
+  <div
+    className={`bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden ${className}`}
+  >
+    <div className="px-6 py-4 border-b border-gray-50 flex items-center gap-2.5">
+      <div className="w-8 h-8 rounded-lg bg-emerald-50 flex items-center justify-center flex-shrink-0">
+        <Icon size={16} className="text-emerald-600" />
+      </div>
+      <h3 className="text-sm font-bold text-gray-800">{title}</h3>
+    </div>
+    <div className="p-6">{children}</div>
+  </div>
+);
+
+/* ── Sub-page header ─────────────────────────────────────────────────────── */
+const SubHeader = ({ title, subtitle, onBack }) => (
+  <div className="flex items-center gap-3 mb-6">
+    <button
+      onClick={onBack}
+      className="w-9 h-9 rounded-xl border border-gray-200 flex items-center justify-center text-gray-500 hover:bg-gray-50 transition-all flex-shrink-0"
+    >
+      <ArrowLeft size={16} />
+    </button>
+    <div>
+      <h2 className="text-base font-bold text-gray-900">{title}</h2>
+      <p className="text-xs text-gray-400 mt-0.5">{subtitle}</p>
+    </div>
+  </div>
+);
+
+/* ════════════════════════════════════════════════════════════════════════════
+   MAIN COMPONENT
+══════════════════════════════════════════════════════════════════════════════ */
 const ResidentProfile = () => {
   const { user, setUser } = useAuth();
-
   const [view, setView] = useState(VIEWS.PROFILE);
 
-  // Email state
   const [editedEmail, setEditedEmail] = useState("");
   const [isSavingEmail, setIsSavingEmail] = useState(false);
 
-  // Password state
   const [passwordData, setPasswordData] = useState({
     current_password: "",
     new_password: "",
@@ -73,51 +141,66 @@ const ResidentProfile = () => {
       });
     setView(nextView);
   };
-
   const goBack = () => setView(VIEWS.PROFILE);
 
-  // ── Guard ──────────────────────────────────────────────────────────────────
-  if (!user) {
+  if (!user)
     return (
       <div className="flex items-center justify-center min-h-[400px]">
         <Loader2 className="w-8 h-8 animate-spin text-emerald-600" />
       </div>
     );
-  }
 
+  // ── Data resolution — zone is now on resident.zone ────────────────────────
   const resident = user.resident || {};
-  const zone = user.zone || {};
-  const email = user.email || "";
+  const zone = resident.zone || {}; // ← FIXED: was user.zone
+  const zoneName = zone.zone_name || user.zone_name || "";
+  const middleName = user.middle_name || "";
+  const fullName = [user.first_name, middleName, user.last_name]
+    .filter(Boolean)
+    .join(" ");
 
-  // ── Email handler ──────────────────────────────────────────────────────────
+  const formatDate = (d) =>
+    d
+      ? new Date(d).toLocaleDateString("en-US", {
+          year: "numeric",
+          month: "long",
+          day: "numeric",
+        })
+      : "—";
+  const getGender = (id) =>
+    ({ 1: "Male", 2: "Female", 3: "Other" })[id] || "Not specified";
+  const getCivil = (id) =>
+    ({ 1: "Single", 2: "Married", 3: "Divorced", 4: "Widowed" })[id] ||
+    "Not specified";
+
+  const initials =
+    `${user.first_name?.charAt(0) ?? ""}${user.last_name?.charAt(0) ?? ""}`.toUpperCase();
+
+  // ── Email handler ─────────────────────────────────────────────────────────
   const handleSaveEmail = async (e) => {
     e.preventDefault();
     setIsSavingEmail(true);
     try {
-      const response = await api.post("/resident/profile/update", {
+      const res = await api.post("/resident/profile/update", {
         email: editedEmail,
       });
-      if (response.data.success) {
+      if (res.data.success) {
         setUser((prev) => ({
           ...prev,
-          ...(response.data.user ?? {}),
-          resident: response.data.user?.resident ?? prev?.resident,
-          zone: response.data.user?.zone ?? prev?.zone,
+          ...(res.data.user ?? {}),
+          resident: res.data.user?.resident ?? prev?.resident,
         }));
-        triggerToast(
-          response.data.message || "Email updated successfully!",
-          "success",
-        );
+        triggerToast(res.data.message || "Email updated successfully!");
         goBack();
       }
-    } catch (error) {
-      if (error.response?.data?.errors) {
-        Object.values(error.response.data.errors).forEach((arr) =>
+    } catch (err) {
+      if (err.response?.data?.errors) {
+        Object.values(err.response.data.errors).forEach((arr) =>
           arr.forEach((msg) => triggerToast(msg, "error")),
         );
       } else {
         triggerToast(
-          error.response?.data?.message || "Failed to update email",
+          err.response?.data?.message || "Failed to update email",
           "error",
         );
       }
@@ -126,7 +209,7 @@ const ResidentProfile = () => {
     }
   };
 
-  // ── Password handler ───────────────────────────────────────────────────────
+  // ── Password handler ──────────────────────────────────────────────────────
   const handleSavePassword = async (e) => {
     e.preventDefault();
     if (passwordData.new_password !== passwordData.new_password_confirmation) {
@@ -135,20 +218,17 @@ const ResidentProfile = () => {
     }
     setIsSavingPassword(true);
     try {
-      const response = await api.post(
+      const res = await api.post(
         "/resident/profile/change-password",
         passwordData,
       );
-      if (response.data.success) {
-        triggerToast(
-          response.data.message || "Password changed successfully!",
-          "success",
-        );
+      if (res.data.success) {
+        triggerToast(res.data.message || "Password changed!");
         goBack();
       }
-    } catch (error) {
+    } catch (err) {
       triggerToast(
-        error.response?.data?.message || "Failed to change password",
+        err.response?.data?.message || "Failed to change password",
         "error",
       );
     } finally {
@@ -156,105 +236,35 @@ const ResidentProfile = () => {
     }
   };
 
-  // ── Helpers ────────────────────────────────────────────────────────────────
-  const formatDate = (d) => {
-    if (!d) return "N/A";
-    return new Date(d).toLocaleDateString("en-US", {
-      year: "numeric",
-      month: "long",
-      day: "numeric",
-    });
-  };
-  const getGenderLabel = (id) =>
-    ({ 1: "Male", 2: "Female", 3: "Other" })[id] || "Not specified";
-  const getCivilStatusLabel = (id) =>
-    ({ 1: "Single", 2: "Married", 3: "Divorced", 4: "Widowed" })[id] ||
-    "Not specified";
-
-  // ── Shared header banner ───────────────────────────────────────────────────
-  const ProfileHeader = () => (
-    <div className="relative bg-gradient-to-br from-emerald-600 to-emerald-700 rounded-3xl p-8 mb-8 overflow-hidden border border-gray-100">
-      <video
-        autoPlay
-        loop
-        muted
-        playsInline
-        className="absolute inset-0 w-full h-full object-cover"
-      >
-        <source src={bonbonVideo} type="video/mp4" />
-      </video>
-      <div className="absolute inset-0 bg-gradient-to-br from-emerald-600/90 via-emerald-700/85 to-emerald-800/90" />
-      <div className="relative z-10">
-        <h1 className="text-4xl font-bold text-white mb-2">
-          {user.first_name} {user.last_name}
-        </h1>
-        <p className="text-emerald-100 text-lg font-medium">
-          Resident ID: {resident.resident_id}
-        </p>
-        {resident.is_verified ? (
-          <div className="mt-2 inline-flex items-center gap-2 bg-white/20 backdrop-blur-sm text-white px-4 py-1.5 rounded-full text-sm font-semibold border border-white/30">
-            <Shield size={16} /> Verified Resident
-          </div>
-        ) : (
-          <div className="mt-2 inline-flex items-center gap-2 bg-white backdrop-blur-sm text-red-500 px-4 py-1.5 rounded-full text-sm font-semibold border border-red-300/30">
-            <ShieldAlert size={16} /> Not Verified
-          </div>
-        )}
-      </div>
-    </div>
-  );
-
-  // ── Sub-page header with back button ──────────────────────────────────────
-  const SubPageHeader = ({ title, subtitle }) => (
-    <div className="flex items-center gap-4 mb-8">
-      <button
-        onClick={goBack}
-        className="p-2.5 rounded-xl border border-gray-200 hover:bg-gray-50 transition-colors"
-      >
-        <ArrowLeft size={20} className="text-gray-600" />
-      </button>
-      <div>
-        <h2 className="text-2xl font-bold text-gray-950">{title}</h2>
-        <p className="text-sm text-gray-500 mt-0.5">{subtitle}</p>
-      </div>
-    </div>
-  );
-
   // ══════════════════════════════════════════════════════════════════════════
   // VIEW: CHANGE EMAIL
   // ══════════════════════════════════════════════════════════════════════════
-  if (view === VIEWS.EMAIL) {
+  if (view === VIEWS.EMAIL)
     return (
-      <div className="animate-in fade-in duration-300 max-w-2xl mx-auto relative">
-        <CustomToast
-          show={toast.show}
-          message={toast.message}
-          type={toast.type}
+      <div className="max-w-lg mx-auto">
+        <Toast
+          {...toast}
           onClose={() => setToast((t) => ({ ...t, show: false }))}
         />
-
-        <SubPageHeader
+        <SubHeader
           title="Change Email Address"
           subtitle="Update the email linked to your account"
+          onBack={goBack}
         />
-
-        <div className="bg-white p-8 rounded-2xl border border-gray-100">
-          <form onSubmit={handleSaveEmail} className="space-y-6">
-            {/* Current email (read-only) */}
+        <Card icon={Mail} title="Email Address">
+          <form onSubmit={handleSaveEmail} className="space-y-4">
             <div>
-              <label className="text-sm font-semibold text-gray-700 block mb-1.5">
+              <p className="text-[11px] font-bold text-gray-400 uppercase tracking-widest mb-1.5">
                 Current Email
-              </label>
-              <div className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl text-base text-gray-500 font-medium">
-                {email}
+              </p>
+              <div className="px-4 py-2.5 bg-gray-50 border border-gray-100 rounded-xl text-sm text-gray-400 font-medium">
+                {user.email}
               </div>
             </div>
-
-            {/* New email */}
             <div>
-              <label className="text-sm font-semibold text-gray-700 block mb-1.5">
+              <p className="text-[11px] font-bold text-gray-400 uppercase tracking-widest mb-1.5">
                 New Email Address
-              </label>
+              </p>
               <input
                 type="email"
                 value={editedEmail}
@@ -262,40 +272,40 @@ const ResidentProfile = () => {
                 required
                 autoFocus
                 placeholder="Enter new email"
-                className="w-full px-4 py-3 border border-gray-200 rounded-xl text-base focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent transition-all"
+                className="w-full px-4 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent transition-all"
               />
             </div>
-
-            <div className="flex gap-3 pt-2">
+            <div className="flex gap-3 pt-1">
               <button
                 type="button"
                 onClick={goBack}
                 disabled={isSavingEmail}
-                className="flex-1 border border-gray-200 px-6 py-3 rounded-xl font-semibold hover:bg-gray-50 transition-colors disabled:opacity-50"
+                className="flex-1 border border-gray-200 py-2.5 rounded-xl text-sm font-semibold hover:bg-gray-50 transition-colors disabled:opacity-50"
               >
                 Cancel
               </button>
               <button
                 type="submit"
                 disabled={isSavingEmail}
-                className="flex-1 bg-emerald-600 text-white px-6 py-3 rounded-xl font-semibold hover:bg-emerald-700 transition-colors flex items-center justify-center gap-2 disabled:opacity-70"
+                className="flex-1 bg-emerald-600 text-white py-2.5 rounded-xl text-sm font-semibold hover:bg-emerald-700 transition-colors flex items-center justify-center gap-2 disabled:opacity-70"
               >
                 {isSavingEmail ? (
                   <>
-                    <Loader2 size={18} className="animate-spin" /> Saving...
+                    <Loader2 size={15} className="animate-spin" />
+                    Saving…
                   </>
                 ) : (
                   <>
-                    <Check size={18} /> Save Email
+                    <Check size={15} />
+                    Save Email
                   </>
                 )}
               </button>
             </div>
           </form>
-        </div>
+        </Card>
       </div>
     );
-  }
 
   // ══════════════════════════════════════════════════════════════════════════
   // VIEW: CHANGE PASSWORD
@@ -314,84 +324,78 @@ const ResidentProfile = () => {
         showKey: "confirm",
       },
     ];
-
     return (
-      <div className="animate-in fade-in duration-300 max-w-2xl mx-auto relative">
-        <CustomToast
-          show={toast.show}
-          message={toast.message}
-          type={toast.type}
+      <div className="max-w-lg mx-auto">
+        <Toast
+          {...toast}
           onClose={() => setToast((t) => ({ ...t, show: false }))}
         />
-
-        <SubPageHeader
+        <SubHeader
           title="Change Password"
-          subtitle="Choose a strong password with uppercase, lowercase, and numbers"
+          subtitle="Use uppercase, lowercase, and numbers"
+          onBack={goBack}
         />
-
-        <div className="bg-white p-8 rounded-2xl border border-gray-100">
-          <form onSubmit={handleSavePassword} className="space-y-5">
+        <Card icon={Lock} title="Account Security">
+          <form onSubmit={handleSavePassword} className="space-y-4">
             {pwFields.map(({ label, key, showKey }) => (
               <div key={key}>
-                <label className="text-sm font-semibold text-gray-700 block mb-1.5">
+                <p className="text-[11px] font-bold text-gray-400 uppercase tracking-widest mb-1.5">
                   {label}
-                </label>
+                </p>
                 <div className="relative">
                   <input
                     type={showPw[showKey] ? "text" : "password"}
                     value={passwordData[key]}
+                    required
                     onChange={(e) =>
                       setPasswordData({
                         ...passwordData,
                         [key]: e.target.value,
                       })
                     }
-                    required
-                    className="w-full px-4 py-3 pr-12 border border-gray-200 rounded-xl text-base focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent transition-all"
+                    className="w-full px-4 py-2.5 pr-11 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent transition-all"
                   />
                   <button
                     type="button"
                     onClick={() =>
-                      setShowPw((prev) => ({
-                        ...prev,
-                        [showKey]: !prev[showKey],
-                      }))
+                      setShowPw((p) => ({ ...p, [showKey]: !p[showKey] }))
                     }
-                    className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                    className="absolute right-3.5 top-1/2 -translate-y-1/2 text-gray-300 hover:text-gray-600 transition-colors"
                   >
-                    {showPw[showKey] ? <EyeOff size={18} /> : <Eye size={18} />}
+                    {showPw[showKey] ? <EyeOff size={15} /> : <Eye size={15} />}
                   </button>
                 </div>
               </div>
             ))}
-
-            <div className="flex gap-3 pt-2">
+            <div className="flex gap-3 pt-1">
               <button
                 type="button"
                 onClick={goBack}
                 disabled={isSavingPassword}
-                className="flex-1 border border-gray-200 px-6 py-3 rounded-xl font-semibold hover:bg-gray-50 transition-colors disabled:opacity-50"
+                className="flex-1 border border-gray-200 py-2.5 rounded-xl text-sm font-semibold hover:bg-gray-50 transition-colors disabled:opacity-50"
               >
                 Cancel
               </button>
               <button
                 type="submit"
                 disabled={isSavingPassword}
-                className="flex-1 bg-emerald-600 text-white px-6 py-3 rounded-xl font-semibold hover:bg-emerald-700 transition-colors flex items-center justify-center gap-2 disabled:opacity-70"
+                className="flex-1 bg-emerald-600 text-white py-2.5 rounded-xl text-sm font-semibold hover:bg-emerald-700 transition-colors flex items-center justify-center gap-2 disabled:opacity-70"
               >
                 {isSavingPassword ? (
                   <>
-                    <Loader2 size={18} className="animate-spin" /> Saving...
+                    <Loader2 size={15} className="animate-spin" />
+                    Saving…
                   </>
                 ) : (
                   <>
-                    <Check size={18} /> Update Password
+                    <Check size={15} />
+                    Update Password
                   </>
                 )}
               </button>
             </div>
           </form>
-        </div>
+        </Card>
       </div>
     );
   }
@@ -400,246 +404,178 @@ const ResidentProfile = () => {
   // VIEW: MAIN PROFILE
   // ══════════════════════════════════════════════════════════════════════════
   return (
-    <div className="animate-in fade-in duration-300 max-w-7xl mx-auto relative">
-      <CustomToast
-        show={toast.show}
-        message={toast.message}
-        type={toast.type}
+    <div className="max-w-5xl mx-auto space-y-5">
+      <Toast
+        {...toast}
         onClose={() => setToast((t) => ({ ...t, show: false }))}
       />
 
-      <ProfileHeader />
-
-      <div className="grid grid-cols-1 md:grid-cols-2 ">
-        {/* CHANGE EMAIL */}
-        <div className="bg-white w-full p-8 rounded-2xl border border-gray-100">
-          <h3 className="text-xl font-bold text-gray-950 mb-6 flex items-center gap-3 pb-4 border-b border-gray-200">
-            <Mail size={22} className="text-emerald-600" />
-            Email Address
-          </h3>
-          <div className="bg-gray-50 p-5 rounded-xl border border-gray-100 mb-4">
-            <label className="text-xs font-bold text-gray-500 uppercase tracking-wider block mb-2">
-              Current Email
-            </label>
-            <p className="text-base font-semibold text-gray-950 truncate">
-              {email}
-            </p>
+      {/* ── Hero banner ── */}
+      <div
+        className="relative rounded-2xl overflow-hidden border border-gray-100 shadow-sm"
+        style={{ minHeight: 200 }}
+      >
+        <video
+          autoPlay
+          loop
+          muted
+          playsInline
+          className="absolute inset-0 w-full h-full object-cover"
+        >
+          <source src={bonbonVideo} type="video/mp4" />
+        </video>
+        <div className="absolute inset-0 bg-gradient-to-r from-emerald-900/90 via-emerald-800/80 to-transparent" />
+        <div className="relative z-10 p-8 flex items-end gap-5">
+          {/* Avatar */}
+          <div className="w-20 h-20 rounded-2xl bg-white/20 backdrop-blur-sm border-2 border-white/40 flex items-center justify-center flex-shrink-0 shadow-lg">
+            <span className="text-2xl font-black text-white">{initials}</span>
           </div>
-          <button
-            onClick={() => goTo(VIEWS.EMAIL)}
-            className="w-full flex items-center justify-between px-5 py-3.5 bg-emerald-600 text-white rounded-xl font-semibold hover:bg-emerald-700 transition-colors text-sm"
-          >
-            <span className="flex items-center gap-2">
-              <Mail size={16} /> Change Email
-            </span>
-            <ChevronRight size={16} />
-          </button>
-        </div>
-
-        {/* CHANGE PASSWORD */}
-        <div className="bg-white p-8 rounded-2xl w-full border border-gray-100">
-          <h3 className="text-xl font-bold text-gray-950 mb-6 flex items-center gap-3 pb-4 border-b border-gray-200">
-            <Shield size={22} className="text-emerald-600" />
-            Account Security
-          </h3>
-          <div className="bg-gray-50 p-5 rounded-xl border border-gray-100 mb-4">
-            <label className="text-xs font-bold text-gray-500 uppercase tracking-wider block mb-2">
-              Password
-            </label>
-            <p className="text-base font-semibold text-gray-950 tracking-widest">
-              ••••••••
+          {/* Info */}
+          <div className="flex-1 min-w-0">
+            <h1 className="text-2xl font-black text-white leading-tight truncate">
+              {fullName}
+            </h1>
+            <p className="text-emerald-200 text-sm font-medium mt-0.5">
+              Resident ID #{resident.resident_id}
             </p>
+            <div className="flex flex-wrap gap-2 mt-3">
+              {resident.is_verified ? (
+                <span className="inline-flex items-center gap-1.5 bg-emerald-500/30 backdrop-blur-sm text-white border border-emerald-400/40 px-3 py-1 rounded-full text-xs font-bold">
+                  <BadgeCheck size={13} /> Verified Resident
+                </span>
+              ) : (
+                <span className="inline-flex items-center gap-1.5 bg-rose-500/30 backdrop-blur-sm text-white border border-rose-400/40 px-3 py-1 rounded-full text-xs font-bold">
+                  <ShieldAlert size={13} /> Not Verified
+                </span>
+              )}
+              {zoneName && (
+                <span className="inline-flex items-center gap-1.5 bg-white/20 backdrop-blur-sm text-white border border-white/30 px-3 py-1 rounded-full text-xs font-bold">
+                  <MapPin size={12} /> {zoneName}
+                </span>
+              )}
+            </div>
           </div>
-          <button
-            onClick={() => goTo(VIEWS.PASSWORD)}
-            className="w-full flex items-center justify-between px-5 py-3.5 bg-emerald-600 text-white rounded-xl font-semibold hover:bg-emerald-700 transition-colors text-sm"
-          >
-            <span className="flex items-center gap-2">
-              <Lock size={16} /> Change Password
-            </span>
-            <ChevronRight size={16} />
-          </button>
         </div>
       </div>
 
-      {/* MAIN GRID */}
-      <div className="grid lg:grid-cols-2 gap-8 mb-8">
-        {/* PERSONAL INFORMATION */}
-        <div className="bg-white p-8 rounded-2xl border border-gray-100">
-          <h3 className="text-2xl font-bold text-gray-950 mb-6 flex items-center gap-3 pb-4 border-b border-gray-200">
-            <User size={24} className="text-emerald-600" />
-            Personal Information
-          </h3>
-
-          <div className="flex gap-3 bg-amber-50 border border-amber-200 p-4 rounded-xl mb-5">
-            <AlertTriangle
-              className="text-amber-500 flex-shrink-0 mt-0.5"
-              size={18}
-            />
-            <p className="text-sm text-amber-800 font-medium">
-              To update your name, birthdate, gender, or civil status, please
-              visit the <span className="font-bold">Barangay Hall</span> in
-              person with a valid ID.
-            </p>
+      {/* ── Top row: email + security ── */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+        <Card icon={Mail} title="Email Address">
+          <div className="space-y-4">
+            <InfoField label="Current Email" value={user.email} />
+            <button
+              onClick={() => goTo(VIEWS.EMAIL)}
+              className="w-full flex items-center justify-between px-4 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-sm font-semibold transition-all shadow-sm shadow-emerald-200"
+            >
+              <span className="flex items-center gap-2">
+                <Mail size={14} /> Change Email
+              </span>
+              <ChevronRight size={14} />
+            </button>
           </div>
+        </Card>
 
-          <div className="space-y-5">
-            <div className="grid grid-cols-2 gap-5">
-              <ReadOnlyField
-                icon={User}
-                label="First Name"
-                value={user.first_name}
+        <Card icon={Shield} title="Account Security">
+          <div className="space-y-4">
+            <InfoField label="Password" value="••••••••" />
+            <button
+              onClick={() => goTo(VIEWS.PASSWORD)}
+              className="w-full flex items-center justify-between px-4 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-sm font-semibold transition-all shadow-sm shadow-emerald-200"
+            >
+              <span className="flex items-center gap-2">
+                <Lock size={14} /> Change Password
+              </span>
+              <ChevronRight size={14} />
+            </button>
+          </div>
+        </Card>
+      </div>
+
+      {/* ── Middle row: personal + address ── */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+        <Card icon={User} title="Personal Information">
+          <div className="space-y-1 mb-4 p-3 bg-amber-50 border border-amber-100 rounded-xl">
+            <div className="flex items-start gap-2">
+              <AlertTriangle
+                size={13}
+                className="text-amber-500 flex-shrink-0 mt-0.5"
               />
-              <ReadOnlyField
-                icon={User}
-                label="Last Name"
-                value={user.last_name}
+              <p className="text-xs text-amber-700 font-medium leading-relaxed">
+                To update personal info, visit the{" "}
+                <strong>Barangay Hall</strong> with a valid ID.
+              </p>
+            </div>
+          </div>
+          <div className="space-y-4">
+            <div className="grid grid-cols-2 gap-4">
+              <InfoField label="First Name" value={user.first_name} />
+              <InfoField label="Last Name" value={user.last_name} />
+            </div>
+            <InfoField label="Middle Name" value={middleName || "—"} />
+            <div className="grid grid-cols-2 gap-4">
+              <InfoField label="Gender" value={getGender(resident.gender_id)} />
+              <InfoField
+                label="Civil Status"
+                value={getCivil(resident.civil_status_id)}
               />
             </div>
-
-            <ReadOnlyField
-              icon={Calendar}
+            <InfoField
               label="Date of Birth"
               value={formatDate(resident.birthdate)}
             />
-            <div className="grid grid-cols-2 gap-5">
-              <div className="bg-gray-50 p-5 rounded-xl border border-gray-100">
-                <label className="text-xs font-bold text-gray-500 uppercase tracking-wider block mb-2">
-                  Gender
-                </label>
-                <p className="text-base font-semibold text-gray-950">
-                  {getGenderLabel(resident.gender_id)}
-                </p>
-              </div>
-              <div className="bg-gray-50 p-5 rounded-xl border border-gray-100">
-                <label className="text-xs font-bold text-gray-500 uppercase tracking-wider block mb-2">
-                  Civil Status
-                </label>
-                <p className="text-base font-semibold text-gray-950">
-                  {getCivilStatusLabel(resident.civil_status_id)}
-                </p>
-              </div>
-            </div>
           </div>
-        </div>
+        </Card>
 
-        {/* ADDRESS INFORMATION */}
-        <div className="bg-white p-8 rounded-2xl border border-gray-100">
-          <h3 className="text-2xl font-bold text-gray-950 mb-6 flex items-center gap-3 pb-4 border-b border-gray-200">
-            <MapPin size={24} className="text-emerald-600" />
-            Address Information
-          </h3>
-
-          <div className="flex gap-3 bg-amber-50 border border-amber-200 p-4 rounded-xl mb-5">
-            <AlertTriangle
-              className="text-amber-500 flex-shrink-0 mt-0.5"
-              size={18}
-            />
-            <p className="text-sm text-amber-800 font-medium">
-              To update your house number or zone, please visit the{" "}
-              <span className="font-bold">Barangay Hall</span> in person.
-            </p>
-          </div>
-
-          <div className="space-y-5">
-            <ReadOnlyField
-              icon={MapPin}
-              label="House Number"
-              value={resident.house_no}
-            />
-            <ReadOnlyField
-              icon={MapPin}
-              label="Zone"
-              value={zone.zone_name || ""}
-            />
-            <div className="p-6 bg-gray-50 rounded-xl border border-gray-100">
-              <h4 className="text-sm font-bold text-gray-600 mb-3 flex items-center gap-2">
-                <MapPin size={20} className="text-emerald-600" /> Complete
-                Address
-              </h4>
-              <p className="text-base font-semibold text-gray-950">
-                {resident.house_no}, {zone.zone_name || ""}
+        <Card icon={MapPin} title="Address Information">
+          <div className="space-y-1 mb-4 p-3 bg-amber-50 border border-amber-100 rounded-xl">
+            <div className="flex items-start gap-2">
+              <AlertTriangle
+                size={13}
+                className="text-amber-500 flex-shrink-0 mt-0.5"
+              />
+              <p className="text-xs text-amber-700 font-medium leading-relaxed">
+                To update address details, visit the{" "}
+                <strong>Barangay Hall</strong> in person.
               </p>
             </div>
           </div>
-        </div>
-      </div>
-
-      {/* BOTTOM GRID */}
-      <div className="grid lg:grid-cols-1 gap-8">
-        {/* ACCOUNT DETAILS */}
-        <div className="bg-white p-8 rounded-2xl border border-gray-100">
-          <h3 className="text-xl font-bold text-gray-950 mb-6 flex items-center gap-3 pb-4 border-b border-gray-200">
-            <Clock size={22} className="text-emerald-600" />
-            Account Details
-          </h3>
-          <div className="space-y-5">
-            <div>
-              <label className="text-xs font-bold text-gray-500 uppercase tracking-wider block mb-2">
-                Account Created
-              </label>
-              <p className="text-base font-semibold text-gray-950">
-                {formatDate(user.created_at)}
-              </p>
+          <div className="space-y-4">
+            <div className="grid grid-cols-2 gap-4">
+              <InfoField label="House No." value={resident.house_no} />
+              <InfoField label="Zone" value={zoneName || "—"} />
             </div>
-            <div>
-              <label className="text-xs font-bold text-gray-500 uppercase tracking-wider block mb-2">
-                Last Updated
-              </label>
-              <p className="text-base font-semibold text-gray-950">
-                {formatDate(user.updated_at || user.created_at)}
+            {/* Full address display */}
+            <div className="p-4 bg-gray-50 rounded-xl border border-gray-100 space-y-1">
+              <p className="text-[11px] font-bold text-gray-400 uppercase tracking-widest flex items-center gap-1.5">
+                <Home size={11} /> Complete Address
+              </p>
+              <p className="text-sm font-semibold text-gray-800">
+                {[resident.house_no, zoneName, "Bonbon, Cagayan de Oro"]
+                  .filter(Boolean)
+                  .join(", ")}
               </p>
             </div>
           </div>
+        </Card>
+      </div>
+
+      {/* ── Bottom row: account details ── */}
+      <Card icon={Clock} title="Account Details">
+        <div className="grid grid-cols-2 sm:grid-cols-3 gap-6">
+          <InfoField
+            label="Account Created"
+            value={formatDate(user.created_at)}
+          />
+          <InfoField
+            label="Last Updated"
+            value={formatDate(user.updated_at || user.created_at)}
+          />
+          <InfoField
+            label="Account Status"
+            value={user.is_active ? "Active" : "Inactive"}
+          />
         </div>
-      </div>
-    </div>
-  );
-};
-
-// ── Helper Components ──────────────────────────────────────────────────────────
-
-const ReadOnlyField = ({ icon: Icon, label, value }) => (
-  <div className="flex gap-4 p-5 rounded-xl bg-gray-50 border border-gray-100">
-    <div className="bg-white p-4 rounded-lg h-fit border border-gray-100 flex-shrink-0">
-      <Icon className="w-6 h-6 text-emerald-600" />
-    </div>
-    <div className="flex-1 min-w-0">
-      <label className="text-xs font-bold text-gray-600 uppercase tracking-wider block mb-1">
-        {label}
-      </label>
-      <p className="text-base font-semibold text-gray-950 truncate">{value}</p>
-      <p className="text-xs text-gray-400 mt-1">
-        Visit the Barangay Hall to update
-      </p>
-    </div>
-  </div>
-);
-
-const CustomToast = ({ show, message, type, onClose }) => {
-  if (!show) return null;
-  const styles = {
-    success: "bg-emerald-50 border-emerald-200 text-emerald-800",
-    error: "bg-red-50 border-red-200 text-red-800",
-  };
-  const icons = {
-    success: <Check className="w-5 h-5 text-emerald-600" />,
-    error: <AlertTriangle className="w-5 h-5 text-red-600" />,
-  };
-  return (
-    <div className="fixed top-20 right-6 z-50 animate-fade-in-down">
-      <div
-        className={`flex items-center gap-3 p-4 rounded-xl border shadow-lg max-w-sm ${styles[type]}`}
-      >
-        {icons[type]}
-        <p className="text-sm font-semibold flex-1">{message}</p>
-        <button
-          onClick={onClose}
-          className="text-gray-400 hover:text-gray-600 ml-2 text-lg font-bold leading-none"
-        >
-          ×
-        </button>
-      </div>
+      </Card>
     </div>
   );
 };
