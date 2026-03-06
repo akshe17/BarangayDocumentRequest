@@ -30,7 +30,7 @@ class AdminResidentController extends Controller
 
     public function index()
     {
-        $residents = User::with(['zone', 'resident.gender', 'resident.civilStatus'])
+        $residents = User::with(['resident.zone', 'resident.gender', 'resident.civilStatus'])
             ->where('role_id', 2)
             ->orderBy('last_name')
             ->orderBy('first_name')
@@ -55,6 +55,7 @@ class AdminResidentController extends Controller
 
         $data = $request->validate([
             'first_name'      => 'required|string|max:100',
+            'middle_name'     => 'nullable|string|max:100',
             'last_name'       => 'required|string|max:100',
             'email'           => "required|email|max:255|unique:users,email,{$id},user_id",
             'zone_id'         => 'nullable|exists:zones,zone_id',
@@ -65,15 +66,16 @@ class AdminResidentController extends Controller
         ]);
 
         $user->update([
-            'first_name' => $data['first_name'],
-            'last_name'  => $data['last_name'],
-            'email'      => $data['email'],
-            'zone_id'    => $data['zone_id'] ?? null,
+            'first_name'  => $data['first_name'],
+            'middle_name' => $data['middle_name'] ?? null,
+            'last_name'   => $data['last_name'],
+            'email'       => $data['email'],
         ]);
 
         Resident::updateOrCreate(
             ['user_id' => $user->user_id],
             [
+                'zone_id'         => $data['zone_id'] ?? null,
                 'gender_id'       => $data['gender_id'] ?? null,
                 'civil_status_id' => $data['civil_status_id'] ?? null,
                 'birthdate'       => $data['birthdate'] ?? null,
@@ -89,7 +91,7 @@ class AdminResidentController extends Controller
 
         return response()->json([
             'message' => 'Resident updated successfully.',
-            'user'    => User::with(['zone', 'resident.gender', 'resident.civilStatus'])->find($id),
+            'user'    => User::with(['resident.zone', 'resident.gender', 'resident.civilStatus'])->find($id),
         ]);
     }
 
@@ -109,7 +111,7 @@ class AdminResidentController extends Controller
 
         return response()->json([
             'message' => $newState ? 'Account enabled.' : 'Account disabled.',
-            'user'    => User::with(['zone', 'resident.gender', 'resident.civilStatus'])->find($id),
+            'user'    => User::with(['resident.zone', 'resident.gender', 'resident.civilStatus'])->find($id),
         ]);
     }
 
