@@ -28,6 +28,7 @@ class User extends Authenticatable
           'is_active',
         // --- ADDED THESE LINES ---
         'first_name',
+         'middle_name',
         'last_name',
         // -------------------------
     ];

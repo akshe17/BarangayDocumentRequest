@@ -75,7 +75,7 @@ class AuthController extends Controller
     }
 
     // Load relationships
-    $user->load('zone', 'resident');
+    $user->load('resident.zone', 'resident');
     
     // 3. Resident-specific verification checks (Role 2)
     if ((int)$user->role_id === 2) {
@@ -116,9 +116,9 @@ class AuthController extends Controller
     // Prepare response data
     $userData = $user->toArray();
     
-    // Add zone name
-    if ($user->zone) {
-        $userData['zone_name'] = $user->zone->zone_name; // Matches your migration field 'zone_name'
+    // Add zone name from resident's zone
+    if ($user->resident && $user->resident->zone) {
+        $userData['zone_name'] = $user->resident->zone->zone_name;
     } else {
         $userData['zone_name'] = null;
     }
@@ -133,10 +133,11 @@ public function register(Request $request)
 {
     try {
         $validated = $request->validate([
-            'email' => 'required|email|unique:users,email',
-            'password' => 'required|min:6',
-            'fname' => 'required|string|max:255',
-            'lname' => 'required|string|max:255',
+            'email'           => 'required|email|unique:users,email',
+            'password'        => 'required|min:6',
+            'fname'           => 'required|string|max:255',
+            'mname'           => 'nullable|string|max:255',
+            'lname'           => 'required|string|max:255',
             'birthdate' => 'required|date|before:today',
             'house_no' => 'required|string|max:255',
             'zone' => 'required|integer|exists:zones,zone_id',
@@ -198,50 +199,48 @@ public function register(Request $request)
 
             // 1. Create user
             $user = User::create([
-                'email' => $request->email,
-                'password' => Hash::make($request->password),
-                'role_id' => 2, // Assuming 2 is Resident
-                'first_name' => $request->fname,
-                'last_name' => $request->lname,
-                'zone_id' => $request->zone,
-                'is_active' => true,
+                'email'       => $request->email,
+                'password'    => Hash::make($request->password),
+                'role_id'     => 2,
+                'first_name'  => $request->fname,
+                'middle_name' => $request->mname ?? null,
+                'last_name'   => $request->lname,
+                'is_active'   => true,
             ]);
 
             // 2. Create resident
             $resident = Resident::create([
-                'user_id' => $user->user_id,
-                'birthdate' => $request->birthdate,
-                'house_no' => $request->house_no,
-                'gender_id' => $request->gender_id,
+                'user_id'         => $user->user_id,
+                'zone_id'         => $request->zone,
+                'birthdate'       => $request->birthdate,
+                'house_no'        => $request->house_no,
+                'gender_id'       => $request->gender_id,
                 'civil_status_id' => $request->civil_status_id,
-                'id_image_path' => $path,
-    
-                'is_verified' => null,
+                'id_image_path'   => $path,
+                'is_verified'     => null,
             ]);
 
-            // --- NEW: ACTION LOG LOGIC FOR WEBSITE NOTIFICATION ---
-            // Find Zone Leaders to log the action for them
-            $zoneLeaders = User::where('role_id', 4) // Assuming 4 is Zone Leader based on your original code
-                               ->where('zone_id', $user->zone_id)
+            // Find Zone Leaders to notify - match zone from resident record
+            $zoneLeaders = User::where('role_id', 4)
+                               ->whereHas('zoneLeader', fn($q) => $q->where('zone_id', $resident->zone_id))
                                ->get();
 
             foreach ($zoneLeaders as $leader) {
                 ActionLog::create([
-                    'user_id' => $leader->user_id, // Logged for the zone leader
-                    'request_id' => null, // Not a specific document request yet
-                    'action' => 'New Registration',
-                    'details' => "New resident registration received from: {$user->first_name} {$user->last_name} in Zone {$user->zone_id}.",
+                    'user_id'    => $leader->user_id,
+                    'request_id' => null,
+                    'action'     => 'New Registration',
+                    'details'    => "New resident registration received from: {$user->first_name} {$user->last_name} in Zone {$resident->zone_id}.",
                 ]);
             }
-            // -----------------------------------------------------
 
             // --- EMAIL LOGIC ---
             // Send email to Zone Leaders in the same zone
-            Log::info("Looking for zone leaders in zone: {$user->zone_id}");
+            Log::info("Looking for zone leaders in zone: {$resident->zone_id}");
             Log::info("Found " . $zoneLeaders->count() . " zone leaders");
 
             if ($zoneLeaders->isEmpty()) {
-                Log::warning("No zone leaders found for zone_id: {$user->zone_id}");
+                Log::warning("No zone leaders found for zone_id: {$resident->zone_id}");
             }
 
             foreach ($zoneLeaders as $leader) {
@@ -290,14 +289,16 @@ public function logout(Request $request)
  public function updateName(Request $request)
     {
         $request->validate([
-            'first_name' => 'required|string|max:255',
-            'last_name'  => 'required|string|max:255',
+            'first_name'  => 'required|string|max:255',
+            'middle_name' => 'nullable|string|max:255',
+            'last_name'   => 'required|string|max:255',
         ]);
 
         $user = $request->user();
         $user->update([
-            'first_name' => $request->first_name,
-            'last_name'  => $request->last_name,
+            'first_name'  => $request->first_name,
+            'middle_name' => $request->middle_name ?? null,
+            'last_name'   => $request->last_name,
         ]);
 
         return response()->json([
