@@ -45,6 +45,11 @@ const ZoneLeaderLayout = () => {
       icon: <XCircle size={20} />,
     },
     {
+      path: "/zone-leader/clearance-queue",
+      label: "Zone Clearance Queue",
+      icon: <LayoutDashboard size={20} />,
+    },
+    {
       path: "/zone-leader/logs",
       label: "Activity Logs",
       icon: <ClipboardList size={20} />,

@@ -15,7 +15,7 @@ import LoginPage from "./pages/LoginPage";
 import Register from "./pages/resident/Register";
 import DownloadApp from "./pages/Download";
 import Practice from "./pages/Practice";
-
+import ZoneClearanceQueue from "./pages/zoneLeader/ZoneClearanceQueue";
 // Pages
 import VerifiedResidents from "./pages/zoneLeader/VerifiedResidents";
 import PendingResidents from "./pages/zoneLeader/PendingResidents";
@@ -164,6 +164,8 @@ const App = () => {
           <Route path="rejected" element={<RejectedResidents />} />
           <Route path="logs" element={<ZoneLeaderLogs />} />
           <Route path="zone-map" element={<ZoneMap />} />
+          <Route path="clearance-queue" element={<ZoneClearanceQueue />} />
+
           <Route path="profile" element={<ZoneLeaaderProfile />} />
         </Route>
 

@@ -19,17 +19,21 @@ class ClerkController extends Controller
     /**
      * Centralized eager-load chain.
      */
-    private function baseQuery()
-    {
-        return DocumentRequest::with([
-        'resident.user.zone',
+ private function baseQuery()
+{
+    return DocumentRequest::with([
+        'resident.user',
+        'resident.zone',
         'resident.gender',
         'resident.civilStatus',
         'documentType',
         'status',
-        'formData.fieldDefinition',  // ← ADD THIS LINE
-    ]);
-    }
+        'formData.fieldDefinition',
+    ])
+    ->whereHas('documentType', function ($q) {
+        $q->where('handler_role_id', 3); // 3 = Clerk
+    });
+}
 
     /**
      * GET /api/clerk/requests/pending

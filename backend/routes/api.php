@@ -150,12 +150,17 @@ Route::get('/resident/notifications', [ResidentNotificationController::class, 'i
 
         // Zone Leader Routes
          Route::get('/zone-leader/dashboard-stats', [ZoneLeaderController::class, 'dashboardStats']);
+         
 
         Route::get('/zone-leader/logs', [ZoneLeaderController::class, 'zoneLeaderPersonalLogs']);
     Route::get('/zone-leader/residents', [ZoneLeaderController::class, 'getZoneResidents']);
     Route::post('/zone-leader/residents/{id}/verify', [ZoneLeaderController::class, 'verifyResident']);
     Route::post('/zone-leader/residents/{id}/reject', [ZoneLeaderController::class, 'rejectResident']);
-
+Route::get('/zone-leader/clearance',                [ZoneLeaderController::class, 'getClearanceRequests']);
+Route::post('/zone-leader/clearance/{id}/approve',  [ZoneLeaderController::class, 'approveClearance']);
+Route::post('/zone-leader/clearance/{id}/reject',   [ZoneLeaderController::class, 'rejectClearance']);
+Route::post('/zone-leader/clearance/{id}/ready',    [ZoneLeaderController::class, 'markReady']);
+Route::post('/zone-leader/clearance/{id}/complete', [ZoneLeaderController::class, 'complete']);
 
 
     // ── Static named routes first ──────────────────────────────

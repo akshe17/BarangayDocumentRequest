@@ -266,6 +266,7 @@ const DocumentForm = ({
                         <option value="text">Short Text</option>
                         <option value="textarea">Long Text</option>
                         <option value="date">Date</option>
+                        <option value="number">Number</option>
                       </select>
                     </div>
                     <div className="col-span-5 sm:col-span-2 flex justify-end gap-3">
