@@ -127,7 +127,7 @@ class ResidentDocumentController extends Controller
         });
     }
 
-    public function getHistory()
+      public function getHistory()
     {
         try {
             $user = Auth::user();
@@ -136,16 +136,39 @@ class ResidentDocumentController extends Controller
             }
 
             $history = DocumentRequest::where('resident_id', $user->resident->resident_id)
-                ->with(['status', 'documentType'])
+                ->with([
+                    'status',
+                    // Eager-load document type + its handler role
+                    'documentType',
+                ])
                 ->orderBy('request_date', 'desc')
                 ->get();
+
+            // For requests handled by a Zone Leader (handler_role_id = 4),
+            // attach the zone leader whose zone matches the resident's zone.
+            $residentZoneId = $user->resident->zone_id;
+
+            $zoneLeader = \App\Models\ZoneLeader::with('zone')
+                ->where('zone_id', $residentZoneId)
+                ->first();
+
+            // Append a "zone_leader_info" field to each relevant request
+            $history->each(function ($req) use ($zoneLeader) {
+                if ((int) $req->documentType?->handler_role_id === 4) {
+                    $req->zone_leader_info = $zoneLeader ? [
+                        'zone_name' => $zoneLeader->zone?->zone_name,
+                        'house_no'  => $zoneLeader->house_no,
+                    ] : null;
+                } else {
+                    $req->zone_leader_info = null;
+                }
+            });
 
             return response()->json($history, 200);
         } catch (\Exception $e) {
             return response()->json(['error' => $e->getMessage()], 500);
         }
     }
-
     // In a Controller (e.g., ActionLogController)
 public function getResidentLogs() {
     return ActionLog::where('user_id', auth()->id())
