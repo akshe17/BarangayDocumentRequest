@@ -130,7 +130,9 @@ const ResidentProfileCard = ({ resident, activeTab, onTabChange }) => {
           <div className="flex-1 min-w-0">
             <div className="flex items-center gap-2 flex-wrap">
               <h2 className="text-base font-black text-slate-900">
-                {resident?.first_name} {resident?.last_name}
+                {resident?.first_name}
+                {resident?.middle_name ? ` ${resident.middle_name}` : ""}{" "}
+                {resident?.last_name}
               </h2>
               <StatusPill
                 isVerified={resident?.resident?.is_verified}
@@ -141,9 +143,9 @@ const ResidentProfileCard = ({ resident, activeTab, onTabChange }) => {
               <span className="flex items-center gap-1 text-[11px] text-slate-400">
                 <Mail size={10} /> {resident?.email}
               </span>
-              {resident?.zone?.zone_name && (
+              {resident?.resident?.zone?.zone_name && (
                 <span className="flex items-center gap-1 text-[11px] text-slate-400">
-                  <MapPin size={10} /> {resident.zone.zone_name}
+                  <MapPin size={10} /> {resident.resident.zone.zone_name}
                 </span>
               )}
             </div>
@@ -188,13 +190,14 @@ const EditDetailsTab = ({ userId, onToast }) => {
 
   const [form, setForm] = useState({
     first_name: residentData?.first_name || "",
+    middle_name: residentData?.middle_name || "", // User model
     last_name: residentData?.last_name || "",
     email: residentData?.email || "",
-    zone_id: residentData?.zone_id || "",
     gender_id: residentData?.resident?.gender_id || "",
     civil_status_id: residentData?.resident?.civil_status_id || "",
     birthdate: residentData?.resident?.birthdate || "",
     house_no: residentData?.resident?.house_no || "",
+    zone_id: residentData?.resident?.zone_id || "", // Resident model
   });
 
   const set = (key) => (e) => setForm((f) => ({ ...f, [key]: e.target.value }));
@@ -233,6 +236,7 @@ const EditDetailsTab = ({ userId, onToast }) => {
       />
 
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+        {/* ── Name row ── */}
         <div>
           <FieldLabel>First Name</FieldLabel>
           <input
@@ -253,6 +257,19 @@ const EditDetailsTab = ({ userId, onToast }) => {
             onChange={set("last_name")}
           />
         </div>
+
+        {/* ── Middle name (User table) — full width ── */}
+        <div className="sm:col-span-2">
+          <FieldLabel>Middle Name</FieldLabel>
+          <input
+            className={inputCls}
+            placeholder="Middle name (optional)"
+            value={form.middle_name}
+            onChange={set("middle_name")}
+          />
+        </div>
+
+        {/* ── Contact / account ── */}
         <div className="sm:col-span-2">
           <FieldLabel>Email Address</FieldLabel>
           <input
@@ -263,6 +280,8 @@ const EditDetailsTab = ({ userId, onToast }) => {
             onChange={set("email")}
           />
         </div>
+
+        {/* ── Resident details ── */}
         <div>
           <FieldLabel>House No.</FieldLabel>
           <input
@@ -282,21 +301,6 @@ const EditDetailsTab = ({ userId, onToast }) => {
           />
         </div>
         <div>
-          <FieldLabel>Zone</FieldLabel>
-          <select
-            className={selectCls}
-            value={form.zone_id}
-            onChange={set("zone_id")}
-          >
-            <option value="">Select zone</option>
-            {meta.zones.map((z) => (
-              <option key={z.zone_id} value={z.zone_id}>
-                {z.zone_name}
-              </option>
-            ))}
-          </select>
-        </div>
-        <div>
           <FieldLabel>Gender</FieldLabel>
           <select
             className={selectCls}
@@ -311,7 +315,7 @@ const EditDetailsTab = ({ userId, onToast }) => {
             ))}
           </select>
         </div>
-        <div className="sm:col-span-2">
+        <div>
           <FieldLabel>Civil Status</FieldLabel>
           <select
             className={selectCls}
@@ -322,6 +326,23 @@ const EditDetailsTab = ({ userId, onToast }) => {
             {meta.civil_statuses.map((cs) => (
               <option key={cs.civil_status_id} value={cs.civil_status_id}>
                 {cs.civil_status_name}
+              </option>
+            ))}
+          </select>
+        </div>
+
+        {/* ── Zone (Resident table) — full width ── */}
+        <div className="sm:col-span-2">
+          <FieldLabel>Zone</FieldLabel>
+          <select
+            className={selectCls}
+            value={form.zone_id}
+            onChange={set("zone_id")}
+          >
+            <option value="">Select zone</option>
+            {meta.zones.map((z) => (
+              <option key={z.zone_id} value={z.zone_id}>
+                {z.zone_name}
               </option>
             ))}
           </select>
@@ -875,7 +896,7 @@ const ResidentManagement = () => {
                       <td className="px-6 py-4 text-center hidden sm:table-cell">
                         <span className="inline-flex items-center gap-1 text-[10px] font-bold text-slate-500 bg-slate-100 px-2.5 py-1 rounded-lg">
                           <MapPin size={9} />
-                          {u.zone?.zone_name || "—"}
+                          {u.resident?.zone?.zone_name || "—"}
                         </span>
                       </td>
                       <td className="px-6 py-4 text-center">
@@ -909,7 +930,7 @@ const ResidentManagement = () => {
 
         {/* Footer count */}
         {!loading && filtered.length > 0 && (
-          <p className="text-center text-[10px] text-slate-300 font-medium mt-4">
+          <p className="text-center text-[10px] text-slate-500 font-medium mt-4">
             Showing {filtered.length} resident{filtered.length !== 1 ? "s" : ""}
           </p>
         )}
