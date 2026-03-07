@@ -14,9 +14,13 @@ import {
   ClipboardList,
   Search,
   X,
+  RefreshCw,
+  Hourglass,
+  Sparkles,
 } from "lucide-react";
 import { useAuth } from "../../context/AuthContext";
 import { useNewRequest } from "../../context/NewRequestContext";
+import { useResidentSync } from "../../context/ResidentSyncContext";
 
 // ─── helpers ────────────────────────────────────────────────────────────────
 
@@ -225,6 +229,109 @@ function SkeletonDocumentPicker({ count = 5 }) {
   );
 }
 
+// ─── Document Card (available) ───────────────────────────────────────────────
+
+function AvailableDocCard({ doc, onSelect }) {
+  const fee = parseFloat(doc.fee) || 0;
+  const reqCount = doc.requirements?.length ?? 0;
+  const fieldCount = doc.form_fields?.length ?? 0;
+
+  return (
+    <button
+      onClick={() => onSelect(doc)}
+      className="w-full text-left group rounded-2xl border border-gray-200 bg-white
+                 hover:border-emerald-300 hover:shadow-md transition-all duration-200
+                 cursor-pointer active:scale-[0.99]"
+    >
+      <div className="p-5 flex items-center gap-4">
+        <div
+          className="w-11 h-11 rounded-xl bg-emerald-50 group-hover:bg-emerald-500
+                        flex items-center justify-center shrink-0 transition-all duration-200"
+        >
+          <FileText
+            size={19}
+            className="text-emerald-500 group-hover:text-white transition-colors"
+          />
+        </div>
+        <div className="flex-1 min-w-0">
+          <h3 className="text-sm font-bold text-gray-800 truncate">
+            {doc.document_name}
+          </h3>
+          <div className="flex items-center gap-3 mt-1 flex-wrap">
+            <span
+              className={`text-xs font-semibold ${fee === 0 ? "text-emerald-500" : "text-gray-500"}`}
+            >
+              {fee === 0 ? "Free" : `₱${fee.toFixed(2)}`}
+            </span>
+            {reqCount > 0 && (
+              <span className="text-[11px] text-gray-400">
+                {reqCount} req{reqCount > 1 ? "s" : ""}
+              </span>
+            )}
+            {fieldCount > 0 && (
+              <span className="text-[11px] text-gray-400">
+                {fieldCount} field{fieldCount > 1 ? "s" : ""}
+              </span>
+            )}
+          </div>
+        </div>
+        <ChevronRight
+          size={16}
+          className="text-gray-300 group-hover:text-emerald-500 transition-colors shrink-0"
+        />
+      </div>
+    </button>
+  );
+}
+
+// ─── Document Card (in progress) ─────────────────────────────────────────────
+
+function InProgressDocCard({ doc, blockedStatus }) {
+  const meta = statusMeta[blockedStatus];
+  const StatusIcon = meta?.Icon;
+  const fee = parseFloat(doc.fee) || 0;
+
+  return (
+    <div className="w-full rounded-2xl border border-gray-100 bg-gray-50/70 p-5 flex items-center gap-4">
+      {/* Muted icon */}
+      <div
+        className="w-11 h-11 rounded-xl bg-white border border-gray-100
+                      flex items-center justify-center shrink-0"
+      >
+        <FileText size={19} className="text-gray-300" />
+      </div>
+
+      <div className="flex-1 min-w-0">
+        <div className="flex items-center gap-2 flex-wrap">
+          <h3 className="text-sm font-semibold text-gray-500 truncate">
+            {doc.document_name}
+          </h3>
+          {meta && (
+            <span
+              className="inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-full"
+              style={{ color: meta.color, background: meta.bg }}
+            >
+              {StatusIcon && <StatusIcon size={9} />} {meta.label}
+            </span>
+          )}
+        </div>
+        <div className="flex items-center gap-3 mt-1">
+          <span className="text-[11px] text-gray-400">
+            {fee === 0 ? "Free" : `₱${fee.toFixed(2)}`}
+          </span>
+          <span className="text-[11px] text-gray-400">·</span>
+          <span className="text-[11px] text-gray-400">
+            Resubmit once completed or rejected
+          </span>
+        </div>
+      </div>
+
+      {/* Hourglass indicator */}
+      <Hourglass size={14} className="text-gray-300 shrink-0" />
+    </div>
+  );
+}
+
 // ─── VIEW 1: Document Picker ─────────────────────────────────────────────────
 
 function DocumentPicker({
@@ -236,14 +343,37 @@ function DocumentPicker({
   onRetry,
 }) {
   const [search, setSearch] = useState("");
+  const [activeTab, setActiveTab] = useState("available");
 
-  const filtered = useMemo(() => {
-    if (!search.trim()) return documentList;
+  // Split docs into available vs in-progress
+  const { available, inProgress } = useMemo(() => {
+    const available = [];
+    const inProgress = [];
+    (documentList ?? []).forEach((doc) => {
+      const blockedStatus = getBlockedStatus(doc, existingRequests);
+      if (blockedStatus) {
+        inProgress.push({ doc, blockedStatus });
+      } else {
+        available.push(doc);
+      }
+    });
+    return { available, inProgress };
+  }, [documentList, existingRequests]);
+
+  // Filter whichever tab is active by search
+  const filteredAvailable = useMemo(() => {
+    if (!search.trim()) return available;
     const q = search.toLowerCase();
-    return documentList?.filter((doc) =>
+    return available.filter((d) => d.document_name.toLowerCase().includes(q));
+  }, [available, search]);
+
+  const filteredInProgress = useMemo(() => {
+    if (!search.trim()) return inProgress;
+    const q = search.toLowerCase();
+    return inProgress.filter(({ doc }) =>
       doc.document_name.toLowerCase().includes(q),
     );
-  }, [documentList, search]);
+  }, [inProgress, search]);
 
   if (isLoading) return <SkeletonDocumentPicker count={5} />;
 
@@ -266,10 +396,14 @@ function DocumentPicker({
     );
   }
 
+  const currentList =
+    activeTab === "available" ? filteredAvailable : filteredInProgress;
+  const isEmpty = currentList.length === 0;
+
   return (
-    <div className="space-y-3">
-      {/* Search bar */}
-      <div className="relative mb-4">
+    <div className="space-y-4">
+      {/* ── Search ── */}
+      <div className="relative">
         <Search
           size={15}
           className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none"
@@ -279,7 +413,9 @@ function DocumentPicker({
           value={search}
           onChange={(e) => setSearch(e.target.value)}
           placeholder="Search documents…"
-          className="w-full bg-white border border-gray-200 rounded-xl pl-9 pr-9 py-2.5 text-sm text-gray-800 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-emerald-400 focus:border-transparent transition-all"
+          className="w-full bg-white border border-gray-200 rounded-xl pl-9 pr-9 py-2.5
+                     text-sm text-gray-800 placeholder:text-gray-400
+                     focus:outline-none focus:ring-2 focus:ring-emerald-400 focus:border-transparent transition-all"
         />
         {search && (
           <button
@@ -291,9 +427,67 @@ function DocumentPicker({
         )}
       </div>
 
-      {/* Empty search result */}
-      {filtered?.length === 0 && (
-        <div className="flex flex-col items-center justify-center py-16 gap-3 text-center">
+      {/* ── Tabs ── */}
+      <div className="flex gap-2">
+        <button
+          onClick={() => setActiveTab("available")}
+          className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs font-bold
+                      border transition-all duration-200
+                      ${
+                        activeTab === "available"
+                          ? "bg-emerald-500 text-white border-emerald-500 shadow-sm"
+                          : "bg-white text-gray-500 border-gray-200 hover:border-emerald-200 hover:text-emerald-600"
+                      }`}
+        >
+          <Sparkles size={12} />
+          Available
+          {available.length > 0 && (
+            <span
+              className={`inline-flex items-center justify-center min-w-[18px] h-[18px]
+                              rounded-full text-[10px] font-black px-1
+                              ${activeTab === "available" ? "bg-white/20 text-white" : "bg-emerald-100 text-emerald-600"}`}
+            >
+              {available.length}
+            </span>
+          )}
+        </button>
+
+        <button
+          onClick={() => setActiveTab("inProgress")}
+          className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs font-bold
+                      border transition-all duration-200
+                      ${
+                        activeTab === "inProgress"
+                          ? "bg-amber-500 text-white border-amber-500 shadow-sm"
+                          : "bg-white text-gray-500 border-gray-200 hover:border-amber-200 hover:text-amber-600"
+                      }`}
+        >
+          <Hourglass size={12} />
+          In Progress
+          {inProgress.length > 0 && (
+            <span
+              className={`inline-flex items-center justify-center min-w-[18px] h-[18px]
+                              rounded-full text-[10px] font-black px-1
+                              ${activeTab === "inProgress" ? "bg-white/20 text-white" : "bg-amber-100 text-amber-600"}`}
+            >
+              {inProgress.length}
+            </span>
+          )}
+        </button>
+      </div>
+
+      {/* ── Tab description strip ── */}
+      <div
+        className={`text-[11px] font-medium px-1 ${activeTab === "available" ? "text-gray-400" : "text-amber-500"}`}
+      >
+        {activeTab === "available"
+          ? "Documents you can request right now"
+          : "Documents with an active request — check back after they're processed"}
+      </div>
+
+      {/* ── Empty states ── */}
+      {isEmpty && search && (
+        <div className="flex flex-col items-center justify-center py-14 gap-3 text-center">
           <div className="w-12 h-12 rounded-2xl bg-gray-50 flex items-center justify-center">
             <FileText size={20} className="text-gray-300" />
           </div>
@@ -309,96 +503,52 @@ function DocumentPicker({
         </div>
       )}
 
-      {/* Document cards */}
-      {filtered?.map((doc) => {
-        const blockedStatus = getBlockedStatus(doc, existingRequests);
-        const isBlocked = !!blockedStatus;
-        const meta = blockedStatus ? statusMeta[blockedStatus] : null;
-        const StatusIcon = meta?.Icon;
-        const fee = parseFloat(doc.fee) || 0;
-        const reqCount = doc.requirements?.length ?? 0;
-        const fieldCount = doc.form_fields?.length ?? 0;
+      {isEmpty && !search && activeTab === "available" && (
+        <div className="flex flex-col items-center justify-center py-14 gap-3 text-center">
+          <div className="w-12 h-12 rounded-2xl bg-emerald-50 flex items-center justify-center">
+            <Sparkles size={20} className="text-emerald-400" />
+          </div>
+          <p className="text-sm font-semibold text-gray-400">
+            No documents available
+          </p>
+          <p className="text-xs text-gray-300">
+            Check back later for new document types
+          </p>
+        </div>
+      )}
 
-        return (
-          <button
-            key={doc.document_id}
-            onClick={() => !isBlocked && onSelect(doc)}
-            disabled={isBlocked}
-            className={`w-full text-left group rounded-2xl border transition-all duration-200 ${
-              isBlocked
-                ? "bg-gray-50 border-gray-100 cursor-not-allowed opacity-60"
-                : "bg-white border-gray-200 hover:border-emerald-300 hover:shadow-md cursor-pointer active:scale-[0.99]"
-            }`}
-          >
-            <div className="p-5 sm:p-6 flex items-center gap-4">
-              <div
-                className={`w-11 h-11 rounded-xl flex items-center justify-center shrink-0 transition-all ${
-                  isBlocked
-                    ? "bg-gray-100"
-                    : "bg-emerald-50 group-hover:bg-emerald-500"
-                }`}
-              >
-                <FileText
-                  size={20}
-                  className={
-                    isBlocked
-                      ? "text-gray-400"
-                      : "text-emerald-500 group-hover:text-white transition-colors"
-                  }
-                />
-              </div>
+      {isEmpty && !search && activeTab === "inProgress" && (
+        <div className="flex flex-col items-center justify-center py-14 gap-3 text-center">
+          <div className="w-12 h-12 rounded-2xl bg-amber-50 flex items-center justify-center">
+            <Hourglass size={20} className="text-amber-400" />
+          </div>
+          <p className="text-sm font-semibold text-gray-400">
+            No requests in progress
+          </p>
+          <p className="text-xs text-gray-300">
+            All your documents are ready to request
+          </p>
+        </div>
+      )}
 
-              <div className="flex-1 min-w-0">
-                <div className="flex items-center gap-2 flex-wrap">
-                  <h3 className="text-sm font-bold text-gray-800 truncate">
-                    {doc.document_name}
-                  </h3>
-                  {isBlocked && meta && (
-                    <span
-                      className="inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-full uppercase tracking-wide"
-                      style={{ color: meta.color, background: meta.bg }}
-                    >
-                      <StatusIcon size={9} /> {meta.label}
-                    </span>
-                  )}
-                </div>
-
-                <div className="flex items-center gap-3 mt-1.5 flex-wrap">
-                  <span
-                    className={`text-xs font-bold ${fee === 0 ? "text-emerald-500" : "text-gray-600"}`}
-                  >
-                    {fee === 0 ? "Free" : `₱${fee.toFixed(2)}`}
-                  </span>
-                  {reqCount > 0 && (
-                    <span className="text-xs text-gray-400">
-                      {reqCount} requirement{reqCount > 1 ? "s" : ""}
-                    </span>
-                  )}
-                  {fieldCount > 0 && (
-                    <span className="text-xs text-gray-400">
-                      {fieldCount} form field{fieldCount > 1 ? "s" : ""}
-                    </span>
-                  )}
-                </div>
-
-                {isBlocked && (
-                  <p className="text-[11px] text-gray-400 mt-1">
-                    You have an active request. Re-request once it's completed
-                    or rejected.
-                  </p>
-                )}
-              </div>
-
-              {!isBlocked && (
-                <ChevronRight
-                  size={18}
-                  className="text-gray-300 group-hover:text-emerald-500 transition-colors shrink-0"
-                />
-              )}
-            </div>
-          </button>
-        );
-      })}
+      {/* ── Document list ── */}
+      <div className="space-y-2.5">
+        {activeTab === "available"
+          ? filteredAvailable.map((doc) => (
+              <AvailableDocCard
+                key={doc.document_id}
+                doc={doc}
+                onSelect={onSelect}
+              />
+            ))
+          : filteredInProgress.map(({ doc, blockedStatus }) => (
+              <InProgressDocCard
+                key={doc.document_id}
+                doc={doc}
+                blockedStatus={blockedStatus}
+              />
+            ))}
+      </div>
     </div>
   );
 }
@@ -591,6 +741,15 @@ const NewRequest = () => {
     retry,
     submitRequest,
   } = useNewRequest();
+  const { refreshAll } = useResidentSync();
+
+  const [refreshing, setRefreshing] = useState(false);
+  const handleRefreshAll = async () => {
+    setRefreshing(true);
+    refreshAll();
+    // Brief visual feedback — contexts are async but fire immediately
+    setTimeout(() => setRefreshing(false), 800);
+  };
 
   const [view, setView] = useState("pick");
   const [selectedDoc, setSelectedDoc] = useState(null);
@@ -660,9 +819,28 @@ const NewRequest = () => {
           </button>
         )}
 
-        <h1 className="text-2xl sm:text-3xl font-black text-gray-900 tracking-tight">
-          {view === "pick" ? "Request a Document" : selectedDoc?.document_name}
-        </h1>
+        <div className="flex items-start justify-between gap-3">
+          <h1 className="text-2xl sm:text-3xl font-black text-gray-900 tracking-tight">
+            {view === "pick"
+              ? "Request a Document"
+              : selectedDoc?.document_name}
+          </h1>
+          {view === "pick" && (
+            <button
+              onClick={handleRefreshAll}
+              disabled={refreshing || isLoading}
+              title="Refresh all data"
+              className="mt-1 p-2 rounded-xl border border-gray-200 text-gray-400
+                         hover:text-emerald-600 hover:border-emerald-200 transition-colors
+                         disabled:opacity-40 shrink-0"
+            >
+              <RefreshCw
+                size={15}
+                className={refreshing ? "animate-spin" : ""}
+              />
+            </button>
+          )}
+        </div>
         <p className="text-sm text-gray-400 mt-1">
           {view === "pick"
             ? "Choose the document you need below."

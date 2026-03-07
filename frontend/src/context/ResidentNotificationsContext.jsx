@@ -7,6 +7,7 @@ import React, {
   useRef,
 } from "react";
 import api from "../axious/api";
+import { useResidentSync } from "./ResidentSyncContext";
 
 const CACHE_TTL_MS = 5 * 60 * 1000;
 
@@ -44,6 +45,14 @@ export const ResidentNotificationsProvider = ({ children }) => {
   }, [fetchLogs]);
 
   const refresh = useCallback(() => fetchLogs({ force: true }), [fetchLogs]);
+
+  // Register with global sync orchestrator
+  const { registerRefresh } = useResidentSync();
+  useEffect(() => {
+    const unregister = registerRefresh("notifications", refresh);
+    return unregister;
+  }, [registerRefresh, refresh]);
+
   const invalidate = useCallback(() => {
     lastFetchedAt.current = null;
   }, []);

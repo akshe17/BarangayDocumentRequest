@@ -10,6 +10,7 @@ import api from "../axious/api";
 import { useResidentDashboard } from "./ResidentDashboardContext";
 import { useResidentHistory } from "./ResidentHistoryContext";
 import { useResidentNotifications } from "./ResidentNotificationsContext";
+import { useResidentSync } from "./ResidentSyncContext";
 
 /* ─────────────────────────────────────────────────────────────
    CACHE SETTINGS
@@ -30,6 +31,7 @@ export const NewRequestProvider = ({ children }) => {
   const { invalidate: invalidateDashboard } = useResidentDashboard();
   const { refresh: refreshHistory } = useResidentHistory();
   const { refresh: refreshNotifications } = useResidentNotifications();
+  const { refreshAll } = useResidentSync();
 
   const [documentList, setDocumentList] = useState([]);
   const [existingRequests, setExistingRequests] = useState([]);
@@ -77,6 +79,13 @@ export const NewRequestProvider = ({ children }) => {
   /* ── Retry (force refresh) ── */
   const retry = useCallback(() => fetchAll({ force: true }), [fetchAll]);
 
+  // Register with global sync orchestrator
+  const { registerRefresh } = useResidentSync();
+  useEffect(() => {
+    const unregister = registerRefresh("newRequest", retry);
+    return unregister;
+  }, [registerRefresh, retry]);
+
   /* ── Invalidate cache (e.g. after a new request is submitted) ── */
   const invalidate = useCallback(() => {
     lastFetchedAt.current = null;
@@ -111,11 +120,8 @@ export const NewRequestProvider = ({ children }) => {
         );
         lastFetchedAt.current = Date.now();
 
-        // Force-refresh history and notifications so new data shows immediately,
-        // and mark the dashboard cache stale for its next render.
-        invalidateDashboard();
-        refreshHistory();
-        refreshNotifications();
+        // Refresh all resident data contexts at once via the sync orchestrator
+        refreshAll();
 
         return { success: true };
       } catch (err) {

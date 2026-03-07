@@ -12,6 +12,7 @@ import { ResidentNotificationsProvider } from "./context/ResidentNotificationsCo
 import { ZoneResidentProvider } from "./context/ZoneResidentContext.jsx";
 import { UserManagementProvider } from "./context/UserManagementContext.jsx";
 import { OverviewProvider } from "./context/OverviewContext.jsx";
+import { ResidentSyncProvider } from "./context/ResidentSyncContext.jsx";
 // ... inside your router/layout
 
 createRoot(document.getElementById("root")).render(
@@ -19,21 +20,23 @@ createRoot(document.getElementById("root")).render(
     <OverviewProvider>
       <UserManagementProvider>
         <ZoneResidentProvider>
-          <ResidentNotificationsProvider>
-            <ResidentHistoryProvider>
-              <ResidentDashboardProvider>
-                <NewRequestProvider>
-                  <AdminResidentProvider>
-                    <DocumentRequestProvider>
-                      <ZoneProvider>
-                        <App />
-                      </ZoneProvider>
-                    </DocumentRequestProvider>
-                  </AdminResidentProvider>
-                </NewRequestProvider>
-              </ResidentDashboardProvider>
-            </ResidentHistoryProvider>
-          </ResidentNotificationsProvider>
+          <ResidentSyncProvider>
+            <ResidentNotificationsProvider>
+              <ResidentHistoryProvider>
+                <ResidentDashboardProvider>
+                  <NewRequestProvider>
+                    <AdminResidentProvider>
+                      <DocumentRequestProvider>
+                        <ZoneProvider>
+                          <App />
+                        </ZoneProvider>
+                      </DocumentRequestProvider>
+                    </AdminResidentProvider>
+                  </NewRequestProvider>
+                </ResidentDashboardProvider>
+              </ResidentHistoryProvider>
+            </ResidentNotificationsProvider>
+          </ResidentSyncProvider>
         </ZoneResidentProvider>
       </UserManagementProvider>
     </OverviewProvider>

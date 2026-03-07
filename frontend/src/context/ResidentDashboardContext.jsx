@@ -8,6 +8,7 @@ import React, {
 } from "react";
 import api from "../axious/api";
 import { useAuth } from "./AuthContext";
+import { useResidentSync } from "./ResidentSyncContext";
 
 /* ─────────────────────────────────────────────────────────────
    CACHE SETTINGS
@@ -66,16 +67,21 @@ export const ResidentDashboardProvider = ({ children }) => {
     [user],
   );
 
-  // Load on mount / when user changes
-  useEffect(() => {
-    fetchDashboardData();
-  }, [fetchDashboardData]);
-
-  // Expose a manual refresh that always bypasses the cache
+  // Register this context's force-refresh with the global sync orchestrator
+  const { registerRefresh } = useResidentSync();
   const refresh = useCallback(
     () => fetchDashboardData({ force: true }),
     [fetchDashboardData],
   );
+  useEffect(() => {
+    const unregister = registerRefresh("dashboard", refresh);
+    return unregister;
+  }, [registerRefresh, refresh]);
+
+  // Load on mount / when user changes
+  useEffect(() => {
+    fetchDashboardData();
+  }, [fetchDashboardData]);
 
   // Call this after a new request is submitted so the dashboard reflects it
   const invalidate = useCallback(() => {

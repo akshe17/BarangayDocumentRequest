@@ -7,6 +7,7 @@ import React, {
   useRef,
 } from "react";
 import api from "../axious/api";
+import { useResidentSync } from "./ResidentSyncContext";
 /* ─────────────────────────────────────────────────────────────
    CACHE SETTINGS
    ───────────────────────────────────────────────────────────── */
@@ -53,6 +54,14 @@ export const ResidentHistoryProvider = ({ children }) => {
     () => fetchHistory({ force: true }),
     [fetchHistory],
   );
+
+  // Register with global sync orchestrator
+  const { registerRefresh } = useResidentSync();
+  useEffect(() => {
+    const unregister = registerRefresh("history", refresh);
+    return unregister;
+  }, [registerRefresh, refresh]);
+
   const invalidate = useCallback(() => {
     lastFetchedAt.current = null;
   }, []);
