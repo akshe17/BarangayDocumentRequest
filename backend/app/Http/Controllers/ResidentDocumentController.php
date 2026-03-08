@@ -140,6 +140,7 @@ class ResidentDocumentController extends Controller
                     'status',
                     // Eager-load document type + its handler role
                     'documentType',
+                    'documentType.requirements', // ← add this
                 ])
                 ->orderBy('request_date', 'desc')
                 ->get();
