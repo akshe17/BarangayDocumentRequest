@@ -15,6 +15,7 @@ import {
   Users,
   Image as ImageIcon,
   Loader2,
+  MessageSquareX,
 } from "lucide-react";
 
 import api from "../../axious/api";
@@ -38,12 +39,29 @@ const fmtDate = (raw) => {
   }
 };
 
+const getFullName = (resident) => {
+  const parts = [
+    resident.first_name ?? resident.firstName,
+    resident.middle_name ?? resident.middleName,
+    resident.last_name ?? resident.lastName,
+  ].filter(Boolean);
+  return parts.length > 0 ? parts.join(" ") : (resident.name ?? "—");
+};
+
+const getInitials = (resident) => {
+  const first = (resident.first_name ?? resident.firstName ?? "")[0] ?? "";
+  const last = (resident.last_name ?? resident.lastName ?? "")[0] ?? "";
+  return (
+    (first + last).toUpperCase() || (resident.name?.[0] ?? "?").toUpperCase()
+  );
+};
+
+/* ─────────────────────────────────────────────────────────────
+   INFO ROW
+───────────────────────────────────────────────────────────── */
 const InfoRow = ({ icon: Icon, label, value }) => (
   <div className="flex items-start gap-3 py-3 border-b border-slate-50 last:border-0">
-    <div
-      className="w-7 h-7 rounded-lg bg-slate-50 border border-slate-100
-                    flex items-center justify-center shrink-0 mt-0.5"
-    >
+    <div className="w-7 h-7 rounded-lg bg-slate-50 border border-slate-100 flex items-center justify-center shrink-0 mt-0.5">
       <Icon size={12} className="text-slate-400" />
     </div>
     <div className="min-w-0 flex-1">
@@ -93,8 +111,8 @@ const IdViewer = ({ url }) => {
               onClick={action}
               title={title}
               className="w-8 h-8 rounded-lg bg-white border border-slate-200 text-sm font-black
-                         text-slate-500 hover:text-emerald-600 hover:border-emerald-300
-                         transition-all shadow-sm"
+                         text-slate-500 hover:text-emerald-600 hover:border-emerald-200
+                         hover:shadow-md transition-all shadow-sm cursor-pointer"
             >
               {label}
             </button>
@@ -103,8 +121,8 @@ const IdViewer = ({ url }) => {
       </div>
 
       <div
-        className="flex-1 bg-slate-100 rounded-2xl border-2 border-slate-200
-                      overflow-hidden flex items-center justify-center min-h-[300px]"
+        className="flex-1 bg-[#f0f2f5] rounded-2xl border border-slate-200 overflow-hidden flex items-center justify-center"
+        style={{ minHeight: "200px" }}
       >
         {url ? (
           <div className="w-full h-full overflow-auto flex items-center justify-center p-4">
@@ -143,10 +161,13 @@ const IdViewer = ({ url }) => {
 };
 
 /* ─────────────────────────────────────────────────────────────
-   DETAIL PAGE — approve anyway only
+   DETAIL PAGE
 ───────────────────────────────────────────────────────────── */
 const DetailPage = ({ resident, onBack, onUpdate, showToast }) => {
   const [actionLoading, setActionLoading] = useState(false);
+
+  const fullName = getFullName(resident);
+  const initials = getInitials(resident);
 
   const handleVerify = async () => {
     setActionLoading(true);
@@ -163,17 +184,13 @@ const DetailPage = ({ resident, onBack, onUpdate, showToast }) => {
   };
 
   return (
-    <div className="min-h-screen bg-slate-50">
+    <div className="min-h-screen bg-[#f6f7f9]">
       {/* Top bar */}
-      <div
-        className="bg-white border-b border-slate-100 h-14 px-5 md:px-8
-                      flex items-center justify-between sticky top-0 z-30 shadow-sm"
-      >
+      <div className="bg-white/90 backdrop-blur border-b border-slate-100 h-14 px-5 md:px-8 flex items-center justify-between sticky top-0 z-30 shadow-sm">
         <button
           onClick={onBack}
           disabled={actionLoading}
-          className="flex items-center gap-2 text-sm font-bold text-slate-400
-                     hover:text-slate-900 transition-colors group disabled:opacity-40"
+          className="flex items-center gap-2 text-sm font-bold text-slate-400 hover:text-slate-900 transition-colors group disabled:opacity-40 cursor-pointer"
         >
           <ArrowLeft
             size={15}
@@ -182,57 +199,54 @@ const DetailPage = ({ resident, onBack, onUpdate, showToast }) => {
           Back to Rejected
         </button>
         <div className="flex items-center gap-2.5">
-          <span className="text-[11px] text-slate-500 font-mono hidden sm:block">
+          <span className="text-[11px] text-slate-300 font-mono hidden sm:block">
             ID-{String(resident.id).padStart(5, "0")}
           </span>
-          <span
-            className="inline-flex items-center gap-1.5 text-[10px] font-black
-            tracking-widest uppercase px-3 py-1 rounded-full border
-            bg-green-50 text-red-700 border-red-200"
-          >
+          <span className="inline-flex items-center gap-1.5 text-[10px] font-black tracking-widest uppercase px-3 py-1 rounded-full border bg-red-50 text-red-700 border-red-200">
             <XCircle size={11} /> Rejected
           </span>
         </div>
       </div>
 
-      {/* Body */}
-      <div className="max-w-5xl mx-auto px-4 md:px-6 py-8 grid md:grid-cols-2 gap-6">
-        {/* LEFT — ID */}
+      {/* Body — sticky image left, scrollable right */}
+      <div className="max-w-5xl mx-auto px-4 md:px-6 py-8 flex flex-col md:flex-row gap-6 items-start">
+        {/* LEFT — sticky ID viewer */}
         <div
-          className="bg-white rounded-2xl border border-slate-100 shadow-sm p-5
-                        flex flex-col min-h-[460px]"
+          className="md:sticky md:top-14 md:w-[400px] w-full shrink-0 bg-white rounded-2xl border border-slate-100 shadow-sm p-5 flex flex-col"
+          style={{ height: "calc(100vh - 56px - 4rem)" }}
         >
           <IdViewer url={resident.idUrl} />
         </div>
 
-        {/* RIGHT — Info + actions */}
-        <div className="flex flex-col gap-5">
+        {/* RIGHT — scrollable info */}
+        <div className="flex-1 flex flex-col gap-5">
           {/* Info card */}
           <div className="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden">
-            <div className="flex items-center gap-3 px-5 py-4 border-b border-slate-100 bg-slate-50/50">
-              <div
-                className="w-8 h-8 rounded-xl bg-emerald-50 border border-red-100
-                              flex items-center justify-center shrink-0"
-              >
-                <UserCheck size={14} className="text-emerald-500" />
+            <div className="flex items-center gap-3 px-5 py-4 border-b border-slate-100 bg-gradient-to-r from-slate-50 to-white">
+              <div className="w-8 h-8 rounded-xl bg-emerald-500 flex items-center justify-center shrink-0 shadow-sm shadow-emerald-200">
+                <UserCheck size={14} className="text-white" />
               </div>
               <p className="text-sm font-black text-slate-900">
                 Resident Details
               </p>
             </div>
+
             <div className="px-5 py-5 space-y-4">
               {/* Avatar + name */}
               <div className="flex items-center gap-4">
                 <div
-                  className="w-14 h-14 rounded-2xl bg-emerald-500 flex items-center
-                                justify-center text-white font-black text-xl shadow-lg
-                                shadow-red-100 shrink-0 select-none"
+                  className="w-14 h-14 rounded-2xl flex items-center justify-center text-white font-black text-xl shrink-0 select-none"
+                  style={{
+                    background:
+                      "linear-gradient(135deg, #f87171 0%, #dc2626 100%)",
+                    boxShadow: "0 8px 20px -4px rgba(220,38,38,0.3)",
+                  }}
                 >
-                  {resident.avatar}
+                  {initials}
                 </div>
-                <div className="min-w-0">
-                  <p className="text-base font-black text-slate-900 truncate">
-                    {resident.name}
+                <div className="min-w-0 flex-1">
+                  <p className="text-base font-black text-slate-900 leading-tight">
+                    {fullName}
                   </p>
                   <p className="text-xs text-slate-400 mt-0.5 truncate">
                     {resident.email}
@@ -240,14 +254,48 @@ const DetailPage = ({ resident, onBack, onUpdate, showToast }) => {
                 </div>
               </div>
 
+              {/* Name breakdown */}
+              <div className="grid grid-cols-3 gap-2 bg-slate-50 p-2 rounded-xl border border-slate-100">
+                {[
+                  {
+                    label: "First Name",
+                    value: resident.first_name ?? resident.firstName,
+                  },
+                  {
+                    label: "Middle Name",
+                    value: resident.middle_name ?? resident.middleName,
+                  },
+                  {
+                    label: "Last Name",
+                    value: resident.last_name ?? resident.lastName,
+                  },
+                ].map(({ label, value }) => (
+                  <div
+                    key={label}
+                    className="bg-white border border-slate-100 rounded-lg px-3 py-2.5"
+                  >
+                    <p className="text-[9px] font-black uppercase tracking-widest text-slate-400 mb-0.5">
+                      {label}
+                    </p>
+                    <p className="text-xs font-bold text-slate-700 truncate">
+                      {value || "—"}
+                    </p>
+                  </div>
+                ))}
+              </div>
+
               {/* Registered */}
-              <div className="bg-slate-50 border border-slate-100 rounded-xl px-4 py-3">
-                <p className="text-[9px] font-black uppercase tracking-widest text-slate-400 mb-1">
-                  Registered
-                </p>
-                <div className="flex items-center gap-1.5 text-xs font-bold text-slate-700">
-                  <Calendar size={11} className="text-slate-400 shrink-0" />
-                  {resident.date}
+              <div className="flex items-center gap-3 bg-slate-50 border border-slate-100 rounded-xl px-4 py-3">
+                <div className="w-7 h-7 rounded-lg bg-white border border-slate-100 flex items-center justify-center shrink-0">
+                  <Calendar size={12} className="text-slate-400" />
+                </div>
+                <div>
+                  <p className="text-[9px] font-black uppercase tracking-widest text-slate-400 mb-0.5">
+                    Registered
+                  </p>
+                  <p className="text-xs font-bold text-slate-700">
+                    {resident.date}
+                  </p>
                 </div>
               </div>
 
@@ -274,13 +322,18 @@ const DetailPage = ({ resident, onBack, onUpdate, showToast }) => {
 
               {/* Rejection reason */}
               {resident.rejectionReason && (
-                <div className="bg-red-50 border border-red-200 rounded-xl px-4 py-3">
-                  <p className="text-[9px] font-black uppercase tracking-widest text-red-500 mb-1">
-                    Rejection Reason
-                  </p>
-                  <p className="text-xs text-red-700 font-medium leading-relaxed">
-                    {resident.rejectionReason}
-                  </p>
+                <div className="rounded-xl overflow-hidden border border-red-100">
+                  <div className="flex items-center gap-2 px-4 py-2 bg-red-500">
+                    <MessageSquareX size={11} className="text-white" />
+                    <p className="text-[10px] font-black text-white uppercase tracking-widest">
+                      Rejection Reason
+                    </p>
+                  </div>
+                  <div className="px-4 py-3 bg-red-50">
+                    <p className="text-xs text-red-700 font-medium leading-relaxed">
+                      {resident.rejectionReason}
+                    </p>
+                  </div>
                 </div>
               )}
             </div>
@@ -289,11 +342,8 @@ const DetailPage = ({ resident, onBack, onUpdate, showToast }) => {
           {/* Action card */}
           <div className="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden">
             <div className="flex items-center gap-3 px-5 py-4 border-b border-slate-50 bg-slate-50/50">
-              <div
-                className="w-8 h-8 rounded-xl bg-emerald-50 border border-emerald-100
-                              flex items-center justify-center shrink-0"
-              >
-                <FileCheck size={14} className="text-red-600" />
+              <div className="w-8 h-8 rounded-xl bg-emerald-50 border border-emerald-100 flex items-center justify-center shrink-0">
+                <FileCheck size={14} className="text-emerald-600" />
               </div>
               <div>
                 <p className="text-sm font-black text-slate-900">
@@ -308,16 +358,18 @@ const DetailPage = ({ resident, onBack, onUpdate, showToast }) => {
             <div className="px-5 py-5">
               <p className="text-sm text-slate-500 leading-relaxed font-medium mb-4">
                 This resident was previously rejected. If their ID looks valid
-                now, you can approve their account anyway and they will receive
-                a verification email.
+                now, you can approve their account — they will receive a
+                verification email.
               </p>
               <button
                 onClick={handleVerify}
                 disabled={actionLoading}
-                className="w-full py-3.5 bg-emerald-500 hover:bg-emerald-600 text-white
-                           rounded-xl font-black text-sm shadow-lg shadow-emerald-100
-                           transition-all flex items-center justify-center gap-2
-                           disabled:opacity-50 active:scale-[0.98]"
+                className="w-full py-3.5 text-white rounded-xl font-black text-sm transition-all flex items-center justify-center gap-2 disabled:opacity-50 active:scale-[0.98] cursor-pointer"
+                style={{
+                  background:
+                    "linear-gradient(135deg, #34d399 0%, #059669 100%)",
+                  boxShadow: "0 6px 16px -2px rgba(16,185,129,0.35)",
+                }}
               >
                 {actionLoading ? (
                   <>
@@ -379,9 +431,9 @@ const RejectedResidents = () => {
         .filter((r) => r.status === "Rejected")
         .filter((r) => {
           const q = searchTerm.toLowerCase();
+          const fullName = getFullName(r).toLowerCase();
           return (
-            r.name.toLowerCase().includes(q) ||
-            r.email.toLowerCase().includes(q)
+            fullName.includes(q) || (r.email ?? "").toLowerCase().includes(q)
           );
         }),
     [residents, searchTerm],
@@ -436,18 +488,14 @@ const RejectedResidents = () => {
               )}
             </p>
             {error && (
-              <p className="text-xs text-emerald-500 font-semibold mt-1">
-                {error}
-              </p>
+              <p className="text-xs text-red-500 font-semibold mt-1">{error}</p>
             )}
           </div>
           <button
             onClick={refresh}
             disabled={isLoading}
             title="Refresh"
-            className="p-3 bg-white border border-slate-200 rounded-xl hover:bg-emerald-50
-                       hover:border-red-200 hover:text-emerald-500 transition-all
-                       text-slate-500 shadow-sm disabled:opacity-50 self-start md:self-auto"
+            className="p-3 bg-white border border-slate-200 rounded-xl hover:bg-red-50 hover:border-red-200 hover:text-red-500 transition-all text-slate-500 shadow-sm disabled:opacity-50 self-start md:self-auto cursor-pointer"
           >
             <RefreshCcw size={16} className={isLoading ? "animate-spin" : ""} />
           </button>
@@ -457,7 +505,7 @@ const RejectedResidents = () => {
         <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-4">
           <div className="relative">
             <Search
-              className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-500 pointer-events-none"
+              className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none"
               size={16}
             />
             <input
@@ -465,8 +513,8 @@ const RejectedResidents = () => {
               onChange={(e) => setSearchTerm(e.target.value)}
               placeholder="Search by name or email…"
               className="w-full pl-11 pr-4 py-3 bg-slate-100 border border-slate-100 rounded-xl
-                         focus:ring-2 focus:ring-red-200 focus:border-red-400 focus:bg-white
-                         outline-none transition-all text-sm font-medium placeholder:text-slate-500"
+                         focus:ring-2 focus:ring-red-100 focus:border-red-300 focus:bg-white
+                         outline-none transition-all text-sm font-medium placeholder:text-slate-400"
             />
           </div>
         </div>
@@ -475,7 +523,7 @@ const RejectedResidents = () => {
         <div className="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden">
           {isLoading ? (
             <div className="p-4">
-              <SkeletonTable rows={6} cols={4} />
+              <SkeletonTable rows={6} cols={6} />
             </div>
           ) : rejected.length === 0 ? (
             <div className="flex flex-col items-center py-28 gap-3">
@@ -494,6 +542,7 @@ const RejectedResidents = () => {
                   <tr className="border-b border-slate-100 bg-slate-50/60">
                     {[
                       "Resident",
+                      "Full Name",
                       "Email",
                       "Rejection Reason",
                       "Registered",
@@ -501,8 +550,7 @@ const RejectedResidents = () => {
                     ].map((h) => (
                       <th
                         key={h}
-                        className="px-6 py-4 text-[10px] font-black uppercase tracking-[0.1em]
-                                   text-slate-400 last:text-center"
+                        className="px-6 py-4 text-[10px] font-black uppercase tracking-[0.1em] text-slate-400 last:text-center"
                       >
                         {h}
                       </th>
@@ -510,61 +558,84 @@ const RejectedResidents = () => {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-50">
-                  {rejected.map((r) => (
-                    <tr
-                      key={r.id}
-                      className="hover:bg-slate-50/60 transition-colors"
-                    >
-                      {/* Name */}
-                      <td className="px-6 py-4">
-                        <div className="flex items-center gap-3">
+                  {rejected.map((r) => {
+                    const fullName = getFullName(r);
+                    const initials = getInitials(r);
+                    return (
+                      <tr
+                        key={r.id}
+                        className="hover:bg-slate-50/60 transition-colors"
+                      >
+                        {/* Avatar */}
+                        <td className="px-6 py-4">
                           <div
-                            className="w-10 h-10 rounded-xl bg-emerald-400 flex items-center
-                                          justify-center text-white font-black text-sm
-                                          shadow-sm shrink-0 select-none"
+                            className="w-10 h-10 rounded-xl flex items-center justify-center text-white font-black text-sm shrink-0 select-none"
+                            style={{
+                              background:
+                                "linear-gradient(135deg, #f87171 0%, #dc2626 100%)",
+                              boxShadow: "0 4px 10px -2px rgba(220,38,38,0.25)",
+                            }}
                           >
-                            {r.avatar}
+                            {initials}
                           </div>
-                          <p className="font-black text-slate-900 text-sm tracking-tight">
-                            {r.name}
+                        </td>
+
+                        {/* Full name breakdown */}
+                        <td className="px-6 py-4">
+                          <p className="font-black text-slate-900 text-sm leading-tight">
+                            {fullName}
                           </p>
-                        </div>
-                      </td>
+                          <div className="flex gap-2 mt-1 flex-wrap">
+                            {[
+                              r.first_name ?? r.firstName,
+                              r.middle_name ?? r.middleName,
+                              r.last_name ?? r.lastName,
+                            ]
+                              .filter(Boolean)
+                              .map((part, i) => (
+                                <span
+                                  key={i}
+                                  className="text-[10px] text-slate-400 font-medium"
+                                >
+                                  {part}
+                                </span>
+                              ))}
+                          </div>
+                        </td>
 
-                      {/* Email */}
-                      <td className="px-6 py-4 text-sm text-slate-500 font-medium">
-                        {r.email}
-                      </td>
+                        {/* Email */}
+                        <td className="px-6 py-4 text-sm text-slate-500 font-medium">
+                          {r.email}
+                        </td>
 
-                      {/* Rejection reason */}
-                      <td className="px-6 py-4 max-w-[220px]">
-                        {r.rejectionReason ? (
-                          <p className="text-xs text-emerald-600 font-medium leading-relaxed line-clamp-2">
-                            {r.rejectionReason}
-                          </p>
-                        ) : (
-                          <span className="text-xs text-slate-300">—</span>
-                        )}
-                      </td>
+                        {/* Rejection reason */}
+                        <td className="px-6 py-4 max-w-[200px]">
+                          {r.rejectionReason ? (
+                            <p className="text-xs text-red-600 font-medium leading-relaxed line-clamp-2">
+                              {r.rejectionReason}
+                            </p>
+                          ) : (
+                            <span className="text-xs text-slate-300">—</span>
+                          )}
+                        </td>
 
-                      {/* Date */}
-                      <td className="px-6 py-4 text-sm text-slate-400 font-medium">
-                        {r.date}
-                      </td>
+                        {/* Date */}
+                        <td className="px-6 py-4 text-sm text-slate-400 font-medium whitespace-nowrap">
+                          {r.date}
+                        </td>
 
-                      {/* Action */}
-                      <td className="px-6 py-4 text-center">
-                        <button
-                          onClick={() => setReviewing(r)}
-                          className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl
-                                     text-xs font-black transition-all active:scale-95
-                                     bg-slate-100 text-slate-600 hover:bg-slate-200"
-                        >
-                          <CheckCircle2 size={13} /> Review
-                        </button>
-                      </td>
-                    </tr>
-                  ))}
+                        {/* Action */}
+                        <td className="px-6 py-4 text-center">
+                          <button
+                            onClick={() => setReviewing(r)}
+                            className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs font-black transition-all active:scale-95 bg-slate-100 text-slate-600 hover:bg-slate-200 cursor-pointer"
+                          >
+                            <FileCheck size={13} /> Review
+                          </button>
+                        </td>
+                      </tr>
+                    );
+                  })}
                 </tbody>
               </table>
             </div>

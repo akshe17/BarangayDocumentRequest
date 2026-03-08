@@ -278,17 +278,33 @@ class ZoneLeaderController extends Controller
 
         $zoneName = $zoneLeader->zoneLeader->zone->zone_name ?? "Zone {$zoneId}";
 
-        // Pending clearance requests count for this zone
-        $pendingClearanceCount = $this->clearanceBaseQuery($zoneId)
-            ->where('status_id', 1)
-            ->count();
+        // ── Document request stats scoped to this zone leader's document types ──
+        $allRequests = $this->clearanceBaseQuery($zoneId)->get();
+
+        $clearanceStats = [
+            'pending'          => $allRequests->where('status_id', 1)->count(),
+            'approved'         => $allRequests->where('status_id', 2)->count(),
+            'completed'        => $allRequests->where('status_id', 3)->count(),
+            'rejected'         => $allRequests->where('status_id', 4)->count(),
+            'ready_for_pickup' => $allRequests->where('status_id', 5)->count(),
+            'total'            => $allRequests->count(),
+        ];
+
+        // 5 most recent requests for the dashboard preview list
+        $recentRequests = $allRequests
+            ->sortByDesc('request_date')
+            ->take(5)
+            ->values()
+            ->map(fn ($req) => $this->formatRequest($req));
 
         return response()->json([
             'zone_name'               => $zoneName,
             'verified'                => $verified,
             'rejected'                => $rejected,
             'pending_verifications'   => $pendingVerifications,
-            'pending_clearances'      => $pendingClearanceCount,
+            'pending_clearances'      => $clearanceStats['pending'],
+            'clearance_stats'         => $clearanceStats,
+            'recent_requests'         => $recentRequests,
             'recent_residents'        => $recentResidents,
             'recent_logs'             => $recentLogs,
         ]);
