@@ -51,7 +51,7 @@ const FieldBox = ({ label, value }) => (
   <div>
     <Label>{label}</Label>
     <div
-      className="bg-gray-50 border border-gray-100 rounded-xl px-4 py-3 text-sm
+      className="bg-white border border-gray-200 rounded-xl px-4 py-3 text-sm
                     font-medium text-gray-800 min-h-[44px] flex items-center"
     >
       {value || (
@@ -78,8 +78,8 @@ const RejectedTableRow = ({ req, onSelect, isLast }) => {
 
   return (
     <tr
-      className="transition-colors hover:bg-emerald-50/30"
-      style={{ borderBottom: isLast ? "none" : "1px solid #f3f4f6" }}
+      className="transition-colors bg-gray-50 hover:bg-gray-100"
+      style={{ borderBottom: isLast ? "none" : "1px solid #e5e7eb" }}
     >
       {/* Resident */}
       <td className="px-4 sm:px-6 py-4">
@@ -156,7 +156,7 @@ const RejectedDetailView = ({ request, onBack }) => {
     <div className="min-h-screen bg-gray-50">
       {/* Top bar */}
       <div
-        className="bg-white border-b border-gray-100 px-4 sm:px-8 h-14 flex items-center
+        className="bg-gray-50 border-b border-gray-200 px-4 sm:px-8 h-14 flex items-center
                       justify-between sticky top-0 z-30"
       >
         <button
@@ -193,7 +193,7 @@ const RejectedDetailView = ({ request, onBack }) => {
         {/* LEFT */}
         <div className="lg:col-span-2 space-y-5">
           {/* Rejection reason */}
-          <div className="bg-white border border-red-100 rounded-2xl overflow-hidden shadow-sm shadow-red-50">
+          <div className="bg-red-50/30 border border-red-200 rounded-2xl overflow-hidden">
             <div className="flex items-center gap-3 px-4 sm:px-6 py-4 border-b border-red-50 bg-red-50/30">
               <div
                 className="w-8 h-8 rounded-xl bg-red-100 border border-red-200
@@ -219,8 +219,8 @@ const RejectedDetailView = ({ request, onBack }) => {
           </div>
 
           {/* Resident card */}
-          <div className="bg-white rounded-2xl border border-gray-100 overflow-hidden">
-            <div className="flex items-center gap-3 px-4 sm:px-6 py-4 border-b border-gray-50">
+          <div className="bg-gray-50 rounded-2xl border border-gray-200 overflow-hidden">
+            <div className="flex items-center gap-3 px-4 sm:px-6 py-4 border-b border-gray-200">
               <div
                 className="w-8 h-8 rounded-xl bg-emerald-50 border border-emerald-100
                                flex items-center justify-center"
@@ -230,7 +230,7 @@ const RejectedDetailView = ({ request, onBack }) => {
               <p className="text-sm font-black text-gray-900">Resident</p>
             </div>
             <div className="px-4 sm:px-6 py-6">
-              <div className="flex items-center gap-4 mb-6 pb-5 border-b border-gray-50">
+              <div className="flex items-center gap-4 mb-6 pb-5 border-b border-gray-200">
                 <div
                   className="w-12 h-12 rounded-xl bg-emerald-500 flex items-center
                                  justify-center shrink-0"
@@ -260,8 +260,8 @@ const RejectedDetailView = ({ request, onBack }) => {
           </div>
 
           {/* Request details */}
-          <div className="bg-white rounded-2xl border border-gray-100 overflow-hidden">
-            <div className="flex items-center gap-3 px-4 sm:px-6 py-4 border-b border-gray-50">
+          <div className="bg-gray-50 rounded-2xl border border-gray-200 overflow-hidden">
+            <div className="flex items-center gap-3 px-4 sm:px-6 py-4 border-b border-gray-200">
               <div
                 className="w-8 h-8 rounded-xl bg-emerald-50 border border-emerald-100
                                flex items-center justify-center"
@@ -301,7 +301,7 @@ const RejectedDetailView = ({ request, onBack }) => {
 
         {/* RIGHT — summary */}
         <div className="space-y-4">
-          <div className="bg-white rounded-2xl border border-gray-100 px-5 py-5 space-y-4">
+          <div className="bg-gray-50 rounded-2xl border border-gray-200 px-5 py-5 space-y-4">
             <div>
               <Label>Document Requested</Label>
               <p className="text-base font-black text-gray-900">
@@ -398,7 +398,7 @@ const RejectedRequests = () => {
   return (
     <div className="min-h-screen bg-gray-50">
       {/* Header */}
-      <div className="bg-white border-b border-gray-100 px-4 sm:px-8 py-5 sm:py-6">
+      <div className="bg-gray-50 border-b border-gray-200 px-4 sm:px-8 py-5 sm:py-6">
         <div className="max-w-5xl mx-auto">
           <div className="flex items-end justify-between mb-4 flex-wrap gap-3">
             <div>
@@ -461,10 +461,10 @@ const RejectedRequests = () => {
 
       {/* Table */}
       <div className="max-w-5xl mx-auto px-4 sm:px-8 py-5 sm:py-6">
-        <div className="bg-white border border-gray-100 rounded-2xl overflow-hidden overflow-x-auto shadow-sm">
+        <div className="bg-gray-50 border border-gray-200 rounded-2xl overflow-hidden overflow-x-auto">
           <table className="w-full min-w-[520px]">
             <thead>
-              <tr className="border-b border-gray-100 bg-gray-50/70">
+              <tr className="border-b border-gray-200 bg-gray-100">
                 {[
                   { label: "Resident", cls: "" },
                   { label: "Document", cls: "hidden sm:table-cell" },
