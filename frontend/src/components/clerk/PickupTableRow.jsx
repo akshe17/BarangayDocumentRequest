@@ -1,17 +1,14 @@
-import React, { useState } from "react";
+import React from "react";
 import { Clock, ArrowUpRight } from "lucide-react";
-
 import { isPaid, fmt } from "../../utils/PickupHelpers";
+
 const PickupTableRow = ({ req, onSelect, isLast }) => {
-  const [hovered, setHovered] = useState(false);
   const u = req.resident?.user;
 
   return (
     <tr
-      className={`transition-colors ${hovered ? "bg-gray-50/70" : "bg-white"}`}
-      style={{ borderBottom: isLast ? "none" : "1px solid #f3f4f6" }}
-      onMouseEnter={() => setHovered(true)}
-      onMouseLeave={() => setHovered(false)}
+      className="transition-colors bg-gray-50 hover:bg-gray-100"
+      style={{ borderBottom: isLast ? "none" : "1px solid #e5e7eb" }}
     >
       <td className="px-4 sm:px-6 py-4">
         <div className="flex items-center gap-3">
@@ -59,7 +56,7 @@ const PickupTableRow = ({ req, onSelect, isLast }) => {
           px-2.5 py-1 rounded-full border ${
             isPaid(req)
               ? "bg-emerald-50 text-emerald-700 border-emerald-200"
-              : "bg-gray-50 text-gray-500 border-gray-200"
+              : "bg-gray-100 text-gray-500 border-gray-200"
           }`}
         >
           {isPaid(req) ? "Paid" : "Unpaid"}

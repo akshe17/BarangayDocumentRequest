@@ -81,7 +81,7 @@ const ActionPage = ({ request: initialReq, tab, onBack }) => {
 
       {/* Top bar */}
       <div
-        className="bg-white border-b border-gray-100 px-4 sm:px-8 h-14 flex items-center
+        className="bg-gray-50 border-b border-gray-200 px-4 sm:px-8 h-14 flex items-center
                       justify-between sticky top-0 z-30"
       >
         <button
@@ -121,8 +121,8 @@ const ActionPage = ({ request: initialReq, tab, onBack }) => {
         {/* LEFT (spans 2 on lg) */}
         <div className="lg:col-span-2 space-y-5">
           {/* Resident card */}
-          <div className="bg-white rounded-2xl border border-gray-100 overflow-hidden">
-            <div className="flex items-center gap-3 px-4 sm:px-6 py-4 border-b border-gray-50">
+          <div className="bg-gray-50 rounded-2xl border border-gray-200 overflow-hidden">
+            <div className="flex items-center gap-3 px-4 sm:px-6 py-4 border-b border-gray-200">
               <div
                 className="w-8 h-8 rounded-xl bg-emerald-50 border border-emerald-100
                               flex items-center justify-center"
@@ -132,7 +132,7 @@ const ActionPage = ({ request: initialReq, tab, onBack }) => {
               <p className="text-sm font-black text-gray-900">Resident</p>
             </div>
             <div className="px-4 sm:px-6 py-6">
-              <div className="flex items-center gap-4 mb-6 pb-5 border-b border-gray-50">
+              <div className="flex items-center gap-4 mb-6 pb-5 border-b border-gray-200">
                 <div
                   className="w-12 h-12 rounded-xl bg-emerald-500 flex items-center
                                 justify-center shrink-0"
@@ -162,8 +162,8 @@ const ActionPage = ({ request: initialReq, tab, onBack }) => {
           </div>
 
           {/* Request card */}
-          <div className="bg-white rounded-2xl border border-gray-100 overflow-hidden">
-            <div className="flex items-center gap-3 px-4 sm:px-6 py-4 border-b border-gray-50">
+          <div className="bg-gray-50 rounded-2xl border border-gray-200 overflow-hidden">
+            <div className="flex items-center gap-3 px-4 sm:px-6 py-4 border-b border-gray-200">
               <div
                 className="w-8 h-8 rounded-xl bg-emerald-50 border border-emerald-100
                               flex items-center justify-center"
@@ -207,7 +207,7 @@ const ActionPage = ({ request: initialReq, tab, onBack }) => {
         {/* RIGHT (1 col) */}
         <div className="space-y-4">
           {/* Fee */}
-          <div className="bg-white rounded-2xl border border-gray-100 px-5 py-5">
+          <div className="bg-gray-50 rounded-2xl border border-gray-200 px-5 py-5">
             <Label>Total Fee Due</Label>
             <p className="text-3xl font-black text-gray-900 mt-1">
               ₱{Number(fee).toFixed(2)}

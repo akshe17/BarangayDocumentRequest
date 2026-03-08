@@ -135,7 +135,7 @@ const ApprovedTableRow = ({ req, onSelect, isLast }) => {
 
   return (
     <tr
-      className="transition-colors hover:bg-gray-50/70"
+      className="transition-colors hover:bg-gray-100"
       style={{ borderBottom: isLast ? "none" : "1px solid #f3f4f6" }}
     >
       <td className="px-4 sm:px-6 py-4">
@@ -244,7 +244,7 @@ const ApprovedDetailPage = ({ request: initialReq, onBack }) => {
 
       {/* Top bar */}
       <div
-        className="bg-white border-b border-gray-100 px-4 sm:px-8 h-14 flex items-center
+        className="bg-gray-50 border-b border-gray-200 px-4 sm:px-8 h-14 flex items-center
                       justify-between sticky top-0 z-30"
       >
         <button
@@ -290,15 +290,15 @@ const ApprovedDetailPage = ({ request: initialReq, onBack }) => {
         {/* LEFT */}
         <div className="lg:col-span-2 space-y-5">
           {/* Resident */}
-          <div className="bg-white rounded-2xl border border-gray-100 overflow-hidden">
-            <div className="flex items-center gap-3 px-4 sm:px-6 py-4 border-b border-gray-50">
+          <div className="bg-gray-50 rounded-2xl border border-gray-200 overflow-hidden">
+            <div className="flex items-center gap-3 px-4 sm:px-6 py-4 border-b border-gray-200">
               <div className="w-8 h-8 rounded-xl bg-emerald-50 border border-emerald-100 flex items-center justify-center">
                 <User size={14} className="text-emerald-600" />
               </div>
               <p className="text-sm font-black text-gray-900">Resident</p>
             </div>
             <div className="px-4 sm:px-6 py-6">
-              <div className="flex items-center gap-4 mb-6 pb-5 border-b border-gray-50">
+              <div className="flex items-center gap-4 mb-6 pb-5 border-b border-gray-200">
                 <div className="w-12 h-12 rounded-xl bg-emerald-500 flex items-center justify-center shrink-0">
                   <span className="text-white font-black text-lg select-none">
                     {user?.first_name?.[0]}
@@ -325,8 +325,8 @@ const ApprovedDetailPage = ({ request: initialReq, onBack }) => {
           </div>
 
           {/* Request details */}
-          <div className="bg-white rounded-2xl border border-gray-100 overflow-hidden">
-            <div className="flex items-center gap-3 px-4 sm:px-6 py-4 border-b border-gray-50">
+          <div className="bg-gray-50 rounded-2xl border border-gray-200 overflow-hidden">
+            <div className="flex items-center gap-3 px-4 sm:px-6 py-4 border-b border-gray-200">
               <div className="w-8 h-8 rounded-xl bg-emerald-50 border border-emerald-100 flex items-center justify-center">
                 <FileText size={14} className="text-emerald-600" />
               </div>
@@ -361,7 +361,7 @@ const ApprovedDetailPage = ({ request: initialReq, onBack }) => {
         {/* RIGHT */}
         <div className="space-y-4">
           {/* Current scheduled date */}
-          <div className="bg-white rounded-2xl border border-gray-100 px-5 py-5">
+          <div className="bg-gray-50 rounded-2xl border border-gray-200 px-5 py-5">
             <Label>Scheduled Pickup</Label>
             <p
               className={`text-2xl font-black mt-1 ${isOverdue(request.pickup_date) ? "text-red-600" : "text-gray-900"}`}
@@ -397,7 +397,7 @@ const ApprovedDetailPage = ({ request: initialReq, onBack }) => {
           </button>
 
           {/* Custom date — collapsible */}
-          <div className="bg-white rounded-2xl border border-gray-100 overflow-hidden">
+          <div className="bg-gray-50 rounded-2xl border border-gray-200 overflow-hidden">
             <button
               onClick={() => setMode(mode === "custom" ? null : "custom")}
               className="w-full flex items-center justify-between px-5 py-4 hover:bg-gray-50 transition-colors"
@@ -415,7 +415,7 @@ const ApprovedDetailPage = ({ request: initialReq, onBack }) => {
             </button>
 
             {mode === "custom" && (
-              <div className="px-5 pb-5 space-y-3 border-t border-gray-50 pt-4">
+              <div className="px-5 pb-5 space-y-3 border-t border-gray-200 pt-4">
                 <div>
                   <Label>New Pickup Date</Label>
                   <input
@@ -423,7 +423,7 @@ const ApprovedDetailPage = ({ request: initialReq, onBack }) => {
                     value={customDate}
                     min={today()}
                     onChange={(e) => setCustomDate(e.target.value)}
-                    className="w-full px-4 py-2.5 border border-gray-200 rounded-xl text-sm
+                    className="w-full px-4 py-2.5 bg-white border border-gray-200 rounded-xl text-sm
                                font-semibold text-gray-800 focus:ring-2 focus:ring-emerald-400
                                focus:border-emerald-400 outline-none transition-all"
                   />
@@ -521,7 +521,7 @@ const ApprovedQueue = () => {
   return (
     <div className="min-h-screen bg-gray-50">
       {/* Header */}
-      <div className="bg-white border-b border-gray-100 px-4 sm:px-8 py-5 sm:py-6">
+      <div className="bg-gray-50 border-b border-gray-200 px-4 sm:px-8 py-5 sm:py-6">
         <div className="max-w-5xl mx-auto">
           <div className="flex items-end justify-between mb-4 flex-wrap gap-3">
             <div>
@@ -581,7 +581,7 @@ const ApprovedQueue = () => {
                   border transition-all ${
                     filter === key
                       ? active
-                      : "bg-white text-gray-500 border-gray-200 hover:border-gray-300"
+                      : "bg-gray-50 text-gray-500 border-gray-200 hover:border-gray-300"
                   }`}
               >
                 {label}
@@ -629,10 +629,10 @@ const ApprovedQueue = () => {
 
       {/* Table */}
       <div className="max-w-5xl mx-auto px-4 sm:px-8 py-5 sm:py-6">
-        <div className="bg-white border border-gray-100 rounded-2xl overflow-hidden overflow-x-auto">
+        <div className="bg-gray-50 border border-gray-200 rounded-2xl overflow-hidden overflow-x-auto">
           <table className="w-full min-w-[480px]">
             <thead>
-              <tr className="border-b border-gray-100 bg-gray-50/70">
+              <tr className="border-b border-gray-100 bg-gray-100">
                 {[
                   { label: "Resident", cls: "" },
                   { label: "Document", cls: "hidden sm:table-cell" },

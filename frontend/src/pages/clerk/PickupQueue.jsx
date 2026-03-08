@@ -55,7 +55,7 @@ const PickupQueue = () => {
   return (
     <div className="min-h-screen bg-gray-50">
       {/* Header */}
-      <div className="bg-white border-b border-gray-100 px-4 sm:px-8 py-5 sm:py-6">
+      <div className="bg-gray-50 border-b border-gray-200 px-4 sm:px-8 py-5 sm:py-6">
         <div className="max-w-5xl mx-auto">
           <div className="flex items-end justify-between mb-4 sm:mb-5 flex-wrap gap-3">
             <div>
@@ -88,7 +88,7 @@ const PickupQueue = () => {
               </button>
 
               {/* Tab switcher */}
-              <div className="flex bg-gray-50 border border-gray-200 rounded-xl p-1">
+              <div className="flex bg-white border border-gray-200 rounded-xl p-1">
                 {tabs.map(({ key, label, Icon, status }) => (
                   <button
                     key={key}
@@ -154,10 +154,10 @@ const PickupQueue = () => {
 
       {/* Table */}
       <div className="max-w-5xl mx-auto px-4 sm:px-8 py-5 sm:py-6">
-        <div className="bg-white border border-gray-100 rounded-2xl overflow-hidden overflow-x-auto">
+        <div className="bg-gray-50 border border-gray-200 rounded-2xl overflow-hidden overflow-x-auto">
           <table className="w-full min-w-[480px]">
             <thead>
-              <tr className="border-b border-gray-100 bg-gray-50/70">
+              <tr className="border-b border-gray-200 bg-gray-100">
                 {[
                   "Resident",
                   "Document",
