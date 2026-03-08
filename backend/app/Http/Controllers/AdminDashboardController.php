@@ -98,15 +98,12 @@ class AdminDashboardController extends Controller
                 'date'          => $r->created_at->diffForHumans(),
             ]);
 
+
         /* ── 6. Residents per zone (bar chart) ────────────────────── */
-        // FIX: `zone_id` lives on the `users` table, not `residents`.
-        //      Zone model has no users() relationship, so join manually.
+        // zone_id lives on residents, not users — join directly.
         $zoneDistribution = Zone::select('zones.zone_id', 'zones.zone_name')
-            ->selectRaw('COUNT(users.user_id) as residents')
-            ->leftJoin('users', function ($join) {
-                $join->on('users.zone_id', '=', 'zones.zone_id')
-                     ->where('users.role_id', '=', 2);
-            })
+            ->selectRaw('COUNT(residents.resident_id) as residents')
+            ->leftJoin('residents', 'residents.zone_id', '=', 'zones.zone_id')
             ->groupBy('zones.zone_id', 'zones.zone_name')
             ->orderBy('zones.zone_name')
             ->get()
