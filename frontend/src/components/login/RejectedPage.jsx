@@ -6,39 +6,54 @@ import {
   UploadCloud,
   Loader2,
   CheckCircle2,
+  ShieldCheck,
+  ChevronDown,
+  ChevronUp,
+  ImageUp,
 } from "lucide-react";
-
 import { useNavigate } from "react-router-dom";
-// Assuming you have a configured axios instance
 import api from "../../axious/api";
 
-// --- UPDATE: Receive userId as a prop ---
+const ALL_IDS = [
+  { label: "Philippine National ID (PhilSys)", primary: true },
+  { label: "Driver\'s License", primary: true },
+  { label: "Philippine Passport", primary: true },
+  { label: "Unified Multi-Purpose ID (UMID)", primary: true },
+  { label: "SSS ID", primary: true },
+  { label: "GSIS eCard", primary: true },
+  { label: "Voter\'s ID", primary: true },
+  { label: "Postal ID", primary: true },
+  { label: "PhilHealth ID", primary: true },
+  { label: "TIN ID", primary: true },
+  { label: "School ID (current year)", primary: false },
+  { label: "Company ID", primary: false },
+  { label: "Senior Citizen ID", primary: false },
+];
+
+const VISIBLE_BY_DEFAULT = 4;
+
 const RejectedPage = ({ userId }) => {
   const navigate = useNavigate();
   const [file, setFile] = useState(null);
-  const [previewUrl, setPreviewUrl] = useState(null); // STATE FOR PREVIEW
+  const [previewUrl, setPreviewUrl] = useState(null);
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
+  const [showAllIds, setShowAllIds] = useState(false);
 
-  const handleBackToLogin = () => {
-    navigate("/");
-  };
+  const visibleIds = showAllIds
+    ? ALL_IDS
+    : ALL_IDS.slice(0, VISIBLE_BY_DEFAULT);
 
   const handleFileChange = (e) => {
     const selectedFile = e.target.files[0];
-    if (selectedFile) {
-      setFile(selectedFile);
-      setError("");
-      setMessage("");
-
-      // Create a preview URL
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        setPreviewUrl(reader.result);
-      };
-      reader.readAsDataURL(selectedFile);
-    }
+    if (!selectedFile) return;
+    setFile(selectedFile);
+    setError("");
+    setMessage("");
+    const reader = new FileReader();
+    reader.onloadend = () => setPreviewUrl(reader.result);
+    reader.readAsDataURL(selectedFile);
   };
 
   const handleResubmit = async () => {
@@ -46,39 +61,27 @@ const RejectedPage = ({ userId }) => {
       setError("Please select a file first.");
       return;
     }
-
-    // --- SECURITY CHECK ---
     if (!userId) {
       setError("User ID missing. Please login again.");
       return;
     }
-
     setLoading(true);
     setMessage("");
     setError("");
-
     const formData = new FormData();
     formData.append("id_image", file);
-    // --- CHANGE: Append the user_id ---
     formData.append("user_id", userId);
-    // Needed to spoof PUT request in Laravel for file uploads
     formData.append("_method", "PUT");
-
     try {
-      // NOTE: This endpoint should NOT require auth:sanctum
       await api.post("/resident/resubmit-id", formData, {
-        headers: {
-          "Content-Type": "multipart/form-data",
-        },
+        headers: { "Content-Type": "multipart/form-data" },
       });
-      setMessage(
-        "New ID uploaded successfully! Your account is now pending review.",
-      );
-      setFile(null); // Clear input
-      setPreviewUrl(null); // Clear preview
+      setMessage("ID uploaded! Your account is now pending re-review.");
+      setFile(null);
+      setPreviewUrl(null);
     } catch (err) {
       setError(
-        err.response?.data?.message || "Failed to upload ID. Please try again.",
+        err.response?.data?.message || "Failed to upload. Please try again.",
       );
     } finally {
       setLoading(false);
@@ -86,98 +89,178 @@ const RejectedPage = ({ userId }) => {
   };
 
   return (
-    <div className="min-h-screen bg-white flex flex-col items-center justify-center p-4">
-      <div className="bg-white p-10 rounded-3xl max-w-lg w-full text-center">
-        {/* Title & Message */}
-        <h2 className="text-2xl font-extrabold text-gray-900 mb-4 tracking-tight">
-          Account Request Rejected
-        </h2>
-        <div className="mx-auto w-12 h-12 bg-red-50 rounded-full flex items-center justify-center mb-8 border-4 border-red-100 shadow-inner">
-          <XCircle className="w-6 h-6 text-red-500" />
+    <div className="min-h-screen bg-[#f6f7f9] flex flex-col items-center justify-center p-4 py-10">
+      <div className="w-full max-w-md space-y-3">
+        {/* Header card */}
+        <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
+          <div className="h-1 bg-red-500 w-full" />
+          <div className="px-6 py-6 flex items-start gap-4">
+            <div className="w-11 h-11 rounded-xl bg-red-50 border border-red-100 flex items-center justify-center shrink-0">
+              <XCircle size={20} className="text-red-500" />
+            </div>
+            <div>
+              <p className="text-[10px] font-black text-red-500 uppercase tracking-widest mb-0.5">
+                Registration Status
+              </p>
+              <h2 className="text-base font-black text-gray-900 leading-tight">
+                Request Rejected
+              </h2>
+              <p className="text-xs text-gray-500 mt-1 leading-relaxed">
+                Your ID was not approved by the Barangay administrator. Resubmit
+                a valid, clear photo to be re-evaluated.
+              </p>
+            </div>
+          </div>
         </div>
 
-        <p className="text-gray-600 mb-8 leading-relaxed text-sm">
-          We regret to inform you that your registration request was reviewed
-          and
-          <span className="font-semibold text-red-600"> not approved</span> by
-          the Barangay administrator.
-        </p>
-
-        {/* --- RESUBMIT SECTION --- */}
-        <div className="bg-gray-50 rounded-2xl p-6 mb-8 border border-gray-100 text-left">
-          <h3 className="text-sm font-bold text-gray-900 mb-4 flex items-center gap-2">
-            <UploadCloud size={18} className="text-emerald-600" />
-            Resubmit Valid ID for Re-evaluation
-          </h3>
-
-          <input
-            type="file"
-            accept="image/*"
-            onChange={handleFileChange}
-            className="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-emerald-50 file:text-emerald-700 hover:file:bg-emerald-100 mb-4"
-          />
-
-          {/* IMAGE PREVIEW AREA */}
-          {previewUrl && (
-            <div className="mb-4 p-2 border-2 border-dashed border-gray-300 rounded-xl">
-              <img
-                src={previewUrl}
-                alt="ID Preview"
-                className="max-h-48 rounded-lg mx-auto object-contain"
-              />
-            </div>
-          )}
-
-          <button
-            onClick={handleResubmit}
-            disabled={loading || !file}
-            className={`${loading || !file ? "cursor-not-allowed" : "cursor-pointer"} w-full bg-emerald-600 text-white font-bold py-3 rounded-xl transition-all shadow-md hover:bg-emerald-700 flex items-center justify-center gap-2 active:scale-95 disabled:opacity-50`}
-          >
-            {loading ? (
-              <>
-                <Loader2 className="animate-spin" size={18} /> Uploading...
-              </>
-            ) : (
-              "Upload New ID"
-            )}
-          </button>
-
-          {message && (
-            <div className="text-emerald-700 text-xs mt-4 font-medium flex items-center gap-2 bg-emerald-50 p-3 rounded-xl border border-emerald-200">
-              <CheckCircle2 size={16} />
-              {message}
-            </div>
-          )}
-          {error && (
-            <p className="text-red-600 text-xs mt-4 font-medium text-center bg-red-50 p-3 rounded-xl border border-red-200">
-              {error}
+        {/* Accepted IDs card */}
+        <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
+          <div className="px-5 py-3.5 border-b border-gray-50 flex items-center gap-2.5">
+            <ShieldCheck size={14} className="text-emerald-500 shrink-0" />
+            <p className="text-xs font-black text-gray-700">
+              Accepted Valid IDs
             </p>
-          )}
+          </div>
+          <div className="px-5 pt-3 pb-1">
+            <div className="space-y-1.5">
+              {visibleIds.map((id, i) => (
+                <div key={i} className="flex items-center gap-2.5">
+                  <span
+                    className={
+                      "w-1.5 h-1.5 rounded-full shrink-0 " +
+                      (id.primary ? "bg-emerald-500" : "bg-sky-400")
+                    }
+                  />
+                  <p className="text-xs text-gray-600 font-medium">
+                    {id.label}
+                  </p>
+                  {!id.primary && (
+                    <span className="ml-auto text-[9px] font-bold text-sky-500 bg-sky-50 border border-sky-100 px-1.5 py-0.5 rounded-full">
+                      conditional
+                    </span>
+                  )}
+                </div>
+              ))}
+            </div>
+            <button
+              onClick={() => setShowAllIds((v) => !v)}
+              className="w-full flex items-center justify-center gap-1.5 py-3 mt-2 text-[11px] font-bold text-gray-400 hover:text-emerald-600 transition-colors cursor-pointer"
+            >
+              {showAllIds ? (
+                <>
+                  <ChevronUp size={13} /> Show less
+                </>
+              ) : (
+                <>
+                  <ChevronDown size={13} /> See all {ALL_IDS.length} accepted
+                  IDs
+                </>
+              )}
+            </button>
+          </div>
         </div>
 
-        {/* Action Buttons */}
-        <div className="flex flex-col sm:flex-row gap-4 justify-center">
+        {/* Upload card */}
+        <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
+          <div className="px-5 py-3.5 border-b border-gray-50 flex items-center gap-2.5">
+            <UploadCloud size={14} className="text-emerald-500 shrink-0" />
+            <p className="text-xs font-black text-gray-700">
+              Resubmit Valid ID
+            </p>
+          </div>
+          <div className="p-5 space-y-3">
+            <label className="group flex flex-col items-center justify-center gap-2 w-full py-6 border-2 border-dashed border-gray-200 rounded-xl cursor-pointer bg-gray-50 hover:bg-emerald-50/60 hover:border-emerald-300 transition-all">
+              <ImageUp
+                size={20}
+                className="text-gray-300 group-hover:text-emerald-400 transition-colors"
+              />
+              <p className="text-xs font-bold text-gray-400 group-hover:text-emerald-600 transition-colors">
+                {file ? file.name : "Tap to choose a photo"}
+              </p>
+              <p className="text-[10px] text-gray-300">JPG, PNG · max 10MB</p>
+              <input
+                type="file"
+                accept="image/*"
+                onChange={handleFileChange}
+                className="hidden"
+              />
+            </label>
+
+            {previewUrl && (
+              <div className="rounded-xl overflow-hidden border border-emerald-100 bg-emerald-50/30 p-2">
+                <img
+                  src={previewUrl}
+                  alt="ID Preview"
+                  className="max-h-40 rounded-lg mx-auto object-contain"
+                />
+              </div>
+            )}
+
+            <button
+              onClick={handleResubmit}
+              disabled={loading || !file}
+              className="w-full py-3 text-white rounded-xl font-black text-sm transition-all flex items-center justify-center gap-2 disabled:opacity-50 active:scale-[0.98] cursor-pointer"
+              style={{
+                background: "linear-gradient(135deg, #34d399 0%, #059669 100%)",
+                boxShadow:
+                  file && !loading
+                    ? "0 6px 16px -2px rgba(16,185,129,0.35)"
+                    : "none",
+              }}
+            >
+              {loading ? (
+                <>
+                  <Loader2 className="animate-spin" size={15} /> Uploading…
+                </>
+              ) : (
+                <>
+                  <UploadCloud size={15} /> Upload New ID
+                </>
+              )}
+            </button>
+
+            {message && (
+              <div className="flex items-start gap-2.5 bg-emerald-50 border border-emerald-100 rounded-xl px-3.5 py-3">
+                <CheckCircle2
+                  size={14}
+                  className="text-emerald-500 shrink-0 mt-0.5"
+                />
+                <p className="text-xs text-emerald-700 font-semibold leading-relaxed">
+                  {message}
+                </p>
+              </div>
+            )}
+            {error && (
+              <div className="flex items-start gap-2.5 bg-red-50 border border-red-100 rounded-xl px-3.5 py-3">
+                <XCircle size={14} className="text-red-400 shrink-0 mt-0.5" />
+                <p className="text-xs text-red-600 font-semibold leading-relaxed">
+                  {error}
+                </p>
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* Footer actions */}
+        <div className="flex gap-2.5">
           <button
-            onClick={handleBackToLogin}
-            className="flex items-center cursor-pointer text-sm justify-center gap-2 bg-gray-900 text-white py-4 px-8 rounded-2xl font-bold hover:bg-gray-800 transition-colors shadow-lg shadow-gray-900/20 "
+            onClick={() => navigate("/")}
+            className="flex-1 flex items-center justify-center gap-2 bg-gray-900 text-white py-3 px-4 rounded-xl font-black text-xs hover:bg-gray-800 transition-colors cursor-pointer shadow-lg shadow-gray-900/10"
           >
-            <ArrowLeft size={20} />
-            Back to Login
+            <ArrowLeft size={13} /> Back to Login
           </button>
           <a
             href="mailto:support@barangaybonbon.gov.ph"
-            className="flex items-center justify-center text-sm gap-2 bg-white text-gray-800 py-4 px-8 rounded-2xl font-bold border-2 border-gray-200 hover:border-gray-300 hover:bg-gray-50 transition-colors "
+            className="flex-1 flex items-center justify-center gap-2 bg-white text-gray-600 py-3 px-4 rounded-xl font-black text-xs border border-gray-200 hover:border-gray-300 hover:bg-gray-50 transition-colors cursor-pointer"
           >
-            <Mail size={20} />
-            Contact Support
+            <Mail size={13} /> Contact Support
           </a>
         </div>
-      </div>
 
-      {/* Footer text */}
-      <p className="text-sm text-gray-500 mt-10">
-        © 2026 Barangay Bonbon Document Request System
-      </p>
+        <p className="text-[10px] text-gray-400 text-center pb-2">
+          © 2026 Barangay Bonbon Document Request System
+        </p>
+      </div>
     </div>
   );
 };
