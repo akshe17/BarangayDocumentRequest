@@ -338,7 +338,7 @@ const DocumentsManagement = () => {
   }
 
   return (
-    <div className="min-h-screen bg-gray-200">
+    <div className="min-h-screen bg-gray-50">
       <DocumentToast toast={toast} />
       <DocumentList
         documentTypes={documentTypes}

@@ -20,6 +20,8 @@ use App\Http\Controllers\ZoneLeaderController;
 use App\Http\Controllers\AdminResidentController;
 use App\Http\Controllers\AdminDocumentController;
 use App\Http\Controllers\AdminLogsController;
+use App\Http\Controllers\ArchivedUsersController;
+
 
 
 Route::middleware('custom.auth')->get('/user', function (Request $request) {
@@ -59,6 +61,10 @@ Route::patch ('/admin/residents/{id}/password',      [AdminResidentController::c
   Route::get('document-types',         [AdminDocumentController::class, 'index']);
     Route::post('document-types',         [AdminDocumentController::class, 'store']);
     Route::get('document-types/{id}',     [AdminDocumentController::class, 'show']);
+//admin archibed
+Route::get('/admin/archived-users', [ArchivedUsersController::class, 'index']);
+Route::patch('/admin/archived-users/{id}/restore', [ArchivedUsersController::class, 'restore']);
+Route::post('/admin/archived-users/restore-bulk', [ArchivedUsersController::class, 'restoreBulk']);
 
     // POST with _method=PUT inside FormData — supports file upload
   Route::post('document-types/{id}', [AdminDocumentController::class,  'update']);

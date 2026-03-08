@@ -37,6 +37,11 @@ const MainLayout = () => {
       label: "Manage Resident",
       icon: <Users size={20} />,
     },
+    {
+      path: "/dashboard/archived",
+      label: "Archived Users",
+      icon: <Users size={20} />,
+    },
 
     {
       path: "/dashboard/documents",

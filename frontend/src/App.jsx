@@ -17,6 +17,7 @@ import DownloadApp from "./pages/Download";
 import Practice from "./pages/Practice";
 import ZoneClearanceQueue from "./pages/zoneLeader/ZoneClearanceQueue";
 // Pages
+import ArchivedUsers from "./pages/admin/ArchievedUsers";
 import VerifiedResidents from "./pages/zoneLeader/VerifiedResidents";
 import PendingResidents from "./pages/zoneLeader/PendingResidents";
 import RejectedResidents from "./pages/zoneLeader/RejectedResidents";
@@ -104,6 +105,7 @@ const App = () => {
           <Route path="users-staff" element={<UserManagement />} />
           <Route path="residents" element={<ResidentManagement />} />
           <Route path="documents" element={<DocumentsManagement />} />
+          <Route path="archived" element={<ArchivedUsers />} />
           <Route path="logs" element={<AuditLogs />} />
           <Route path="profile" element={<AdminProfile />} />
         </Route>
