@@ -18,7 +18,7 @@ return new class extends Migration
             $table->foreignId('gender_id')->constrained('genders', 'gender_id');
             $table->foreignId('civil_status_id')->constrained('civil_statuses', 'civil_status_id');
                  $table->foreignId('zone_id')
-                  ->unique()
+                
                   ->constrained('zones', 'zone_id')
                   ->onDelete('cascade');
 

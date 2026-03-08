@@ -140,7 +140,7 @@ public function register(Request $request)
             'lname'           => 'required|string|max:255',
             'birthdate' => 'required|date|before:today',
             'house_no' => 'required|string|max:255',
-            'zone' => 'required|integer|exists:zones,zone_id',
+            'zone' => 'nullable|integer|exists:zones,zone_id',
             'gender_id' => 'required|integer|exists:genders,gender_id',
             'civil_status_id' => 'required|integer|exists:civil_statuses,civil_status_id',
             'id_image' => 'required|image|mimes:jpg,jpeg,png|max:10240',
@@ -161,6 +161,15 @@ public function register(Request $request)
         return response()->json([
             'message' => 'Validation failed',
             'errors' => $e->errors()
+        ], 422);
+    }
+
+    // Resolve zone value sent from frontend as "zone" field
+    $resolvedZoneId = $request->input('zone');
+    if (!$resolvedZoneId) {
+        return response()->json([
+            'message' => 'Validation failed',
+            'errors' => ['zone' => ['Please select a valid zone.']],
         ], 422);
     }
 
@@ -194,7 +203,7 @@ public function register(Request $request)
 
    try {
         // Collect data needed for email AFTER the transaction commits
-        $mailData = DB::transaction(function () use ($request) {
+        $mailData = DB::transaction(function () use ($request, $resolvedZoneId) {
 
             $path = $request->file('id_image')->store('verification_ids', 'public');
 
@@ -212,7 +221,7 @@ public function register(Request $request)
             // 2. Create resident
             $resident = Resident::create([
                 'user_id'         => $user->user_id,
-                'zone_id'         => $request->zone,
+                'zone_id'         => $resolvedZoneId,
                 'birthdate'       => $request->birthdate,
                 'house_no'        => $request->house_no,
                 'gender_id'       => $request->gender_id,
@@ -221,10 +230,11 @@ public function register(Request $request)
                 'is_verified'     => null,
             ]);
 
-            // Find Zone Leaders to notify
-            $zoneLeaders = User::where('role_id', 4)
-                               ->whereHas('zoneLeader', fn($q) => $q->where('zone_id', $resident->zone_id))
-                               ->get();
+            // Query ZoneLeader directly to avoid users.zone_id join issue
+            $zoneLeaderUserIds = \App\Models\ZoneLeader::where('zone_id', $resident->zone_id)
+                ->pluck('user_id');
+
+            $zoneLeaders = User::whereIn('user_id', $zoneLeaderUserIds)->get();
 
             // Action logs (DB — safe inside transaction)
             foreach ($zoneLeaders as $leader) {
@@ -281,6 +291,7 @@ public function register(Request $request)
         ], 500);
     }
 }
+
 public function logout(Request $request)
 {
    
