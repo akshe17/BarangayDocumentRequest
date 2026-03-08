@@ -10,14 +10,10 @@ import {
   Clock,
   PackageCheck,
   Calendar,
-  ArrowUpRight,
   ChevronDown,
-  User,
-  FileText,
   Zap,
 } from "lucide-react";
 import api from "../../axious/api";
-
 /* ─────────────────────────────────────────────────────────────
    HELPERS
 ───────────────────────────────────────────────────────────── */
@@ -147,8 +143,8 @@ const LogTableRow = ({ log, isLast }) => {
 
   return (
     <tr
-      className="transition-colors hover:bg-gray-50/70"
-      style={{ borderBottom: isLast ? "none" : "1px solid #f3f4f6" }}
+      className="transition-colors bg-gray-50 hover:bg-gray-100"
+      style={{ borderBottom: isLast ? "none" : "1px solid #e5e7eb" }}
     >
       {/* Action */}
       <td className="px-4 sm:px-6 py-4">
@@ -262,30 +258,10 @@ const ClerkLogs = () => {
     return matchSearch && matchAction;
   });
 
-  // ── Stats ─────────────────────────────────────────────────────
-  const stats = [
-    { label: "Total Actions", value: logs.length, color: "text-gray-900" },
-    {
-      label: "Approvals",
-      value: logs.filter((l) => l.action === "APPROVE REQUEST").length,
-      color: "text-emerald-600",
-    },
-    {
-      label: "Rejections",
-      value: logs.filter((l) => l.action === "REJECT REQUEST").length,
-      color: "text-red-500",
-    },
-    {
-      label: "Collections",
-      value: logs.filter((l) => l.action === "CONFIRM COLLECTION").length,
-      color: "text-blue-500",
-    },
-  ];
-
   return (
     <div className="min-h-screen bg-gray-50">
       {/* Header */}
-      <div className="bg-white border-b border-gray-100 px-4 sm:px-8 py-5 sm:py-6">
+      <div className="bg-gray-50 border-b border-gray-200 px-4 sm:px-8 py-5 sm:py-6">
         <div className="max-w-5xl mx-auto">
           <div className="flex items-end justify-between mb-5 flex-wrap gap-3">
             <div>
@@ -315,23 +291,6 @@ const ClerkLogs = () => {
               <RefreshCw size={14} />
             </button>
           </div>
-
-          {/* Stats row */}
-          {!loading && logs.length > 0 && (
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-5">
-              {stats.map(({ label, value, color }) => (
-                <div
-                  key={label}
-                  className="bg-gray-50 border border-gray-100 rounded-xl px-4 py-3"
-                >
-                  <p className="text-[9px] font-black uppercase tracking-widest text-gray-400 mb-1">
-                    {label}
-                  </p>
-                  <p className={`text-xl font-black ${color}`}>{value}</p>
-                </div>
-              ))}
-            </div>
-          )}
 
           {/* Search + Action filter */}
           <div className="flex gap-3">
@@ -391,10 +350,10 @@ const ClerkLogs = () => {
 
       {/* Table */}
       <div className="max-w-5xl mx-auto px-4 sm:px-8 py-5 sm:py-6">
-        <div className="bg-white border border-gray-100 rounded-2xl overflow-hidden overflow-x-auto">
+        <div className="bg-gray-50 border border-gray-200 rounded-2xl overflow-hidden overflow-x-auto">
           <table className="w-full min-w-[560px]">
             <thead>
-              <tr className="border-b border-gray-100 bg-gray-50/70">
+              <tr className="border-b border-gray-200 bg-gray-100">
                 {[
                   { label: "Action", cls: "" },
                   { label: "Clerk", cls: "hidden sm:table-cell" },

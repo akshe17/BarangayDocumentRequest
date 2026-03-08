@@ -22,9 +22,7 @@ import {
   TrendingUp,
   Loader2,
   RefreshCw,
-  ArrowUpRight,
   AlertCircle,
-  Zap,
   CreditCard,
 } from "lucide-react";
 import api from "../../axious/api";
@@ -38,16 +36,6 @@ const fmt = (d) =>
     ? new Date(d).toLocaleDateString("en-PH", {
         month: "short",
         day: "numeric",
-      })
-    : "—";
-
-const fmtTime = (d) =>
-  d
-    ? new Date(d).toLocaleString("en-PH", {
-        month: "short",
-        day: "numeric",
-        hour: "2-digit",
-        minute: "2-digit",
       })
     : "—";
 
@@ -108,14 +96,14 @@ const StatCard = ({ label, value, sub, Icon, color, loading }) => {
 
   return (
     <div
-      className="bg-white rounded-2xl border border-gray-300 px-5 py-5
-                    hover:shadow-md transition-shadow duration-200"
+      className="bg-gray-50 rounded-2xl border border-gray-200 px-5 py-5
+                    hover:border-gray-300 hover:shadow-sm transition-all duration-200"
     >
       <div className="flex items-start justify-between mb-4">
         <div
-          className={`w-10 h-10 rounded-xl ${c.light} flex items-center justify-center`}
+          className={`w-10 h-10 rounded-xl ${c.light} flex items-center justify-center ring-4 ${c.ring}`}
         >
-          <Icon size={18} className={c.text} />
+          <Icon size={17} className={c.text} />
         </div>
       </div>
       {loading ? (
@@ -137,15 +125,14 @@ const StatCard = ({ label, value, sub, Icon, color, loading }) => {
 const STATUS_META = {
   1: { label: "Pending", cls: "bg-amber-50 text-amber-700 border-amber-200" },
   2: { label: "Approved", cls: "bg-blue-50 text-blue-700 border-blue-200" },
-  3: { label: "Done", cls: "bg-gray-100 text-gray-600 border-gray-200" },
+  3: {
+    label: "Collected",
+    cls: "bg-emerald-50 text-emerald-700 border-emerald-200",
+  },
   4: { label: "Rejected", cls: "bg-red-50 text-red-700 border-red-200" },
   5: {
     label: "Ready for Pickup",
-    cls: "bg-emerald-50 text-emerald-700 border-emerald-200",
-  },
-  6: {
-    label: "Collected",
-    cls: "bg-emerald-100 text-emerald-800 border-emerald-200",
+    cls: "bg-violet-50 text-violet-700 border-violet-200",
   },
 };
 
@@ -158,8 +145,8 @@ const RecentRow = ({ req, isLast }) => {
 
   return (
     <tr
-      className="hover:bg-gray-50/60 transition-colors"
-      style={{ borderBottom: isLast ? "none" : "1px solid #f3f4f6" }}
+      className="bg-gray-50 hover:bg-gray-100 transition-colors"
+      style={{ borderBottom: isLast ? "none" : "1px solid #e5e7eb" }}
     >
       <td className="px-5 py-3.5">
         <div className="flex items-center gap-3">
@@ -204,7 +191,7 @@ const RecentRow = ({ req, isLast }) => {
 ───────────────────────────────────────────────────────────── */
 const ClerkDashboard = () => {
   const {
-    requests,
+    allRequests,
     loading: ctxLoading,
     refresh,
     lastFetched,
@@ -234,36 +221,36 @@ const ClerkDashboard = () => {
     fetchStats();
   };
 
-  // ── Derive recent 10 from context ────────────────────────────
-  const recent = [...(requests ?? [])]
+  // ── Derive recent 8 from context (already scoped to clerk by API) ──
+  const recent = [...(allRequests ?? [])]
     .sort((a, b) => new Date(b.request_date) - new Date(a.request_date))
     .slice(0, 8);
 
-  // ── Donut data from context counts ───────────────────────────
+  // ── Counts come from the stats API — reliable even if context is stale ──
   const counts = {
-    pending: (requests ?? []).filter((r) => Number(r.status_id) === 1).length,
-    approved: (requests ?? []).filter((r) => Number(r.status_id) === 2).length,
-    ready: (requests ?? []).filter((r) => Number(r.status_id) === 5).length,
-    rejected: (requests ?? []).filter((r) => Number(r.status_id) === 4).length,
-    done: (requests ?? []).filter((r) => Number(r.status_id) === 6).length,
+    pending: stats?.counts?.pending ?? 0,
+    approved: stats?.counts?.approved ?? 0,
+    ready: stats?.counts?.ready ?? 0,
+    rejected: stats?.counts?.rejected ?? 0,
+    done: stats?.counts?.done ?? 0,
   };
 
   const donutData = [
     { name: "Pending", value: counts.pending, color: "#f59e0b" },
     { name: "Approved", value: counts.approved, color: "#3b82f6" },
-    { name: "Ready", value: counts.ready, color: "#10b981" },
+    { name: "Ready for Pickup", value: counts.ready, color: "#8b5cf6" },
     { name: "Rejected", value: counts.rejected, color: "#ef4444" },
-    { name: "Done", value: counts.done, color: "#059669" },
+    { name: "Collected", value: counts.done, color: "#10b981" },
   ].filter((d) => d.value > 0);
 
-  const totalRequests = Object.values(counts).reduce((a, b) => a + b, 0);
+  const totalRequests = stats?.counts?.total ?? 0;
 
-  const loading = ctxLoading || statsLoading;
+  const loading = statsLoading;
 
   return (
     <div className="min-h-screen bg-gray-50">
       {/* Header */}
-      <div className="bg-white border-b border-gray-300 px-4 sm:px-8 py-5 sm:py-6">
+      <div className="bg-gray-50 border-b border-gray-200 px-4 sm:px-8 py-5 sm:py-6">
         <div className="max-w-6xl mx-auto flex items-end justify-between flex-wrap gap-3">
           <div>
             <p className="text-[10px] font-black tracking-[0.14em] uppercase text-emerald-500 mb-1">
@@ -348,7 +335,7 @@ const ClerkDashboard = () => {
         {/* ── CHARTS ROW ── */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
           {/* Area chart — requests over last 7 days */}
-          <div className="lg:col-span-2 bg-white rounded-2xl border border-gray-300 p-5">
+          <div className="lg:col-span-2 bg-gray-50 rounded-2xl border border-gray-200 p-5">
             <div className="flex items-center justify-between mb-5">
               <div>
                 <p className="text-sm font-black text-gray-900">
@@ -422,7 +409,7 @@ const ClerkDashboard = () => {
           </div>
 
           {/* Donut — status breakdown */}
-          <div className="bg-white rounded-2xl border border-gray-300 p-5">
+          <div className="bg-gray-50 rounded-2xl border border-gray-200 p-5">
             <div className="mb-4">
               <p className="text-sm font-black text-gray-900">
                 Status Breakdown
@@ -488,8 +475,8 @@ const ClerkDashboard = () => {
         {/* ── BOTTOM ROW ── */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
           {/* Recent requests table */}
-          <div className="lg:col-span-2 bg-white rounded-2xl border border-gray-300 overflow-hidden">
-            <div className="flex items-center justify-between px-5 py-4 border-b border-gray-50">
+          <div className="lg:col-span-2 bg-gray-50 rounded-2xl border border-gray-200 overflow-hidden">
+            <div className="flex items-center justify-between px-5 py-4 border-b border-gray-200">
               <p className="text-sm font-black text-gray-900">
                 Recent Requests
               </p>
@@ -500,7 +487,7 @@ const ClerkDashboard = () => {
             <div className="overflow-x-auto">
               <table className="w-full min-w-[380px]">
                 <thead>
-                  <tr className="bg-gray-50/70">
+                  <tr className="bg-gray-100">
                     {["Resident", "Document", "Status", "Filed"].map((h, i) => (
                       <th
                         key={h}
@@ -550,7 +537,7 @@ const ClerkDashboard = () => {
           {/* Right column — bar chart + revenue */}
           <div className="space-y-4">
             {/* Bar chart — document types */}
-            <div className="bg-white rounded-2xl border border-gray-300 p-5">
+            <div className="bg-gray-50 rounded-2xl border border-gray-200 p-5">
               <p className="text-sm font-black text-gray-900 mb-1">
                 Top Documents
               </p>
@@ -594,7 +581,7 @@ const ClerkDashboard = () => {
             </div>
 
             {/* Revenue summary */}
-            <div className="bg-white rounded-2xl p-5 border border-gray-300 shadow-sm">
+            <div className="bg-gray-50 rounded-2xl p-5 border border-gray-200">
               <div className="flex items-center gap-2 mb-4">
                 <CreditCard size={14} className="text-emerald-500" />
                 <p className="text-[10px] font-black uppercase tracking-widest text-gray-400">
@@ -619,7 +606,7 @@ const ClerkDashboard = () => {
                     Aggregated lifetime collections
                   </p>
 
-                  <div className="mt-4 pt-4 border-t border-gray-50 grid grid-cols-2 gap-3">
+                  <div className="mt-4 pt-4 border-t border-gray-200 grid grid-cols-2 gap-3">
                     <div>
                       <p className="text-[9px] text-gray-400 uppercase tracking-widest font-bold">
                         Today

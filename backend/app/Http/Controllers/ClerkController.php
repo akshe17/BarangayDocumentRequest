@@ -10,6 +10,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Mail;
 use Carbon\Carbon;
+use Illuminate\Support\Str;
 use Stripe\Stripe;
 use Stripe\PaymentIntent;
 use Illuminate\Support\Facades\DB;
@@ -349,6 +350,7 @@ public function getLogs()
     return response()->json($logs);
 }
 
+
 public function getDashboardStats()
 {
     // 1. Daily request counts (Last 7 Days)
@@ -359,32 +361,46 @@ public function getDashboardStats()
         return [
             'date'      => $date->format('M d'),
             'pending'   => DocumentRequest::whereDate('request_date', $date)
-                            ->where('status_id', 1)->count(),
-            // 5 = Ready for Pickup, 6 = Completed
+                            ->where('status_id', 1)
+                            ->whereHas('documentType', fn($q) => $q->where('handler_role_id', 3))
+                            ->count(),
+            // status_id 3 = Collected (Done), 5 = Ready for Pickup
             'completed' => DocumentRequest::whereDate('request_date', $date)
-                            ->whereIn('status_id', [5, 6])->count(),
+                            ->whereIn('status_id', [3, 5])
+                            ->whereHas('documentType', fn($q) => $q->where('handler_role_id', 3))
+                            ->count(),
         ];
     });
 
-    // 2. Top 5 most requested document types
-    // FIX: Changed 'document_type_id' to 'document_id' to match your model
-    $topDocuments = DocumentRequest::select('document_id', \Illuminate\Support\Facades\DB::raw('count(*) as count'))
+    // 2. Status counts for stat cards
+    $allClerkRequests = DocumentRequest::whereHas('documentType', fn($q) => $q->where('handler_role_id', 3))->get();
+
+    $counts = [
+        'pending'  => $allClerkRequests->where('status_id', 1)->count(),
+        'approved' => $allClerkRequests->where('status_id', 2)->count(),
+        'ready'    => $allClerkRequests->where('status_id', 5)->count(),
+        'done'     => $allClerkRequests->where('status_id', 3)->count(),
+        'rejected' => $allClerkRequests->where('status_id', 4)->count(),
+        'total'    => $allClerkRequests->count(),
+    ];
+
+    // 3. Top 5 most requested document types
+    $topDocuments = DocumentRequest::select('document_id', DB::raw('count(*) as count'))
         ->with('documentType:document_id,document_name')
+        ->whereHas('documentType', fn($q) => $q->where('handler_role_id', 3))
         ->groupBy('document_id')
         ->orderByDesc('count')
         ->limit(5)
         ->get()
         ->map(fn($r) => [
-            'name'  => \Illuminate\Support\Str::limit(
-                $r->documentType?->document_name ?? 'Unknown', 14
-            ),
+            'name'  => mb_substr($r->documentType?->document_name ?? 'Unknown', 0, 20),
             'count' => $r->count,
         ]);
 
     // 3. Revenue Logic
-    // In your model, payment_status likely stores 'Paid' or 'Unpaid' 
-    // or a boolean. Adjust the where clause if it's a string like 'Paid'.
-    $paidRequests = DocumentRequest::where('payment_status', 'Paid') 
+    
+    $paidRequests = DocumentRequest::where('payment_status', true)
+        ->whereHas('documentType', fn($q) => $q->where('handler_role_id', 3))
         ->with('documentType:document_id,fee')
         ->get();
 
@@ -399,6 +415,7 @@ public function getDashboardStats()
         ->sum(fn($r) => (float) ($r->documentType?->fee ?? 0));
 
     return response()->json([
+        'counts'       => $counts,
         'daily'        => $daily,
         'topDocuments' => $topDocuments,
         'totalRevenue' => $totalRevenue,
