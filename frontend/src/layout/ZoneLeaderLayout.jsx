@@ -7,10 +7,14 @@ import {
   Menu,
   X,
   UserCog,
-  Users,
-  XCircle,
+  UserCheck,
+  UserX,
   ClipboardList,
+  ScrollText,
+  ListChecks,
+  Clock, // fallback pairing for "pending"
 } from "lucide-react";
+
 import logo from "../assets/logo.png";
 import { useAuth } from "../context/AuthContext";
 import Footer from "../components/Footer";
@@ -21,38 +25,36 @@ const ZoneLeaderLayout = () => {
 
   const toggleSidebar = () => setIsOpen(!isOpen);
 
-  // Streamlined Navigation Links
   const menuItems = [
     {
       path: "/zone-leader/dashboard",
       label: "Dashboard",
       icon: <LayoutDashboard size={20} />,
     },
-
     {
       path: "/zone-leader/pending",
       label: "Pending Residents",
-      icon: <Users size={20} />,
+      icon: <Clock size={20} />, // ← replaces UserClock
     },
     {
       path: "/zone-leader/verified",
       label: "Verified Residents",
-      icon: <Users size={20} />,
+      icon: <UserCheck size={20} />,
     },
     {
       path: "/zone-leader/rejected",
       label: "Rejected",
-      icon: <XCircle size={20} />,
+      icon: <UserX size={20} />,
     },
     {
       path: "/zone-leader/clearance-queue",
-      label: "Zone Clearance Queue",
-      icon: <LayoutDashboard size={20} />,
+      label: "Zone Clearance ",
+      icon: <ListChecks size={20} />,
     },
     {
       path: "/zone-leader/logs",
       label: "Activity Logs",
-      icon: <ClipboardList size={20} />,
+      icon: <ScrollText size={20} />,
     },
   ];
 

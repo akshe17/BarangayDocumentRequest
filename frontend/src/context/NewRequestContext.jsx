@@ -17,10 +17,15 @@ import { useResidentSync } from "./ResidentSyncContext";
    ───────────────────────────────────────────────────────────── */
 const CACHE_TTL_MS = 5 * 60 * 1000; // 5 minutes
 
-const DEFAULT_STATE = {
-  documentList: [],
-  existingRequests: [],
-};
+/* ─────────────────────────────────────────────────────────────
+   Terminal statuses — a request in one of these states does NOT
+   block the resident from submitting a new request for the same
+   document. Only active/in-flight requests should block.
+   ───────────────────────────────────────────────────────────── */
+const TERMINAL_STATUSES = ["completed", "rejected"];
+
+const isTerminal = (statusName = "") =>
+  TERMINAL_STATUSES.includes(statusName.toLowerCase());
 
 /* ─────────────────────────────────────────────────────────────
    CONTEXT
@@ -61,9 +66,18 @@ export const NewRequestProvider = ({ children }) => {
       setDocumentList(
         Array.isArray(docsRes.data) ? docsRes.data : (docsRes.data?.data ?? []),
       );
+
+      const allRequests = Array.isArray(reqsRes.data)
+        ? reqsRes.data
+        : (reqsRes.data?.data ?? []);
+
+      // KEY FIX: only keep active (non-terminal) requests in existingRequests.
+      // Completed and rejected requests must NOT block the resident from
+      // submitting a new request for the same document type.
       setExistingRequests(
-        Array.isArray(reqsRes.data) ? reqsRes.data : (reqsRes.data?.data ?? []),
+        allRequests.filter((r) => !isTerminal(r.status?.status_name ?? "")),
       );
+
       lastFetchedAt.current = Date.now();
     } catch {
       setError("Failed to load documents.");
@@ -86,7 +100,7 @@ export const NewRequestProvider = ({ children }) => {
     return unregister;
   }, [registerRefresh, retry]);
 
-  /* ── Invalidate cache (e.g. after a new request is submitted) ── */
+  /* ── Invalidate cache ── */
   const invalidate = useCallback(() => {
     lastFetchedAt.current = null;
   }, []);
@@ -111,12 +125,14 @@ export const NewRequestProvider = ({ children }) => {
           headers: { "Content-Type": "application/json" },
         });
 
-        // Refresh existing requests so blocked states are up-to-date
+        // Re-fetch current requests and filter terminal statuses again
         const reqsRes = await api.get("/current-request");
+        const allRequests = Array.isArray(reqsRes.data)
+          ? reqsRes.data
+          : (reqsRes.data?.data ?? []);
+
         setExistingRequests(
-          Array.isArray(reqsRes.data)
-            ? reqsRes.data
-            : (reqsRes.data?.data ?? []),
+          allRequests.filter((r) => !isTerminal(r.status?.status_name ?? "")),
         );
         lastFetchedAt.current = Date.now();
 
@@ -134,7 +150,7 @@ export const NewRequestProvider = ({ children }) => {
         setIsSubmitting(false);
       }
     },
-    [invalidateDashboard, refreshHistory, refreshNotifications],
+    [invalidateDashboard, refreshHistory, refreshNotifications, refreshAll],
   );
 
   return (

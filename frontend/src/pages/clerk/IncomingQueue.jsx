@@ -121,52 +121,91 @@ const Toast = ({ toast }) => {
 /* ─────────────────────────────────────────────────────────────
    REJECT MODAL
 ───────────────────────────────────────────────────────────── */
+const REJECT_SUGGESTIONS = [
+  "Incomplete or invalid supporting documents.",
+  "Does not meet the requirements for this document.",
+  "Request details are incorrect. Please resubmit.",
+];
+
 const RejectModal = ({ onConfirm, onCancel, busy }) => {
   const [reason, setReason] = useState("");
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/25 backdrop-blur-sm">
-      <div className="bg-white rounded-3xl shadow-2xl p-8 w-full max-w-md mx-4">
-        <div className="flex items-start gap-4 mb-6">
-          <div className="w-10 h-10 rounded-2xl bg-red-50 border border-red-100 flex items-center justify-center shrink-0">
-            <XCircle size={18} className="text-red-500" />
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm">
+      <div className="bg-white rounded-3xl shadow-2xl w-full max-w-md mx-4 overflow-hidden">
+        {/* Red header */}
+        <div className="bg-red-500 px-6 py-5 flex items-center gap-3">
+          <div className="w-9 h-9 rounded-xl bg-white/20 flex items-center justify-center shrink-0">
+            <XCircle size={17} className="text-white" />
           </div>
           <div>
-            <p className="font-black text-gray-900 text-base">Reject Request</p>
-            <p className="text-xs text-gray-400 mt-1">
+            <p className="font-black text-white text-base leading-none">
+              Reject Request
+            </p>
+            <p className="text-xs text-red-100 mt-1">
               Resident will be notified of this decision.
             </p>
           </div>
         </div>
-        <textarea
-          className="w-full bg-gray-50 border border-gray-200 rounded-2xl p-4 text-sm resize-none
-                     focus:ring-2 focus:ring-red-200 focus:border-red-300 outline-none h-28 mb-5
-                     placeholder:text-gray-300 font-medium text-gray-800"
-          placeholder="State the reason clearly…"
-          value={reason}
-          onChange={(e) => setReason(e.target.value)}
-        />
-        <div className="flex gap-3">
-          <button
-            onClick={onCancel}
-            className="flex-1 py-3 border border-gray-200 rounded-2xl text-sm font-bold
-                       text-gray-500 hover:bg-gray-50 transition-colors"
-          >
-            Cancel
-          </button>
-          <button
-            onClick={() => onConfirm(reason)}
-            disabled={!reason.trim() || busy}
-            className="flex-1 py-3 rounded-2xl bg-red-500 text-white text-sm font-bold
-                       hover:bg-red-600 transition-colors disabled:opacity-40
-                       flex items-center justify-center gap-2"
-          >
-            {busy ? (
-              <Loader2 size={14} className="animate-spin" />
-            ) : (
-              <XCircle size={14} />
-            )}
-            Confirm
-          </button>
+
+        <div className="p-6">
+          {/* Quick suggestions */}
+          <p className="text-[10px] font-black text-gray-400 tracking-widest uppercase mb-2">
+            Quick Suggestions
+          </p>
+          <div className="flex flex-col gap-2 mb-4">
+            {REJECT_SUGGESTIONS.map((s) => (
+              <button
+                key={s}
+                onClick={() => setReason(s)}
+                className={`text-left text-xs px-3 py-2.5 rounded-xl border transition-all font-medium
+                  ${
+                    reason === s
+                      ? "bg-red-50 border-red-300 text-red-700"
+                      : "bg-gray-50 border-gray-200 text-gray-600 hover:border-red-200 hover:bg-red-50 hover:text-red-600"
+                  }`}
+              >
+                {s}
+              </button>
+            ))}
+          </div>
+
+          {/* Textarea */}
+          <p className="text-[10px] font-black text-gray-400 tracking-widest uppercase mb-2">
+            Or write your own
+          </p>
+          <textarea
+            className="w-full bg-gray-50 border border-gray-200 rounded-2xl p-4 text-sm resize-none
+                       focus:ring-2 focus:ring-red-200 focus:border-red-300 outline-none h-24 mb-5
+                       placeholder:text-gray-300 font-medium text-gray-800"
+            placeholder="State the reason clearly…"
+            value={reason}
+            onChange={(e) => setReason(e.target.value)}
+          />
+
+          {/* Buttons */}
+          <div className="flex gap-3">
+            <button
+              onClick={onCancel}
+              className="flex-1 py-3 border border-gray-200 rounded-2xl text-sm font-bold
+                         text-gray-500 hover:bg-gray-100 transition-colors"
+            >
+              Cancel
+            </button>
+            <button
+              onClick={() => onConfirm(reason)}
+              disabled={!reason.trim() || busy}
+              className="flex-1 py-3 rounded-2xl bg-red-500 text-white text-sm font-bold
+                         hover:bg-red-600 transition-colors disabled:opacity-40
+                         flex items-center justify-center gap-2"
+            >
+              {busy ? (
+                <Loader2 size={14} className="animate-spin" />
+              ) : (
+                <XCircle size={14} />
+              )}
+              Confirm Rejection
+            </button>
+          </div>
         </div>
       </div>
     </div>
@@ -270,7 +309,7 @@ const DetailView = ({ requestId, onBack }) => {
       )}
 
       {/* Top bar */}
-      <div className="px-4 sm:px-8 h-14 flex items-center justify-between bg-white border-b border-gray-100 sticky top-0 z-30">
+      <div className="px-4 sm:px-8 h-14 flex items-center justify-between bg-gray-50 border-b border-gray-200 sticky top-0 z-30">
         <button
           onClick={onBack}
           className="flex items-center gap-2 text-sm font-semibold text-gray-500
@@ -411,7 +450,7 @@ const DetailView = ({ requestId, onBack }) => {
                   min={todayStr()}
                   value={pickupDate}
                   onChange={(e) => setPickupDate(e.target.value)}
-                  className="w-full bg-white border border-gray-200 rounded-xl px-4 py-3 text-sm
+                  className="w-full bg-gray-50 border border-gray-200 rounded-xl px-4 py-3 text-sm
                              text-gray-800 focus:ring-2 focus:ring-emerald-400
                              focus:border-emerald-400 outline-none"
                 />
@@ -455,12 +494,12 @@ const DetailView = ({ requestId, onBack }) => {
             <section>
               <SectionTitle>Print & Issuance</SectionTitle>
               <div className="flex gap-4 mb-6">
-                <div className="flex-1 bg-white border border-gray-100 rounded-2xl px-5 py-4">
+                <div className="flex-1 bg-gray-50 border border-gray-200 rounded-2xl px-5 py-4">
                   <Label>Current Status</Label>
                   <StatusPill statusId={data.status_id} />
                 </div>
                 {data.pickup_date && (
-                  <div className="flex-1 bg-white border border-gray-100 rounded-2xl px-5 py-4">
+                  <div className="flex-1 bg-gray-50 border border-gray-200 rounded-2xl px-5 py-4">
                     <Label>Pickup Date</Label>
                     <p className="text-sm font-bold text-gray-800">
                       {fmt(data.pickup_date)}
@@ -471,7 +510,7 @@ const DetailView = ({ requestId, onBack }) => {
 
               {doc?.template_path ? (
                 <div className="space-y-3">
-                  <div className="flex items-center gap-3 bg-white border border-gray-100 rounded-2xl px-5 py-4">
+                  <div className="flex items-center gap-3 bg-gray-50 border border-gray-200 rounded-2xl px-5 py-4">
                     <FileText size={18} className="text-emerald-500 shrink-0" />
                     <div className="min-w-0 flex-1">
                       <p className="text-sm font-bold text-gray-800 truncate">
@@ -564,7 +603,7 @@ const IncomingQueue = () => {
   return (
     <div className="min-h-screen bg-gray-50">
       {/* Header */}
-      <div className="border-b border-gray-100 px-4 sm:px-8 py-6 bg-white">
+      <div className="border-b border-gray-200 px-4 sm:px-8 py-6 bg-gray-50">
         <div className="max-w-4xl mx-auto">
           <div className="flex items-end justify-between mb-5 flex-wrap gap-3">
             <div>
@@ -653,7 +692,7 @@ const IncomingQueue = () => {
 
       {/* Table */}
       <div className="max-w-4xl mx-auto px-4 sm:px-8 py-8">
-        <div className="bg-white border border-gray-100 rounded-2xl overflow-hidden overflow-x-auto">
+        <div className="bg-gray-50 border border-gray-200 rounded-2xl overflow-hidden overflow-x-auto">
           <table className="w-full min-w-[520px]">
             <thead>
               <tr className="border-b border-gray-100 bg-gray-50/70">

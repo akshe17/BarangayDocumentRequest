@@ -14,7 +14,7 @@ use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Mail;
 use App\Mail\ResidentVerified;
 use App\Mail\ResidentRejected;
-
+use App\Mail\DocumentRequestStatusMail;
 class ZoneLeaderController extends Controller
 {
     // ─── Auth guard ───────────────────────────────────────────────────────────
@@ -75,6 +75,25 @@ class ZoneLeaderController extends Controller
             // Only residents in this zone leader's zone
             ->whereHas('resident', fn (Builder $q) => $q->where('zone_id', $zoneId));
     }
+
+    private function sendStatusEmail(
+    DocumentRequest $docRequest,
+    string          $statusType,
+    User            $zoneLeader,
+    ?string         $reason = null
+): void {
+    try {
+        Mail::to($docRequest->resident->user->email)
+            ->send(new DocumentRequestStatusMail(
+                $docRequest,
+                $statusType,
+                $reason,
+                $zoneLeader,
+            ));
+    } catch (\Exception $e) {
+        Log::error("Email failed [{$statusType}] REQ-{$docRequest->request_id}: {$e->getMessage()}");
+    }
+}
 
     /**
      * Find a single request by request_id within this zone leader's scope.
@@ -349,6 +368,13 @@ class ZoneLeaderController extends Controller
         $hasDate   = ! empty($request->pickup_date);
         $newStatus = $hasDate ? 2 : 5;
 
+        $statusKey = $hasDate ? 'approved' : 'ready';
+$this->sendStatusEmail(
+    $docRequest->fresh(['resident.user', 'documentType', 'documentType.requirements']),
+    $statusKey,
+    $zoneLeader,
+);
+
         $docRequest->update([
             'status_id'       => $newStatus,
             'pickup_date'     => $hasDate ? $request->pickup_date : null,
@@ -362,6 +388,7 @@ class ZoneLeaderController extends Controller
         $this->logAction($zoneLeader->user_id, $docRequest->request_id, 'Approve Clearance',
             "Zone Leader {$zoneLeader->last_name}: {$message}"
         );
+        
 
         return response()->json([
             'message' => $message,
@@ -399,6 +426,13 @@ class ZoneLeaderController extends Controller
             "Zone Leader {$zoneLeader->last_name} rejected REQ-" . str_pad($docRequest->request_id, 4, '0', STR_PAD_LEFT) . ". Reason: {$request->reason}"
         );
 
+        $this->sendStatusEmail(
+    $docRequest->fresh(['resident.user', 'documentType', 'documentType.requirements']),
+    'rejected',
+    $zoneLeader,
+    $request->reason,
+);
+
         return response()->json([
             'message' => 'Clearance request rejected.',
             'request' => $this->formatRequest($docRequest->fresh([
@@ -430,6 +464,12 @@ class ZoneLeaderController extends Controller
         $this->logAction($zoneLeader->user_id, $docRequest->request_id, 'Status Updated',
             "Zone Leader {$zoneLeader->last_name} advanced REQ-" . str_pad($docRequest->request_id, 4, '0', STR_PAD_LEFT) . " to Ready for Pickup."
         );
+
+        $this->sendStatusEmail(
+    $docRequest->fresh(['resident.user', 'documentType', 'documentType.requirements']),
+    'ready',
+    $zoneLeader,
+);
 
         return response()->json([
             'message' => 'Marked as ready for pickup.',
@@ -463,6 +503,12 @@ class ZoneLeaderController extends Controller
         $this->logAction($zoneLeader->user_id, $docRequest->request_id, 'Request Completed',
             "Zone Leader {$zoneLeader->last_name} confirmed payment and completed REQ-" . str_pad($docRequest->request_id, 4, '0', STR_PAD_LEFT) . "."
         );
+
+        $this->sendStatusEmail(
+    $docRequest->fresh(['resident.user', 'documentType', 'documentType.requirements']),
+    'completed',
+    $zoneLeader,
+);
 
         return response()->json([
             'message' => 'Request completed. Payment confirmed.',

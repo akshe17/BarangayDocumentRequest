@@ -24,16 +24,16 @@ class ResidentDocumentController extends Controller
     /**
      * GET /current-request
      */
-    public function residentCurrentRequest()
+  public function residentCurrentRequest()
 {
     $user = auth()->user();
 
     return DocumentRequest::where('resident_id', $user->resident->resident_id)
-        ->with(['status', 'documentType', 'formData.fieldDefinition'])  // ✅ correct place
+        ->whereIn('status_id', [1, 2, 5]) // 1=pending, 2=approved, 5=ready for pickup
+        ->with(['status', 'documentType', 'formData.fieldDefinition'])
         ->orderBy('created_at', 'desc')
         ->get();
 }
-
     /**
      * POST /request-document
      */
