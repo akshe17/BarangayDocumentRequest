@@ -164,54 +164,63 @@ const SkeletonHistoryList = ({ count = 6 }) => (
    DETAIL BANNERS
    ───────────────────────────────────────────────────────────── */
 const ZoneLeaderPickupBanner = ({ zlInfo }) => {
-  const address = [zlInfo?.house_no, zlInfo?.zone_name]
-    .filter(Boolean)
-    .join(", ");
+  const zone = zlInfo?.zone_name;
+  const houseNo = zlInfo?.house_no;
   return (
-    <div className="flex items-start gap-3 px-4 py-3.5 bg-emerald-50 rounded-xl border border-emerald-100">
-      <div className="w-7 h-7 rounded-lg bg-white border border-emerald-100 flex items-center justify-center shrink-0 mt-0.5">
-        <Home size={13} className="text-emerald-600" />
+    <div className="flex items-start gap-3 px-4 py-3.5 bg-amber-50 rounded-xl border border-amber-200">
+      <div className="w-7 h-7 rounded-lg bg-white border border-amber-200 flex items-center justify-center shrink-0 mt-0.5">
+        <Home size={13} className="text-amber-600" />
       </div>
       <div className="flex-1 min-w-0">
-        <p className="text-[11px] font-black text-emerald-700 uppercase tracking-widest mb-0.5">
-          Pickup Location
+        <p className="text-[11px] font-black text-amber-700 uppercase tracking-widest mb-1">
+          Where to Go
         </p>
-        {address ? (
-          <>
-            <p className="text-xs font-bold text-emerald-900 leading-snug">
-              {address}
-            </p>
-            <p className="text-[11px] text-emerald-600 mt-0.5 leading-relaxed">
-              Visit your Zone Leader's address to claim this document. Bring a
-              valid ID and the exact fee.
-            </p>
-          </>
+        <p className="text-sm font-black text-amber-900 leading-snug mb-1">
+          Visit your Zone Leader
+        </p>
+        {zone || houseNo ? (
+          <div className="space-y-0.5 mb-1.5">
+            {houseNo && (
+              <p className="text-xs font-semibold text-amber-800">
+                House no: {houseNo}
+              </p>
+            )}
+            {zone && (
+              <p className="text-xs font-semibold text-amber-800">
+                Zone: {zone}
+              </p>
+            )}
+          </div>
         ) : (
-          <p className="text-[11px] text-emerald-700 leading-relaxed">
-            This document is handled by your Zone Leader. Please coordinate with
-            them for pickup details.
+          <p className="text-xs text-amber-700 mb-1.5">
+            Coordinate with your Zone Leader for their exact address.
           </p>
         )}
+        <p className="text-[11px] text-amber-600 leading-relaxed">
+          This document is handled by your Zone Leader. Go to their address to
+          pay the fee and claim your document. Bring a valid ID and exact
+          change.
+        </p>
       </div>
     </div>
   );
 };
 
 const BarangayHallPickupBanner = () => (
-  <div className="flex items-start gap-3 px-4 py-3.5 bg-violet-50 rounded-xl border border-violet-100">
-    <div className="w-7 h-7 rounded-lg bg-white border border-violet-100 flex items-center justify-center shrink-0 mt-0.5">
-      <Building2 size={13} className="text-violet-600" />
+  <div className="flex items-start gap-3 px-4 py-3.5 bg-amber-50 rounded-xl border border-amber-200">
+    <div className="w-7 h-7 rounded-lg bg-white border border-amber-200 flex items-center justify-center shrink-0 mt-0.5">
+      <Building2 size={13} className="text-amber-600" />
     </div>
     <div className="flex-1 min-w-0">
-      <p className="text-[11px] font-black text-violet-700 uppercase tracking-widest mb-0.5">
-        Pickup Location
+      <p className="text-[11px] font-black text-amber-700 uppercase tracking-widest mb-1">
+        Where to Go
       </p>
-      <p className="text-xs font-bold text-violet-900 leading-snug">
-        Barangay Hall
+      <p className="text-sm font-black text-amber-900 leading-snug mb-1">
+        📍 Barangay Hall
       </p>
-      <p className="text-[11px] text-violet-600 mt-0.5 leading-relaxed">
-        Your document is ready at the Barangay Hall. Bring a valid ID and
-        prepare the exact fee upon claiming.
+      <p className="text-[11px] text-amber-600 leading-relaxed">
+        Proceed to the Barangay Hall to pay the processing fee and claim your
+        document. Bring a valid ID and prepare the exact amount.
       </p>
     </div>
   </div>
@@ -251,10 +260,10 @@ const RequestDetailPage = ({ req, onBack }) => {
   const isRejected = statusKey === "rejected";
   const isReadyForPickup = statusKey === "ready for pickup";
 
-  const handlerRoleId = req.document_type?.handler_role_id;
+  const handlerRoleId = Number(req.document_type?.handler_role_id);
   const zlInfo = req.zone_leader_info;
-  const isZoneLeaderDoc = !!zlInfo;
-  const isBarangayHallDoc = handlerRoleId === 4 && !zlInfo;
+  const isZoneLeaderDoc = handlerRoleId === 4;
+  const isBarangayHallDoc = !isZoneLeaderDoc;
 
   const date = new Date(req.request_date || req.created_at).toLocaleDateString(
     "en-PH",
@@ -377,13 +386,11 @@ const RequestDetailPage = ({ req, onBack }) => {
         </div>
       )}
 
-      {/* PICKUP BANNERS — only when ready for pickup */}
-      {isReadyForPickup && (
-        <div className="mb-4 space-y-3">
-          {isZoneLeaderDoc && <ZoneLeaderPickupBanner zlInfo={zlInfo} />}
-          {isBarangayHallDoc && <BarangayHallPickupBanner />}
-        </div>
-      )}
+      {/* DIRECTION BANNERS — always visible so resident knows where to go */}
+      <div className="mb-4 space-y-3">
+        {isZoneLeaderDoc && <ZoneLeaderPickupBanner zlInfo={zlInfo} />}
+        {isBarangayHallDoc && <BarangayHallPickupBanner />}
+      </div>
 
       {/* REJECTION REASON / REMARKS */}
       {reason && (
