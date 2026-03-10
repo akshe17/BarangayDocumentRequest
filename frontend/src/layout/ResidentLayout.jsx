@@ -19,7 +19,7 @@ import { useAuth } from "../context/AuthContext";
 
 const NAV_LINKS = [
   { to: "/resident", icon: LayoutDashboard, label: "Dashboard", exact: true },
-  { to: "/resident/new-request", icon: FileText, label: "New Request" },
+  { to: "/resident/new-request", icon: FileText, label: "Request Document" },
   { to: "/resident/history", icon: SearchCheck, label: "Track Request" },
   { to: "/resident/notifications", icon: Clock, label: "My History" },
 ];
@@ -35,7 +35,7 @@ const ResidentLayout = () => {
       <div className="min-h-screen flex items-center justify-center bg-gray-50">
         <div className="flex flex-col items-center gap-3">
           <div className="w-8 h-8 border-2 border-emerald-500 border-t-transparent rounded-full animate-spin" />
-          <p className="text-sm text-gray-400 font-medium tracking-wide">
+          <p className="text-sm text-gray-500 font-medium tracking-wide">
             Loading...
           </p>
         </div>
@@ -73,7 +73,7 @@ const ResidentLayout = () => {
               <p className="text-[13px] font-black text-emerald-600 tracking-tight">
                 Barangay Bonbon
               </p>
-              <p className="text-[9px] text-gray-400 uppercase tracking-[0.15em] font-medium mt-px">
+              <p className="text-[9px] text-gray-500 uppercase tracking-[0.15em] font-medium mt-px">
                 Doc Request System
               </p>
             </div>
@@ -90,7 +90,7 @@ const ResidentLayout = () => {
                   className={`relative flex items-center gap-2 px-3.5 py-2 rounded-lg text-[11px] font-bold uppercase tracking-wider transition-all duration-150 ${
                     active
                       ? "text-emerald-600 bg-emerald-50"
-                      : "text-gray-400 hover:text-gray-700 hover:bg-gray-50"
+                      : "text-gray-500 hover:text-gray-700 hover:bg-gray-50"
                   }`}
                 >
                   <Icon size={14} strokeWidth={active ? 2.5 : 2} />
@@ -131,7 +131,7 @@ const ResidentLayout = () => {
                 </div>
                 <ChevronDown
                   size={12}
-                  className={`text-gray-400 transition-transform duration-200 ${profileOpen ? "rotate-180" : ""}`}
+                  className={`text-gray-500 transition-transform duration-200 ${profileOpen ? "rotate-180" : ""}`}
                 />
               </button>
 

@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import {
   FileText,
   PackageCheck,
@@ -117,7 +117,7 @@ const FilterTabs = ({ active, onChange, counts }) => (
           {tab === "Ready for Pickup" ? "Pickup" : tab}
           {count > 0 && (
             <span
-              className={`text-[10px] font-bold tabular-nums px-1 rounded ${isActive ? "text-white/70" : "text-gray-400"}`}
+              className={`text-[10px] font-bold tabular-nums px-1 rounded ${isActive ? "text-white/70" : "text-gray-500"}`}
             >
               {count}
             </span>
@@ -218,15 +218,15 @@ const BarangayHallPickupBanner = () => (
 );
 
 /* ─────────────────────────────────────────────────────────────
-   DETAIL PAGE
+   DETAIL ROW
    ───────────────────────────────────────────────────────────── */
 const DetailRow = ({ icon: Icon, label, value, mono = false }) => (
   <div className="flex items-start gap-3 py-3 border-b border-gray-50 last:border-0">
     <div className="w-7 h-7 rounded-lg bg-gray-50 flex items-center justify-center shrink-0 mt-0.5">
-      <Icon size={13} className="text-gray-400" />
+      <Icon size={13} className="text-gray-500" />
     </div>
     <div className="flex-1 min-w-0">
-      <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-0.5">
+      <p className="text-[10px] font-bold text-gray-500 uppercase tracking-widest mb-0.5">
         {label}
       </p>
       <p
@@ -238,6 +238,9 @@ const DetailRow = ({ icon: Icon, label, value, mono = false }) => (
   </div>
 );
 
+/* ─────────────────────────────────────────────────────────────
+   DETAIL PAGE
+   ───────────────────────────────────────────────────────────── */
 const RequestDetailPage = ({ req, onBack }) => {
   const statusName = req.status?.status_name || "Pending";
   const statusKey = statusName.toLowerCase();
@@ -255,14 +258,9 @@ const RequestDetailPage = ({ req, onBack }) => {
 
   const date = new Date(req.request_date || req.created_at).toLocaleDateString(
     "en-PH",
-    {
-      year: "numeric",
-      month: "long",
-      day: "numeric",
-    },
+    { year: "numeric", month: "long", day: "numeric" },
   );
 
-  // Laravel serializes relations to snake_case: documentType() → document_type
   const requirements = req.document_type?.requirements ?? [];
 
   return (
@@ -276,15 +274,13 @@ const RequestDetailPage = ({ req, onBack }) => {
           <ArrowLeft size={13} />
           Back
         </button>
-        <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">
+        <p className="text-[10px] font-bold text-gray-500 uppercase tracking-widest">
           REQ-{req.request_id}
         </p>
       </div>
 
       {/* STATUS HERO */}
-      <div
-        className={`rounded-2xl overflow-hidden border border-gray-100 shadow-md mb-4`}
-      >
+      <div className="rounded-2xl overflow-hidden border border-gray-100 shadow-md mb-4">
         <div className={`h-1.5 w-full ${cfg.accent}`} />
         <div className="p-5 flex items-center gap-4">
           <div
@@ -307,7 +303,7 @@ const RequestDetailPage = ({ req, onBack }) => {
             </span>
           </div>
           <div className="shrink-0 text-right">
-            <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-0.5">
+            <p className="text-[10px] font-bold text-gray-500 uppercase tracking-widest mb-0.5">
               Fee
             </p>
             <p
@@ -321,7 +317,7 @@ const RequestDetailPage = ({ req, onBack }) => {
 
       {/* DETAILS CARD */}
       <div className="bg-white rounded-2xl border border-gray-100 p-4 mb-4">
-        <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-2">
+        <p className="text-[10px] font-black text-gray-500 uppercase tracking-widest mb-2">
           Request Details
         </p>
         <DetailRow
@@ -351,16 +347,16 @@ const RequestDetailPage = ({ req, onBack }) => {
         <div className="bg-white rounded-2xl border border-gray-100 p-4 mb-4">
           <div className="flex items-center gap-2 mb-3">
             <div className="w-7 h-7 rounded-lg bg-gray-50 flex items-center justify-center">
-              <ListChecks size={13} className="text-gray-400" />
+              <ListChecks size={13} className="text-gray-500" />
             </div>
-            <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest">
+            <p className="text-[10px] font-black text-gray-500 uppercase tracking-widest">
               Requirements
             </p>
           </div>
           <ul className="space-y-2">
             {requirements.map((item, i) => (
               <li key={i} className="flex items-start gap-2.5">
-                <span className="w-5 h-5 rounded-full bg-gray-100 flex items-center justify-center shrink-0 mt-0.5 text-[10px] font-black text-gray-400">
+                <span className="w-5 h-5 rounded-full bg-gray-100 flex items-center justify-center shrink-0 mt-0.5 text-[10px] font-black text-gray-500">
                   {i + 1}
                 </span>
                 <div className="pt-0.5">
@@ -370,7 +366,7 @@ const RequestDetailPage = ({ req, onBack }) => {
                       : (item.requirement_name ?? "—")}
                   </p>
                   {item.description && (
-                    <p className="text-[11px] text-gray-400 mt-0.5 leading-relaxed italic">
+                    <p className="text-[11px] text-gray-500 mt-0.5 leading-relaxed italic">
                       {item.description}
                     </p>
                   )}
@@ -427,11 +423,7 @@ const HistoryCard = ({ req, index, onClick }) => {
 
   const date = new Date(req.request_date || req.created_at).toLocaleDateString(
     "en-PH",
-    {
-      year: "numeric",
-      month: "short",
-      day: "numeric",
-    },
+    { year: "numeric", month: "short", day: "numeric" },
   );
 
   return (
@@ -449,11 +441,11 @@ const HistoryCard = ({ req, index, onClick }) => {
         </div>
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-1.5 mb-0.5">
-            <span className="text-[10px] font-black text-gray-400 tracking-widest uppercase">
+            <span className="text-[10px] font-black text-gray-500 tracking-widest uppercase">
               REQ-{req.request_id}
             </span>
             <span className="text-gray-200 text-[10px]">·</span>
-            <span className="text-[10px] text-gray-400">{date}</span>
+            <span className="text-[10px] text-gray-500">{date}</span>
           </div>
           <p className="text-sm font-bold text-gray-900 leading-snug truncate">
             {req.document_type?.document_name ?? "—"}
@@ -484,7 +476,7 @@ const EmptyState = ({ filtered }) => (
     <div className="w-14 h-14 rounded-2xl bg-gray-50 border border-gray-100 flex items-center justify-center">
       <Inbox size={22} className="text-gray-300" />
     </div>
-    <p className="text-sm font-bold text-gray-400">
+    <p className="text-sm font-bold text-gray-500">
       {filtered ? "No matching requests" : "No requests yet"}
     </p>
     <p className="text-xs text-gray-300 text-center max-w-xs">
@@ -501,7 +493,25 @@ const EmptyState = ({ filtered }) => (
 const ResidentHistory = () => {
   const { historyData, isLoading, error, refresh } = useResidentHistory();
   const [filter, setFilter] = useState("all");
-  const [selected, setSelected] = useState(null);
+
+  // FIX: store the selected request_id only, not the full object.
+  // The detail page derives the live object from historyData every render,
+  // so a background refresh (or invalidateAndRefresh after a new submission)
+  // is immediately reflected — no stale status shown in the detail view.
+  const [selectedId, setSelectedId] = useState(null);
+
+  // FIX: force-refresh every time this page mounts so a request that was
+  // just submitted (and marked completed/rejected elsewhere) is always current.
+  useEffect(() => {
+    refresh();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // Derive the live selected request from the always-fresh historyData.
+  const selected =
+    selectedId != null
+      ? (historyData.find((r) => r.request_id === selectedId) ?? null)
+      : null;
 
   const counts = React.useMemo(() => {
     const c = { all: historyData.length };
@@ -520,10 +530,11 @@ const ResidentHistory = () => {
         );
 
   // ── Detail page ──
-  if (selected) {
+  // Only render the detail page once we actually have the live object.
+  if (selectedId != null && selected) {
     return (
       <div className="max-w-3xl mx-auto px-4 md:px-6 py-8 pb-24">
-        <RequestDetailPage req={selected} onBack={() => setSelected(null)} />
+        <RequestDetailPage req={selected} onBack={() => setSelectedId(null)} />
       </div>
     );
   }
@@ -539,7 +550,7 @@ const ResidentHistory = () => {
           <h1 className="text-2xl font-black text-gray-900 tracking-tight">
             Track Request
           </h1>
-          <p className="text-sm text-gray-400 mt-0.5">
+          <p className="text-sm text-gray-500 mt-0.5">
             Track all your document applications.
           </p>
         </div>
@@ -579,7 +590,7 @@ const ResidentHistory = () => {
               key={req.request_id}
               req={req}
               index={i}
-              onClick={() => setSelected(req)}
+              onClick={() => setSelectedId(req.request_id)} // FIX: store ID not object
             />
           ))}
         </div>
@@ -594,7 +605,7 @@ const ResidentHistory = () => {
             <p className="text-xs font-bold text-white mb-0.5">
               Official Notice
             </p>
-            <p className="text-xs text-gray-400 leading-relaxed">
+            <p className="text-xs text-gray-500 leading-relaxed">
               Processing times vary by document type. Keep your contact details
               updated to receive SMS and email notifications.
             </p>

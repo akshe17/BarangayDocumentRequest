@@ -1,4 +1,10 @@
-import React, { useState, useEffect, useMemo } from "react";
+import React, {
+  useState,
+  useEffect,
+  useMemo,
+  useRef,
+  useCallback,
+} from "react";
 import { useNavigate, Navigate } from "react-router-dom";
 import {
   Mail,
@@ -19,13 +25,26 @@ import {
   FileBadge,
   Stamp,
   Download,
+  Camera,
+  ScanFace,
+  AlertTriangle,
+  RefreshCw,
 } from "lucide-react";
 import api from "../../axious/api";
-
 import { Link } from "react-router-dom";
 import logo from "../../assets/logo.png";
 import bonbonVideo from "../../assets/bonbonVideo.mp4";
 import { useAuth } from "../../context/AuthContext";
+
+// ─── FACE++ CONFIG ────────────────────────────────────────────────────────────
+// Add these to your .env file:
+//   VITE_FACEPP_API_KEY=your_api_key
+//   VITE_FACEPP_API_SECRET=your_api_secret
+const FACEPP_API_KEY = import.meta.env.VITE_FACEPP_API_KEY || "";
+const FACEPP_API_SECRET = import.meta.env.VITE_FACEPP_API_SECRET || "";
+const FACEPP_ENDPOINT = "https://api-us.faceplusplus.com/facepp/v3/compare";
+// Face++ recommended threshold for KYC (1 in 10,000 false accept rate)
+const FACEPP_THRESHOLD = 71.8;
 
 // ─── PASSWORD STRENGTH ───────────────────────────────────────────────────────
 function getPasswordStrength(password) {
@@ -348,6 +367,440 @@ const SelectField = ({
   </div>
 );
 
+// ─── FACE SCANNER MODAL — Face++ API ─────────────────────────────────────────
+const FaceScanner = ({ idImageSrc, onVerified, onReset, onClose }) => {
+  const videoRef = useRef(null);
+  const canvasRef = useRef(null);
+  const streamRef = useRef(null);
+  const lockRef = useRef(false); // prevents concurrent API calls
+  const intervalRef = useRef(null); // scan loop handle
+  const idB64Ref = useRef(null); // cached ID image base64
+
+  // phase: idle | loading | scanning | analyzing | matched | failed
+  const [phase, setPhase] = useState("idle");
+  const [errorMsg, setErrorMsg] = useState("");
+  const [scanProgress, setScanProgress] = useState(0);
+
+  // ── Stop everything ──────────────────────────────────────────────────────
+  const stopCamera = useCallback(() => {
+    if (intervalRef.current) {
+      clearInterval(intervalRef.current);
+      intervalRef.current = null;
+    }
+    if (streamRef.current) {
+      streamRef.current.getTracks().forEach((t) => t.stop());
+      streamRef.current = null;
+    }
+    lockRef.current = false;
+  }, []);
+
+  useEffect(() => () => stopCamera(), [stopCamera]);
+
+  // ── Grab a video frame as base64 JPEG ───────────────────────────────────
+  const captureFrame = useCallback(() => {
+    const video = videoRef.current;
+    const canvas = canvasRef.current;
+    if (!video || !canvas || video.readyState < 2) return null;
+    canvas.width = video.videoWidth || 640;
+    canvas.height = video.videoHeight || 480;
+    // Un-mirror for the API (display is mirrored for natural selfie feel)
+    const ctx = canvas.getContext("2d");
+    ctx.save();
+    ctx.scale(-1, 1);
+    ctx.drawImage(video, -canvas.width, 0);
+    ctx.restore();
+    return canvas.toDataURL("image/jpeg", 0.85).split(",")[1];
+  }, []);
+
+  // ── startScanLoop ref so analyzeFrame can call it for auto-retry ─────────
+  const startScanLoopRef = useRef(null);
+
+  // ── Send frame + ID to Face++ and check result ───────────────────────────
+  const analyzeFrame = useCallback(async () => {
+    if (lockRef.current) return;
+    lockRef.current = true;
+
+    // Pause the loop while waiting for the API
+    if (intervalRef.current) {
+      clearInterval(intervalRef.current);
+      intervalRef.current = null;
+    }
+
+    const selfieB64 = captureFrame();
+    if (!selfieB64) {
+      lockRef.current = false;
+      startScanLoopRef.current?.();
+      return;
+    }
+
+    setPhase("analyzing");
+
+    try {
+      // Face++ requires multipart/form-data (NOT JSON)
+      const form = new FormData();
+      form.append("api_key", FACEPP_API_KEY);
+      form.append("api_secret", FACEPP_API_SECRET);
+      form.append("image_base64_1", idB64Ref.current); // Government ID photo
+      form.append("image_base64_2", selfieB64); // Live camera selfie
+
+      const res = await fetch(FACEPP_ENDPOINT, { method: "POST", body: form });
+      const data = await res.json();
+
+      // error_message means no face was detected in the frame — silently retry
+      if (data.error_message) {
+        lockRef.current = false;
+        setPhase("scanning");
+        startScanLoopRef.current?.();
+        return;
+      }
+
+      // Use Face++'s returned 1e-4 threshold, fall back to our constant
+      const confidence = data.confidence ?? 0;
+      const threshold = data.thresholds?.["1e-4"] ?? FACEPP_THRESHOLD;
+
+      if (confidence >= threshold) {
+        stopCamera();
+        setPhase("matched");
+        setTimeout(() => onVerified(), 1400);
+      } else {
+        stopCamera();
+        setErrorMsg(
+          `Similarity score too low (${confidence.toFixed(1)} / ${threshold.toFixed(1)} required). ` +
+            "Try better lighting or look directly at the camera.",
+        );
+        setPhase("failed");
+      }
+    } catch {
+      // Network/API error — auto-retry silently
+      lockRef.current = false;
+      setPhase("scanning");
+      startScanLoopRef.current?.();
+    }
+  }, [captureFrame, stopCamera, onVerified]);
+
+  // ── Progress-bar scan loop: 2.5s fill → fire analyzeFrame ───────────────
+  const startScanLoop = useCallback(() => {
+    setScanProgress(0);
+    const TOTAL = 2500,
+      TICK = 50;
+    let elapsed = 0;
+    intervalRef.current = setInterval(() => {
+      elapsed += TICK;
+      setScanProgress(Math.min(100, Math.round((elapsed / TOTAL) * 100)));
+      if (elapsed >= TOTAL) {
+        clearInterval(intervalRef.current);
+        intervalRef.current = null;
+        analyzeFrame();
+      }
+    }, TICK);
+  }, [analyzeFrame]);
+
+  // Keep ref in sync so analyzeFrame can always call the latest startScanLoop
+  useEffect(() => {
+    startScanLoopRef.current = startScanLoop;
+  }, [startScanLoop]);
+
+  // ── Open camera, cache ID base64, kick off scan loop ────────────────────
+  const startCamera = useCallback(async () => {
+    setPhase("loading");
+    setErrorMsg("");
+    lockRef.current = false;
+
+    // Fetch & cache the ID image as base64 (done only once per session)
+    if (!idB64Ref.current) {
+      try {
+        const blob = await fetch(idImageSrc).then((r) => r.blob());
+        idB64Ref.current = await new Promise((resolve, reject) => {
+          const reader = new FileReader();
+          reader.onload = () => resolve(reader.result.split(",")[1]);
+          reader.onerror = reject;
+          reader.readAsDataURL(blob);
+        });
+      } catch {
+        setErrorMsg("Could not load your ID image. Please re-upload it.");
+        setPhase("failed");
+        return;
+      }
+    }
+
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({
+        video: {
+          facingMode: "user",
+          width: { ideal: 640 },
+          height: { ideal: 480 },
+        },
+      });
+      streamRef.current = stream;
+      const video = videoRef.current;
+      if (!video) {
+        stopCamera();
+        return;
+      }
+
+      video.srcObject = stream;
+      // Must wait for loadedmetadata before calling play() — required by all browsers
+      video.onloadedmetadata = () => {
+        video
+          .play()
+          .then(() => {
+            setPhase("scanning");
+            setTimeout(() => startScanLoop(), 600); // half-second settle time
+          })
+          .catch(() => {
+            setErrorMsg("Could not start video stream. Please try again.");
+            setPhase("failed");
+            stopCamera();
+          });
+      };
+    } catch {
+      setErrorMsg(
+        "Camera access was denied. Please allow camera permissions and try again.",
+      );
+      setPhase("failed");
+    }
+  }, [idImageSrc, stopCamera, startScanLoop]);
+
+  const brackets = [
+    "top-5 left-5 border-t-2 border-l-2",
+    "top-5 right-5 border-t-2 border-r-2",
+    "bottom-5 left-5 border-b-2 border-l-2",
+    "bottom-5 right-5 border-b-2 border-r-2",
+  ];
+
+  // ── Handle close — stop camera first ─────────────────────────────────────
+  const handleClose = () => {
+    stopCamera();
+    onClose?.();
+  };
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/75 backdrop-blur-sm">
+      <div
+        className="relative w-full max-w-2xl bg-gray-950 rounded-3xl overflow-hidden shadow-2xl border border-emerald-500/20 flex flex-col"
+        style={{ maxHeight: "92vh" }}
+      >
+        {/* ── Modal Header ── */}
+        <div className="flex items-center justify-between px-6 py-4 border-b border-white/10 bg-gray-900/80 shrink-0">
+          <div className="flex items-center gap-3">
+            <div className="w-9 h-9 rounded-xl bg-emerald-500/20 border border-emerald-500/40 flex items-center justify-center">
+              <ScanFace size={18} className="text-emerald-400" />
+            </div>
+            <div>
+              <h2 className="text-white font-bold text-base leading-tight">
+                Face Verification
+              </h2>
+              <p className="text-white/40 text-xs mt-0.5">
+                Match your face with your uploaded ID
+              </p>
+            </div>
+          </div>
+          <button
+            type="button"
+            onClick={handleClose}
+            className="w-8 h-8 rounded-lg bg-white/10 hover:bg-white/20 flex items-center justify-center text-white/60 hover:text-white transition-all"
+          >
+            <X size={16} />
+          </button>
+        </div>
+
+        {/* ── Camera Viewport ── */}
+        <div
+          className="relative bg-black flex items-center justify-center"
+          style={{ minHeight: 380 }}
+        >
+          {/* Live video */}
+          <video
+            ref={videoRef}
+            muted
+            playsInline
+            className="w-full object-cover"
+            style={{
+              maxHeight: 420,
+              transform: "scaleX(-1)",
+              display:
+                phase === "scanning" || phase === "analyzing"
+                  ? "block"
+                  : "none",
+            }}
+          />
+          {/* Off-screen canvas for frame capture */}
+          <canvas ref={canvasRef} className="hidden" />
+
+          {/* IDLE */}
+          {phase === "idle" && (
+            <div className="flex flex-col items-center justify-center gap-5 p-12 text-center">
+              <div className="relative">
+                <div className="w-28 h-28 rounded-full bg-emerald-500/10 border-2 border-emerald-500/30 flex items-center justify-center">
+                  <Camera size={44} className="text-emerald-400" />
+                </div>
+                <div className="absolute inset-0 rounded-full border-2 border-emerald-400/20 animate-ping" />
+              </div>
+              <div className="space-y-2">
+                <p className="text-white font-semibold text-base">
+                  Ready to verify your identity
+                </p>
+                <p className="text-white/50 text-sm max-w-xs leading-relaxed">
+                  Position your face in good lighting. Scanning starts
+                  automatically once the camera opens.
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={startCamera}
+                className="px-8 py-3.5 bg-emerald-500 hover:bg-emerald-400 active:scale-95 text-white rounded-xl font-bold text-sm flex items-center gap-2.5 transition-all shadow-lg shadow-emerald-900/50"
+              >
+                <Camera size={18} /> Open Camera
+              </button>
+            </div>
+          )}
+
+          {/* LOADING */}
+          {phase === "loading" && (
+            <div className="flex flex-col items-center gap-4 p-12 text-center">
+              <div className="w-14 h-14 rounded-full border-4 border-emerald-400/30 border-t-emerald-400 animate-spin" />
+              <p className="text-white/70 text-sm font-medium">
+                Starting camera…
+              </p>
+            </div>
+          )}
+
+          {/* SCANNING overlay */}
+          {phase === "scanning" && (
+            <div className="absolute inset-0 pointer-events-none">
+              {brackets.map((cls, i) => (
+                <div
+                  key={i}
+                  className={`absolute w-10 h-10 border-emerald-400 ${cls}`}
+                />
+              ))}
+              <div
+                className="absolute left-10 right-10 h-px bg-gradient-to-r from-transparent via-emerald-400 to-transparent opacity-80"
+                style={{ animation: "faceScanSweep 1.8s ease-in-out infinite" }}
+              />
+              <div className="absolute bottom-0 left-0 right-0 px-5 pb-4 pt-3 bg-gradient-to-t from-black/80 to-transparent">
+                <div className="flex items-center gap-2 mb-2">
+                  <div className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
+                  <span className="text-white/90 text-xs font-semibold tracking-wide">
+                    Scanning… stay still
+                  </span>
+                </div>
+                <div className="h-1.5 bg-white/20 rounded-full overflow-hidden">
+                  <div
+                    className="h-full bg-emerald-400 rounded-full"
+                    style={{ width: `${scanProgress}%`, transition: "none" }}
+                  />
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* ANALYZING overlay */}
+          {phase === "analyzing" && (
+            <div className="absolute inset-0 bg-black/70 backdrop-blur-sm flex flex-col items-center justify-center gap-5">
+              <div className="relative">
+                <div className="w-20 h-20 rounded-full border-4 border-emerald-400/30 border-t-emerald-400 animate-spin" />
+                <div
+                  className="absolute inset-2 rounded-full border-2 border-emerald-500/20 border-b-emerald-300 animate-spin"
+                  style={{
+                    animationDirection: "reverse",
+                    animationDuration: "1.2s",
+                  }}
+                />
+              </div>
+              <div className="text-center space-y-1.5">
+                <p className="text-white font-bold text-base">
+                  Comparing with ID…
+                </p>
+                <p className="text-white/40 text-xs">Powered by Face++</p>
+              </div>
+            </div>
+          )}
+
+          {/* MATCHED */}
+          {phase === "matched" && (
+            <div className="flex flex-col items-center gap-5 p-12 text-center">
+              <div className="relative">
+                <div className="w-28 h-28 rounded-full bg-emerald-500/20 border-2 border-emerald-400 flex items-center justify-center">
+                  <CheckCircle2 size={52} className="text-emerald-400" />
+                </div>
+                <div className="absolute inset-0 rounded-full border-2 border-emerald-400/30 animate-ping" />
+              </div>
+              <div className="space-y-1.5">
+                <p className="text-emerald-300 font-bold text-xl">
+                  Face Matched!
+                </p>
+                <p className="text-white/60 text-sm">
+                  Identity confirmed. Proceeding…
+                </p>
+              </div>
+            </div>
+          )}
+
+          {/* FAILED */}
+          {phase === "failed" && (
+            <div className="flex flex-col items-center gap-5 p-10 text-center">
+              <div className="w-24 h-24 rounded-full bg-red-500/20 border-2 border-red-400 flex items-center justify-center">
+                <AlertTriangle size={44} className="text-red-400" />
+              </div>
+              <div className="space-y-2">
+                <p className="text-red-300 font-bold text-lg">
+                  Verification Failed
+                </p>
+                <p className="text-white/60 text-sm max-w-xs leading-relaxed">
+                  {errorMsg || "Face could not be verified. Please try again."}
+                </p>
+              </div>
+              <div className="flex gap-3 mt-1">
+                <button
+                  type="button"
+                  onClick={startCamera}
+                  className="px-5 py-2.5 bg-emerald-500 hover:bg-emerald-400 active:scale-95 text-white rounded-xl text-sm font-bold flex items-center gap-1.5 transition-all"
+                >
+                  <RefreshCw size={14} /> Try Again
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    onReset();
+                    handleClose();
+                  }}
+                  className="px-5 py-2.5 bg-white/10 hover:bg-white/20 active:scale-95 text-white rounded-xl text-sm font-semibold transition-all"
+                >
+                  Change ID
+                </button>
+              </div>
+            </div>
+          )}
+        </div>
+
+        {/* ── Tips Footer ── */}
+        <div className="px-6 py-4 bg-gray-900/60 border-t border-white/10 shrink-0">
+          <div className="flex items-start gap-3">
+            <div className="w-5 h-5 mt-0.5 shrink-0 text-emerald-400">
+              <Shield size={16} />
+            </div>
+            <p className="text-white/40 text-xs leading-relaxed">
+              For best results: ensure good lighting, remove glasses, and look
+              directly at the camera. Your face must match the photo on your
+              uploaded ID.
+            </p>
+          </div>
+        </div>
+      </div>
+
+      <style>{`
+        @keyframes faceScanSweep {
+          0%   { top: 10%; opacity: 0; }
+          5%   { opacity: 1; }
+          95%  { opacity: 1; }
+          100% { top: 90%; opacity: 0; }
+        }
+      `}</style>
+    </div>
+  );
+};
+
 // ─── MAIN COMPONENT ──────────────────────────────────────────────────────────
 const Register = () => {
   const [showPassword, setShowPassword] = useState(false);
@@ -355,16 +808,18 @@ const Register = () => {
   const [currentStep, setCurrentStep] = useState(1);
   const [imageFile, setImageFile] = useState(null);
   const [errors, setErrors] = useState({});
-  const navigate = useNavigate();
-  const today = new Date().toISOString().split("T")[0];
   const [genders, setGenders] = useState([]);
   const [civilStatus, setCivilStatus] = useState([]);
   const [zones, setZones] = useState([]);
   const [showVerificationPending, setShowVerificationPending] = useState(false);
   const [registeredEmail, setRegisteredEmail] = useState("");
-  const { isAuthenticated, isAdmin } = useAuth();
-
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [faceVerified, setFaceVerified] = useState(false);
+  const [showFaceModal, setShowFaceModal] = useState(false);
+
+  const navigate = useNavigate();
+  const today = new Date().toISOString().split("T")[0];
+  const { isAuthenticated, isAdmin } = useAuth();
 
   const [formData, setFormData] = useState({
     email: "",
@@ -388,33 +843,26 @@ const Register = () => {
   if (isAuthenticated)
     return <Navigate to={isAdmin() ? "/dashboard" : "/resident"} replace />;
 
+  // ── Handlers ─────────────────────────────────────────────────────────────
   const handleInputChange = (e) => {
     const { name, value } = e.target;
-    const nameOnlyRegex = /^[A-Za-zÀ-ÿ\s.'-]*$/;
-
-    // Block numbers on all name fields
-    if (["fname", "mname", "lname"].includes(name)) {
-      if (!nameOnlyRegex.test(value)) {
-        setErrors((prev) => ({
-          ...prev,
-          [name]: "Only letters and spaces are allowed.",
-        }));
-        return;
-      }
+    const nameOnly = /^[A-Za-zÀ-ÿ\s.'-]*$/;
+    if (["fname", "mname", "lname"].includes(name) && !nameOnly.test(value)) {
+      setErrors((p) => ({
+        ...p,
+        [name]: "Only letters and spaces are allowed.",
+      }));
+      return;
     }
-
-    if (name === "house_no") {
-      if (!/^[A-Za-z0-9\s]*$/.test(value)) {
-        setErrors((prev) => ({
-          ...prev,
-          house_no: "Only letters, numbers, and spaces are allowed.",
-        }));
-        return;
-      }
+    if (name === "house_no" && !/^[A-Za-z0-9\s]*$/.test(value)) {
+      setErrors((p) => ({
+        ...p,
+        house_no: "Only letters, numbers, and spaces are allowed.",
+      }));
+      return;
     }
-
-    setFormData((prev) => ({ ...prev, [name]: value }));
-    if (errors[name]) setErrors((prev) => ({ ...prev, [name]: null }));
+    setFormData((p) => ({ ...p, [name]: value }));
+    if (errors[name]) setErrors((p) => ({ ...p, [name]: null }));
   };
 
   const handleImageChange = (e) => {
@@ -422,31 +870,31 @@ const Register = () => {
     if (file) {
       setSelectedImage(URL.createObjectURL(file));
       setImageFile(file);
-      if (errors.id_image) setErrors((prev) => ({ ...prev, id_image: null }));
+      setFaceVerified(false);
+      if (errors.id_image) setErrors((p) => ({ ...p, id_image: null }));
     }
   };
 
   const removeImage = (e) => {
-    e.preventDefault();
+    if (e?.preventDefault) e.preventDefault();
     setSelectedImage(null);
     setImageFile(null);
+    setFaceVerified(false);
   };
 
+  // ── Registration submit ───────────────────────────────────────────────────
   const handleRegistration = async () => {
     setErrors({});
-
     if (!imageFile) {
       setErrors({ id_image: "Please upload a valid ID image" });
       return;
     }
     setIsSubmitting(true);
-
     const data = new FormData();
-    Object.keys(formData).forEach((key) => {
-      if (key !== "confirmPassword") data.append(key, formData[key]);
+    Object.keys(formData).forEach((k) => {
+      if (k !== "confirmPassword") data.append(k, formData[k]);
     });
     data.append("id_image", imageFile);
-
     try {
       const response = await api.post("/register", data, {
         headers: { "Content-Type": "multipart/form-data" },
@@ -471,6 +919,7 @@ const Register = () => {
     }
   };
 
+  // ── Fetch dropdowns on mount ──────────────────────────────────────────────
   useEffect(() => {
     (async () => {
       try {
@@ -479,15 +928,22 @@ const Register = () => {
           api.get("/civil-status"),
           api.get("/zones"),
         ]);
-        setGenders(gRes.data);
-        setCivilStatus(cRes.data);
-        setZones(zRes.data);
+        setGenders(
+          Array.isArray(gRes.data) ? gRes.data : (gRes.data?.data ?? []),
+        );
+        setCivilStatus(
+          Array.isArray(cRes.data) ? cRes.data : (cRes.data?.data ?? []),
+        );
+        setZones(
+          Array.isArray(zRes.data) ? zRes.data : (zRes.data?.data ?? []),
+        );
       } catch (err) {
         console.error("Failed to fetch initial data:", err);
       }
     })();
   }, []);
 
+  // ── Validation ────────────────────────────────────────────────────────────
   const passwordMatchError =
     formData.confirmPassword && formData.password !== formData.confirmPassword
       ? "Passwords do not match"
@@ -495,8 +951,8 @@ const Register = () => {
 
   const birthdateError = (() => {
     if (!formData.birthdate) return "";
-    const birth = new Date(formData.birthdate);
-    const now = new Date();
+    const birth = new Date(formData.birthdate),
+      now = new Date();
     let age = now.getFullYear() - birth.getFullYear();
     const m = now.getMonth() - birth.getMonth();
     if (m < 0 || (m === 0 && now.getDate() < birth.getDate())) age--;
@@ -507,13 +963,15 @@ const Register = () => {
     formData.email.includes("@") &&
     formData.password.length >= 6 &&
     formData.password === formData.confirmPassword;
-  const section2Valid =
-    formData.fname.trim() !== "" &&
-    formData.lname.trim() !== "" &&
-    formData.birthdate !== "" &&
+  const section2Valid = !!(
+    formData.fname.trim() &&
+    formData.lname.trim() &&
+    formData.birthdate &&
     !birthdateError &&
-    formData.gender_id !== "";
-  const isFormValid = section1Valid && section2Valid && selectedImage !== null;
+    formData.gender_id
+  );
+  const isFormValid =
+    section1Valid && section2Valid && !!selectedImage && faceVerified;
 
   useEffect(() => {
     if (section1Valid && section2Valid) setCurrentStep(3);
@@ -529,41 +987,39 @@ const Register = () => {
       />
     );
 
+  // ── Render ────────────────────────────────────────────────────────────────
   return (
     <>
       <style>{`
         @import url('https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:wght@700;800;900&family=DM+Sans:wght@400;500;600&display=swap');
-        .reg-root { font-family: 'DM Sans', sans-serif; }
-        .df       { font-family: 'Bricolage Grotesque', sans-serif; }
+        .reg-root  { font-family: 'DM Sans', sans-serif; }
+        .df        { font-family: 'Bricolage Grotesque', sans-serif; }
 
-        @keyframes floatA { 0%,100%{transform:translateY(0px) rotate(-6deg)} 50%{transform:translateY(-14px) rotate(-6deg)} }
-        @keyframes floatB { 0%,100%{transform:translateY(0px) rotate(4deg)}  50%{transform:translateY(-10px) rotate(4deg)}  }
-        @keyframes floatC { 0%,100%{transform:translateY(0px) rotate(-2deg)} 50%{transform:translateY(-18px) rotate(-2deg)} }
-        @keyframes floatD { 0%,100%{transform:translateY(0px) rotate(8deg)}  50%{transform:translateY(-8px)  rotate(8deg)}  }
-        @keyframes floatE { 0%,100%{transform:translateY(0px) rotate(-12deg)}50%{transform:translateY(-12px) rotate(-12deg)}}
+        @keyframes floatA   { 0%,100%{transform:translateY(0px) rotate(-6deg)}  50%{transform:translateY(-14px) rotate(-6deg)}  }
+        @keyframes floatB   { 0%,100%{transform:translateY(0px) rotate(4deg)}   50%{transform:translateY(-10px) rotate(4deg)}   }
+        @keyframes floatC   { 0%,100%{transform:translateY(0px) rotate(-2deg)}  50%{transform:translateY(-18px) rotate(-2deg)}  }
+        @keyframes floatD   { 0%,100%{transform:translateY(0px) rotate(8deg)}   50%{transform:translateY(-8px)  rotate(8deg)}   }
+        @keyframes floatE   { 0%,100%{transform:translateY(0px) rotate(-12deg)} 50%{transform:translateY(-12px) rotate(-12deg)} }
         @keyframes spinSlow { to { transform: rotate(360deg); } }
         @keyframes pulseDot { 0%,100%{opacity:.3;transform:scale(1)} 50%{opacity:.7;transform:scale(1.4)} }
 
-        .fa { animation: floatA 6s   ease-in-out infinite; }
-        .fb { animation: floatB 7s   ease-in-out infinite  0.5s; }
-        .fc { animation: floatC 8s   ease-in-out infinite  1.0s; }
-        .fd { animation: floatD 5.5s ease-in-out infinite  1.5s; }
-        .fe { animation: floatE 9s   ease-in-out infinite  2.0s; }
-        .spin-slow { animation: spinSlow 20s linear infinite; }
-        .pdot      { animation: pulseDot  3s ease-in-out infinite; }
-
-       
+        .fa        { animation: floatA   6s   ease-in-out infinite;       }
+        .fb        { animation: floatB   7s   ease-in-out infinite  0.5s; }
+        .fc        { animation: floatC   8s   ease-in-out infinite  1.0s; }
+        .fd        { animation: floatD   5.5s ease-in-out infinite  1.5s; }
+        .fe        { animation: floatE   9s   ease-in-out infinite  2.0s; }
+        .spin-slow { animation: spinSlow 20s  linear     infinite;        }
+        .pdot      { animation: pulseDot 3s   ease-in-out infinite;       }
         .doc-shadow { box-shadow: 0 20px 50px rgba(0,0,0,.28), 0 4px 14px rgba(0,0,0,.14); }
       `}</style>
 
       <div className="reg-root min-h-screen flex flex-col md:flex-row bg-gray-100">
-        {/* ══ LEFT PANEL ════════════════════════════════════════════ */}
+        {/* ══ LEFT PANEL ════════════════════════════════════════════════════ */}
         <aside className="hidden md:block md:w-[38%] lg:w-[42%] shrink-0">
           <div
             className="sticky top-0 h-screen overflow-hidden relative"
             style={{ background: "#022c22" }}
           >
-            {/* Video bg */}
             <video
               autoPlay
               loop
@@ -578,8 +1034,6 @@ const Register = () => {
             >
               <source src={bonbonVideo} type="video/mp4" />
             </video>
-
-            {/* Colour overlays */}
             <div className="absolute inset-0 bg-emerald-950/55 mix-blend-multiply" />
             <div
               className="absolute inset-0"
@@ -588,11 +1042,7 @@ const Register = () => {
                   "linear-gradient(155deg,rgba(6,78,59,.82) 0%,rgba(6,95,70,.45) 50%,rgba(4,120,87,.72) 100%)",
               }}
             />
-
-            {/* Grid */}
             <div className="absolute inset-0 grid-bg pointer-events-none" />
-
-            {/* Decorative rings */}
             <div
               className="spin-slow absolute top-[14%] right-[7%] w-28 h-28 rounded-full opacity-10"
               style={{ border: "2px dashed #6ee7b7" }}
@@ -604,8 +1054,6 @@ const Register = () => {
                 animationDirection: "reverse",
               }}
             />
-
-            {/* Dots */}
             {[
               "w-2 h-2 top-[11%] left-[14%]",
               "w-3 h-3 top-[24%] right-[19%]",
@@ -622,9 +1070,7 @@ const Register = () => {
               />
             ))}
 
-            {/* ── CONTENT COLUMN ── */}
             <div className="relative z-20 flex flex-col h-full p-10 lg:p-12">
-              {/* TOP: Logo + headline */}
               <div>
                 <div className="flex items-center gap-3 mb-10">
                   <img
@@ -649,10 +1095,9 @@ const Register = () => {
                 </h2>
               </div>
 
-              {/* MIDDLE: Floating doc cards */}
+              {/* Floating doc cards */}
               <div className="flex-1 flex items-center justify-center">
                 <div className="relative w-[340px] h-[310px]">
-                  {/* Card 1 — Brgy. Clearance */}
                   <div
                     className="fa absolute doc-shadow"
                     style={{ top: "0%", left: "0%", width: 180 }}
@@ -683,7 +1128,6 @@ const Register = () => {
                     </div>
                   </div>
 
-                  {/* Card 2 — Request Form hero */}
                   <div
                     className="fb absolute doc-shadow"
                     style={{ top: "14%", left: "22%", width: 200, zIndex: 10 }}
@@ -725,8 +1169,8 @@ const Register = () => {
                           {[
                             ["Full Name", "h-5"],
                             ["Purpose", "h-5"],
-                          ].map(([lbl, h]) => (
-                            <div key={lbl}>
+                          ].map(([l, h]) => (
+                            <div key={l}>
                               <div className="h-1.5 bg-gray-200 rounded-full w-14 mb-1" />
                               <div
                                 className={`${h} bg-gray-50 rounded-lg border border-gray-200 w-full`}
@@ -749,7 +1193,6 @@ const Register = () => {
                     </div>
                   </div>
 
-                  {/* Card 3 — Cert. of Residency */}
                   <div
                     className="fc absolute doc-shadow"
                     style={{ bottom: "0%", left: "0%", width: 172 }}
@@ -781,7 +1224,6 @@ const Register = () => {
                     </div>
                   </div>
 
-                  {/* Card 4 — Indigency */}
                   <div
                     className="fd absolute doc-shadow"
                     style={{ top: "0%", right: "0%", width: 150 }}
@@ -813,7 +1255,6 @@ const Register = () => {
                     </div>
                   </div>
 
-                  {/* Card 5 — Good Moral */}
                   <div
                     className="fe absolute doc-shadow"
                     style={{ bottom: "0%", right: "0%", width: 142 }}
@@ -847,7 +1288,6 @@ const Register = () => {
                 </div>
               </div>
 
-              {/* BOTTOM: Download */}
               <div>
                 <Link to="/download">
                   <div className="group inline-flex items-center gap-4 text-white hover:text-emerald-400 transition-all duration-300">
@@ -867,7 +1307,7 @@ const Register = () => {
           </div>
         </aside>
 
-        {/* ══ RIGHT — Form ══════════════════════════════════════════ */}
+        {/* ══ RIGHT — Form ══════════════════════════════════════════════════ */}
         <main className="flex-1 min-h-screen overflow-y-auto bg-gray-100">
           <div className="h-1 bg-gradient-to-r from-emerald-500 via-emerald-400 to-teal-500" />
           <div className="max-w-2xl mx-auto px-5 py-12 md:px-8 md:py-16">
@@ -889,7 +1329,7 @@ const Register = () => {
               }}
               className="space-y-5"
             >
-              {/* ── Section 1: Account ── */}
+              {/* Section 1 — Account */}
               <SectionCard>
                 <StepHeader
                   number="1"
@@ -963,7 +1403,7 @@ const Register = () => {
                 </div>
               </SectionCard>
 
-              {/* ── Section 2: Personal ── */}
+              {/* Section 2 — Personal */}
               <SectionCard>
                 <StepHeader
                   number="2"
@@ -971,7 +1411,6 @@ const Register = () => {
                   subtitle="Tell us about yourself and where you live."
                 />
                 <div className="space-y-4">
-                  {/* First / Middle / Last — 3 columns */}
                   <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                     <InputField
                       label="First Name"
@@ -985,7 +1424,7 @@ const Register = () => {
                     <InputField
                       label={
                         <span className="flex items-center gap-1">
-                          Middle Name
+                          Middle Name{" "}
                           <span className="text-gray-400 text-[10px] normal-case tracking-normal font-normal">
                             (optional)
                           </span>
@@ -1008,7 +1447,6 @@ const Register = () => {
                       error={errors.lname}
                     />
                   </div>
-
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <DateField
                       label="Date of Birth"
@@ -1032,7 +1470,6 @@ const Register = () => {
                       error={errors.gender_id}
                     />
                   </div>
-
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <SelectField
                       label="Zone"
@@ -1056,7 +1493,6 @@ const Register = () => {
                       error={errors.house_no}
                     />
                   </div>
-
                   <SelectField
                     label="Marital Status"
                     name="civil_status_id"
@@ -1072,7 +1508,7 @@ const Register = () => {
                 </div>
               </SectionCard>
 
-              {/* ── Section 3: ID Upload ── */}
+              {/* Section 3 — ID Upload */}
               <SectionCard>
                 <StepHeader
                   number="3"
@@ -1127,7 +1563,7 @@ const Register = () => {
                     >
                       <X size={16} />
                     </button>
-                    <div className="flex items-center gap-2 px-4 py-2.5 bg-emerald-600/95">
+                    <div className="flex items-center gap-2 px-4 py-2.5 bg-emerald-600/95 mt-2 rounded-lg">
                       <CheckCircle2 size={14} className="text-white" />
                       <span className="text-white text-xs font-bold">
                         ID successfully attached
@@ -1137,9 +1573,65 @@ const Register = () => {
                 )}
               </SectionCard>
 
-              {/* ── Section 4: Security ── */}
+              {/* Section 4 — Face Verification (appears after ID is uploaded) */}
+              {selectedImage && !faceVerified && (
+                <SectionCard>
+                  <div className="flex items-start gap-4 mb-5">
+                    <div className="w-8 h-8 rounded-lg bg-emerald-50 border border-emerald-200 flex items-center justify-center shrink-0">
+                      <ScanFace size={16} className="text-emerald-700" />
+                    </div>
+                    <div>
+                      <h2 className="text-lg font-bold text-gray-800 leading-tight">
+                        Face Verification
+                      </h2>
+                      <p className="text-sm text-gray-500 mt-0.5">
+                        Verify your identity by matching your face to your
+                        uploaded ID.
+                      </p>
+                    </div>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setShowFaceModal(true)}
+                    className="w-full flex items-center justify-center gap-2.5 py-3.5 bg-emerald-500 hover:bg-emerald-600 active:scale-[0.98] text-white rounded-xl font-bold text-sm transition-all shadow-md shadow-emerald-200"
+                  >
+                    <ScanFace size={18} /> Start Face Scan
+                  </button>
+                </SectionCard>
+              )}
 
-              {/* ── Submit ── */}
+              {/* Face Verification Modal */}
+              {showFaceModal && (
+                <FaceScanner
+                  idImageSrc={selectedImage}
+                  onVerified={() => {
+                    setFaceVerified(true);
+                    setShowFaceModal(false);
+                  }}
+                  onReset={removeImage}
+                  onClose={() => setShowFaceModal(false)}
+                />
+              )}
+
+              {/* Face verified badge */}
+              {selectedImage && faceVerified && (
+                <div className="flex items-center gap-3 px-5 py-4 bg-emerald-50 border border-emerald-200 rounded-2xl">
+                  <div className="w-9 h-9 rounded-full bg-emerald-100 flex items-center justify-center shrink-0">
+                    <ScanFace size={18} className="text-emerald-600" />
+                  </div>
+                  <div className="flex-1">
+                    <p className="text-sm font-bold text-emerald-800">
+                      Face Verified
+                    </p>
+                    <p className="text-xs text-emerald-600">
+                      Your face matches the submitted ID.
+                    </p>
+                  </div>
+                  <CheckCircle2 size={20} className="text-emerald-500" />
+                </div>
+              )}
+
+              {/* Submit */}
               <div className="pt-3">
                 {Object.keys(errors).length > 0 && (
                   <div className="bg-red-50 border border-red-200 text-red-700 p-4 rounded-xl text-sm mb-6">
@@ -1147,10 +1639,8 @@ const Register = () => {
                       There were errors with your submission:
                     </strong>
                     <ul className="list-disc list-inside mt-2">
-                      {Object.entries(errors).map(([key, value]) => (
-                        <li key={key}>
-                          {Array.isArray(value) ? value[0] : value}
-                        </li>
+                      {Object.entries(errors).map(([k, v]) => (
+                        <li key={k}>{Array.isArray(v) ? v[0] : v}</li>
                       ))}
                     </ul>
                   </div>
@@ -1167,13 +1657,12 @@ const Register = () => {
                 >
                   {isSubmitting ? (
                     <>
-                      <div className="w-4 h-4 border-2 border-white/40 border-t-white rounded-full animate-spin" />
-                      Processing...
+                      <div className="w-4 h-4 border-2 border-white/40 border-t-white rounded-full animate-spin" />{" "}
+                      Processing…
                     </>
                   ) : (
                     <>
-                      <CheckCircle2 size={20} />
-                      Complete Registration
+                      <CheckCircle2 size={20} /> Complete Registration
                     </>
                   )}
                 </button>
