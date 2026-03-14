@@ -33,8 +33,8 @@ import {
   Legend,
 } from "recharts";
 import Skeleton from "../components/Skeleton";
-import { OverviewProvider, useOverview } from "../context/OverviewContext";
 
+import { OverviewProvider, useOverview } from "../context/OverViewContext";
 /* ═══════════════════════════════════════════════════════════════
    PURE UI HELPERS (unchanged from original)
    ═══════════════════════════════════════════════════════════════ */

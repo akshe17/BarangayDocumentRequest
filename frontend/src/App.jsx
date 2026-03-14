@@ -38,6 +38,7 @@ import LoginPage from "./pages/LoginPage";
 import Register from "./pages/resident/Register";
 import DownloadApp from "./pages/Download";
 import Practice from "./pages/Practice";
+import ForgotPassword from "./components/login/ForgotPassword";
 
 // ─── Admin Pages ─────────────────────────────────────────────────────────────
 import Overview from "./pages/Overview";
@@ -182,6 +183,7 @@ const App = () => {
           <Route path="/login" element={<LoginPage />} />
           <Route path="/register" element={<Register />} />
         </Route>
+        <Route path="/forgot-password" element={<ForgotPassword />} />
 
         <Route path="/download" element={<DownloadApp />} />
         <Route path="/practice" element={<Practice />} />
